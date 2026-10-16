@@ -1,0 +1,132 @@
+# CI skeleton (E0-02, E13-*). Runs only what exists today; jobs for code that does not
+# exist yet are present but switched off with `if: false` and marked TODO with their story ID.
+# Turn each one on in the PR that adds the code it checks. Never make CI fail on missing code.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  docs-links:
+    name: Docs link check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python scripts/check_links.py
+
+  markdown-lint:
+    name: Markdown lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: DavidAnson/markdownlint-cli2-action@v16
+        with:
+          globs: "**/*.md"
+
+  wording-lint:
+    name: Wording lint (TRD 7.3)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Unit tests for the lint and helper scripts
+        run: |
+          python -m unittest discover -s scripts/tests -v
+          python .claude/skills/usability-study-kit/test_sus.py -v
+      - name: Scan UI strings
+        run: python scripts/check_wording.py
+
+  secret-scan:
+    name: Secret scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install gitleaks 8.18.4
+        run: |
+          curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.18.4/gitleaks_8.18.4_linux_x64.tar.gz \
+            | tar -xz -C /usr/local/bin gitleaks
+      - name: Scan full history
+        run: gitleaks detect --source . --redact --verbose --exit-code 1
+
+  # ---------- TODO jobs: switched off until the code exists ----------
+
+  lint-typecheck:
+    name: Lint and type-check (TODO E0-02)
+    if: ${{ false }} # TODO(E0-02): enable when apps/pwa has package.json and lint/typecheck scripts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "TODO(E0-02) run the PWA lint and type-check commands"
+
+  unit-tests:
+    name: Unit tests (TODO E0-02)
+    if: ${{ false }} # TODO(E0-02): enable with the first unit tests (Vitest for apps/pwa and packages, pytest for ml)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "TODO(E0-02) run unit tests; triage rules, sync and quality gate need at least 70% coverage (NFR-MAINT-01)"
+
+  build:
+    name: Build (TODO E8-02)
+    if: ${{ false }} # TODO(E8-02): enable when the PWA shell builds
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "TODO(E8-02) build the PWA"
+
+  bundle-budget:
+    name: Bundle budget, app shell at most 300 KB gzip (TODO E13-03)
+    if: ${{ false }} # TODO(E13-03): fail if the app shell is over 300 KB gzip (NFR-PERF-05)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "TODO(E13-03) measure gzip size of the app shell and fail over 300 KB"
+
+  onnx-parity:
+    name: ONNX parity and accuracy drop (TODO E5-03)
+    if: ${{ false }} # TODO(E5-03): fail if browser output differs from PyTorch beyond tolerance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "TODO(E5-03) run the parity test on the fixed image set"
+
+  e2e-offline:
+    name: Playwright offline end-to-end (TODO E13-02)
+    if: ${{ false }} # TODO(E13-02): offline capture-to-result flow with network disabled
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "TODO(E13-02) run Playwright with the network disabled"
+
+  rls-tests:
+    name: Supabase RLS tests (TODO E9-01)
+    if: ${{ false }} # TODO(E9-01): facility A cannot read facility B; audit rows written
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "TODO(E9-01) run RLS tests against a local Supabase"
+
+  dependency-scan:
+    name: Dependency scan (TODO E13-03)
+    if: ${{ false }} # TODO(E13-03): fail on high-severity findings once lockfiles exist (NFR-SEC-04)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "TODO(E13-03) run npm audit and pip-audit against the lockfiles"

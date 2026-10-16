@@ -8,6 +8,12 @@ Every document in `docs/`, who owns it and how it changes.
 - **Living:** update through a pull request with one review (Team Rules 6).
 - **Template:** copy it, do not fill it in place. Change the template itself through a pull request.
 
+## AI context
+
+| Document | Description | Owner | Update rule |
+|----------|-------------|-------|-------------|
+| [ai-context.md](ai-context.md) | Cited digest of the baseline, loaded into every Claude Code session by `CLAUDE.md` | Kweku | Living; update only after an ADR or a decision D1 to D6 |
+
 ## Planning (baseline v1.0, 15 Oct 2026)
 
 | Document | Description | Owner | Update rule |
@@ -71,6 +77,8 @@ Every document in `docs/`, who owns it and how it changes.
 | [sprints/sprint-04.md](sprints/sprint-04.md) | Sprint 4 plan, gate, review, retro, workload, velocity | Micheal | Living |
 | [runbook/README.md](runbook/README.md) | Deploy, rollback, keys, model publishing, incidents (placeholders until E14-02) | Nana Yaw | Living |
 | [process/README.md](process/README.md) | How the team works with its tools | Micheal | Living |
+| [process/claude-code-setup.md](process/claude-code-setup.md) | What Claude Code loads, when, and who updates it | Kweku | Living |
+| [process/skills-and-agents.md](process/skills-and-agents.md) | Every Claude Code skill and agent, and how to use /sprint-ops and /board-sync | Kweku | Living |
 | [process/setup-report-01-repo.md](process/setup-report-01-repo.md) | Report on the repository setup | Kweku | Record; do not edit after merge |
 
 ## Folder READMEs

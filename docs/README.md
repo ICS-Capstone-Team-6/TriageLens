@@ -66,6 +66,7 @@ Every document in `docs/`, who owns it and how it changes.
 |----------|-------------|-------|-------------|
 | [model-cards/TEMPLATE.md](model-cards/TEMPLATE.md) | Model card template (TRD 9.10) | Chelsea | Template |
 | [benchmarks/README.md](benchmarks/README.md) | Where device benchmark reports go | Nana Yaw | Living |
+| [usability/ux-plan/README.md](usability/ux-plan/README.md) | E8-01 UX plan: interview guide, notes and synthesis templates, user journeys, low-fi flows | Kweku | Living |
 | [usability/test-plan.md](usability/test-plan.md) | Usability test plan (TRD 13.4) | Kweku | Living |
 
 ## Sprints, operations and process

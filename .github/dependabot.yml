@@ -1,0 +1,19 @@
+# Dependency updates (NFR-SEC-04, Team Rules 6: pin versions, add only when needed).
+# npm and pip entries only find manifests once apps/pwa and ml have them.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: weekly
+    labels: ["type:story"]
+  - package-ecosystem: npm
+    directories: ["/", "/apps/pwa", "/packages/*"]
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+  - package-ecosystem: pip
+    directory: "/ml"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5

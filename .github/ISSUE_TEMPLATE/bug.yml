@@ -1,0 +1,52 @@
+name: Bug
+description: Something is broken. Never paste patient data, real case images or secrets here.
+title: "Bug: "
+labels: ["type:bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **No real patient data, case images, screenshots with health data, or secrets** (Team Rules 8). Use fake or public sample data. If health data was shared by mistake, delete it and tell Kweku.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      value: |
+        1. 
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device and browser
+      placeholder: Phone model, Android version, Chrome version
+  - type: input
+    id: versions
+    attributes:
+      label: App and model version
+      placeholder: app 0.1.0, cxr-tb-pneu 1.0.0
+  - type: dropdown
+    id: safety
+    attributes:
+      label: Could this affect a result zone, wording, consent or patient data?
+      description: If yes, add the `type:safety` label and link the hazard (docs/safety/hazard-log.md).
+      options: ["No", "Yes", "Not sure"]
+    validations:
+      required: true
+  - type: input
+    id: story
+    attributes:
+      label: Related story ID
+      placeholder: E8-05

@@ -1,0 +1,50 @@
+name: Spike
+description: A time-boxed investigation of one day that ends in a decision (TRD 4.2, Team Rules 3).
+title: "[E#-##] Spike: "
+labels: ["type:spike"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        A spike is **time-boxed to one day**. Then decide, write the decision as an ADR in `docs/adr/` (copy `0000-template.md`), and move on.
+  - type: input
+    id: story_id
+    attributes:
+      label: Story ID
+      placeholder: E4-02
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: The one question this spike answers.
+    validations:
+      required: true
+  - type: textarea
+    id: options
+    attributes:
+      label: Options to try
+      description: The candidates to compare and how each will be measured.
+  - type: input
+    id: timebox
+    attributes:
+      label: Time-box
+      value: 1 day
+    validations:
+      required: true
+  - type: dropdown
+    id: owner
+    attributes:
+      label: Owner
+      options: [Kweku, Chelsea, Nana Yaw, Micheal]
+    validations:
+      required: true
+  - type: textarea
+    id: output
+    attributes:
+      label: Decision output
+      description: What will exist at the end, for example "go/no-go note and ADR-0013".
+      value: |
+        - [ ] Go / no-go recorded
+        - [ ] ADR written in docs/adr/
+    validations:
+      required: true

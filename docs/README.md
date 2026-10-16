@@ -75,6 +75,7 @@ Every document in `docs/`, who owns it and how it changes.
 | [sprints/sprint-02.md](sprints/sprint-02.md) | Sprint 2 plan, gate, review, retro, workload, velocity | Micheal | Living |
 | [sprints/sprint-03.md](sprints/sprint-03.md) | Sprint 3 plan, gate, review, retro, workload, velocity | Micheal | Living |
 | [sprints/sprint-04.md](sprints/sprint-04.md) | Sprint 4 plan, gate, review, retro, workload, velocity | Micheal | Living |
+| [sprints/board-snapshot-2026-10-16.csv](sprints/board-snapshot-2026-10-16.csv) | First board snapshot, taken after setup | Micheal | Record |
 | [runbook/README.md](runbook/README.md) | Deploy, rollback, keys, model publishing, incidents (placeholders until E14-02) | Nana Yaw | Living |
 | [process/README.md](process/README.md) | How the team works with its tools | Micheal | Living |
 | [process/claude-code-setup.md](process/claude-code-setup.md) | What Claude Code loads, when, and who updates it | Kweku | Living |
@@ -89,6 +90,7 @@ Every document in `docs/`, who owns it and how it changes.
 | [process/setup-report-01-repo.md](process/setup-report-01-repo.md) | Report on the repository setup | Kweku | Record; do not edit after merge |
 | [process/setup-report-04-github.md](process/setup-report-04-github.md) | Report on labels, milestones, issues and the board | Kweku | Record; do not edit after merge |
 | [process/setup-report-05-hygiene.md](process/setup-report-05-hygiene.md) | Report on templates, CI, wording lint and process docs | Kweku | Record; do not edit after merge |
+| [process/setup-report-final.md](process/setup-report-final.md) | Final audit of the whole setup, with the manual to-do list | Kweku | Record; do not edit after merge |
 
 ## Folder READMEs
 

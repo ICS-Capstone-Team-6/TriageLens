@@ -8,6 +8,16 @@ This is a capstone project for the Building Intelligent Systems course.
 >
 > Source: [TRD 3.3](docs/planning/01_TRD.md), frozen in [docs/safety/intended-use.md](docs/safety/intended-use.md).
 
+## Start here
+
+| If you want to... | Go to |
+|-------------------|-------|
+| Get set up (tools, sign-in, Claude Code, first PR) | [Onboarding](docs/process/onboarding.md) |
+| See what to work on | [Project board](https://github.com/orgs/ICS-Capstone-Team-6/projects/1) |
+| Know the dates, gates and your stories | [Sprint Plan](docs/planning/03_Sprint_Plan.md) |
+| Know how we work and the quality bar | [Team Rules](docs/planning/04_Team_Rules_and_Requirements.md) and [CONTRIBUTING.md](CONTRIBUTING.md) |
+| Find any document | [Documentation index](docs/README.md) |
+
 ## Status
 
 - **Phase:** Planning complete (baseline v1.0, 15 Oct 2026). Build starts Monday 19 October 2026.

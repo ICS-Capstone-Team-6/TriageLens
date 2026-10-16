@@ -1,0 +1,74 @@
+ID,Title,Status,Sprint,Points,MoSCoW,Epic,Owner,Support,Depends on,Issue number,Issue state
+E0-01,"[E0-01] Set up monorepo, branch rules, PR template and CODEOWNERS",Backlog,Sprint 0,1,Must,E0 Setup and Governance,Nana Yaw,,,1,OPEN
+E0-02,"[E0-02] CI skeleton: lint, type-check and unit tests on every PR",Backlog,Sprint 0,1,Must,E0 Setup and Governance,Nana Yaw,Kweku,E0-01,2,OPEN
+E0-03,"[E0-03] Board, Definition of Done and working agreement agreed",Backlog,Sprint 0,1,Must,E0 Setup and Governance,Micheal,Kweku,,3,OPEN
+E0-04,[E0-04] Freeze intended-use statement and success metrics,Backlog,Sprint 0,1,Must,E0 Setup and Governance,Kweku,Micheal,,4,OPEN
+E0-05,[E0-05] Risk register live and sprint rituals running,Backlog,Sprint 1,1,Must,E0 Setup and Governance,Micheal,,E0-03,5,OPEN
+E0-06,"[E0-06] Final retro, handover pack and repo archive",Backlog,Sprint 4,2,Should,E0 Setup and Governance,Micheal,Kweku,All,6,OPEN
+E1-01,[E1-01] Request dataset access; build licence and usage register,Backlog,Sprint 0,1,Must,E1 Data,Micheal,Chelsea,,7,OPEN
+E1-02,"[E1-02] Download, checksum and version core datasets (downsized copies)",Backlog,Sprint 0,2,Must,E1 Data,Nana Yaw,Chelsea,E1-01,8,OPEN
+E1-03,"[E1-03] EDA, data cards, patient-level splits and duplicate check (TB, pneumonia)",Backlog,Sprint 0,2,Must,E1 Data,Chelsea,Nana Yaw,E1-02,9,OPEN
+E1-04,[E1-04] Phone-photo capture protocol and capture kit,Backlog,Sprint 1,1,Must,E1 Data,Micheal,Chelsea,,10,OPEN
+E1-05,"[E1-05] Photograph test set: 300+ displayed or printed X-rays, 2+ phones",Backlog,Sprint 2,3,Must,E1 Data,Micheal,Chelsea,E1-04,11,OPEN
+E2-01,[E2-01] Pipeline smoke test: baseline TB classifier end to end,Backlog,Sprint 0,2,Must,E2 Chest X-ray Models,Chelsea,Kweku,E1-03,12,OPEN
+E2-02,"[E2-02] TB model v1 (small backbone, transfer learning)",Backlog,Sprint 1,3,Must,E2 Chest X-ray Models,Chelsea,Kweku,E1-03,13,OPEN
+E2-03,[E2-03] Pneumonia model; compare multi-task (masked loss) with separate models,Backlog,Sprint 1,3,Must,E2 Chest X-ray Models,Chelsea,Micheal,E2-02,14,OPEN
+E2-04,[E2-04] Tune TB and pneumonia models; try teacher-student distillation,Backlog,Sprint 2,3,Must,E2 Chest X-ray Models,Chelsea,Nana Yaw,E2-03,15,OPEN
+E2-05,"[E2-05] Final model selection, freeze and signed manifests",Backlog,Sprint 4,2,Must,E2 Chest X-ray Models,Chelsea,Nana Yaw,E11-01,16,OPEN
+E3-01,"[E3-01] DR data prep: APTOS plus EyePACS subsample, splits, preprocessing",Backlog,Sprint 1,2,Must,E3 Retinal Model,Kweku,Chelsea,E1-02,17,OPEN
+E3-02,[E3-02] DR model v1 (5-grade ordinal plus referable-DR flag),Backlog,Sprint 2,3,Must,E3 Retinal Model,Chelsea,Kweku,E3-01,18,OPEN
+E4-01,"[E4-01] Spike: live capture guidance (frame, tilt, glare detection)",Backlog,Sprint 0,2,Should,E4 Quality Gate,Micheal,Kweku,,19,OPEN
+E4-02,"[E4-02] Quality checks: blur, glare, exposure, framing, with retake advice",Backlog,Sprint 1,3,Must,E4 Quality Gate,Micheal,Nana Yaw,E8-03,20,OPEN
+E4-03,"[E4-03] Modality and out-of-distribution gate (X-ray, fundus, other)",Backlog,Sprint 2,3,Must,E4 Quality Gate,Micheal,Chelsea,E2-02,21,OPEN
+E5-01,[E5-01] Reference low-end phone and benchmark harness,Backlog,Sprint 1,2,Must,E5 On-Device Inference,Nana Yaw,,,22,OPEN
+E5-02,[E5-02] ONNX export and int8 quantization pipeline,Backlog,Sprint 1,2,Must,E5 On-Device Inference,Chelsea,Nana Yaw,E2-02,23,OPEN
+E5-03,[E5-03] ONNX parity and accuracy-drop checks in CI,Backlog,Sprint 1,2,Must,E5 On-Device Inference,Nana Yaw,Chelsea,E5-02,24,OPEN
+E5-04,"[E5-04] Low-end performance tuning (WASM SIMD and threads, warm-up, memory)",Backlog,Sprint 3,2,Must,E5 On-Device Inference,Nana Yaw,Micheal,E8-04,25,OPEN
+E6-01,[E6-01] Calibration (temperature scaling) and three-zone thresholds,Backlog,Sprint 2,3,Must,E6 Calibration and Explainability,Kweku,Chelsea,E2-03,26,OPEN
+E6-02,[E6-02] Heatmap (class activation map) from model features in the browser,Backlog,Sprint 2,2,Should,E6 Calibration and Explainability,Micheal,Kweku,E5-02,27,OPEN
+E6-03,"[E6-03] Subgroup and failure analysis (sex, age band, source site, image type)",Backlog,Sprint 3,2,Should,E6 Calibration and Explainability,Chelsea,Kweku,E11-01,28,OPEN
+E7-01,"[E7-01] Phone-photo simulation pipeline (glare, tilt, moire, blur, lighting)",Backlog,Sprint 2,2,Must,E7 Phone-Photo Robustness,Chelsea,Micheal,E1-04,29,OPEN
+E7-02,[E7-02] Photo-robust retraining and ablation (clean vs simulated vs real photos),Backlog,Sprint 3,3,Must,E7 Phone-Photo Robustness,Chelsea,Kweku,"E7-01, E1-05",30,OPEN
+E8-01,[E8-01] UX plan: interview 3+ health workers; low-fidelity flows,Backlog,Sprint 0,2,Must,E8 App and UX,Kweku,Micheal,,31,OPEN
+E8-02,"[E8-02] PWA shell: install, offline cache, routing, design tokens",Backlog,Sprint 1,3,Must,E8 App and UX,Kweku,Micheal,E0-01,32,OPEN
+E8-03,[E8-03] Capture screen: camera and file upload,Backlog,Sprint 1,2,Must,E8 App and UX,Kweku,Micheal,E8-02,33,OPEN
+E8-04,[E8-04] Inference worker: run ONNX in a web worker with model cache,Backlog,Sprint 1,3,Must,E8 App and UX,Micheal,"Chelsea, Nana Yaw",E5-02,34,OPEN
+E8-05,"[E8-05] Result screen: risk zone, confidence, referral advice, 4-symptom checklist",Backlog,Sprint 2,3,Must,E8 App and UX,Kweku,Micheal,E6-01,35,OPEN
+E8-06,"[E8-06] Local case log: pseudonymous ID, notes, encrypted images",Backlog,Sprint 2,2,Must,E8 App and UX,Kweku,Nana Yaw,E8-02,36,OPEN
+E8-07,"[E8-07] Capture guidance overlay (live frame, tilt, glare hints, auto-capture)",Backlog,Sprint 3,3,Should,E8 App and UX,Micheal,Kweku,E4-01,37,OPEN
+E8-08,[E8-08] Usability round 1 (5+ users) and fixes,Backlog,Sprint 3,3,Must,E8 App and UX,Kweku,Micheal,E8-05,38,OPEN
+E8-09,"[E8-09] Localization framework and plain-language, icon-first UI",Backlog,Sprint 3,2,Should,E8 App and UX,Micheal,Kweku,E8-05,39,OPEN
+E8-10,[E8-10] Usability round 2 (5+ users) and polish,Backlog,Sprint 4,3,Must,E8 App and UX,Kweku,Micheal,E8-08,40,OPEN
+E9-01,"[E9-01] Supabase project, schema v1, row-level security by facility, audit log",Backlog,Sprint 1,3,Must,E9 Backend and Sync,Nana Yaw,Kweku,,41,OPEN
+E9-02,[E9-02] Sync outbox with idempotent upserts and conflict rules,Backlog,Sprint 2,3,Must,E9 Backend and Sync,Nana Yaw,Kweku,"E9-01, E8-06",42,OPEN
+E9-03,[E9-03] Auth and roles; offline PIN unlock,Backlog,Sprint 2,3,Must,E9 Backend and Sync,Nana Yaw,Kweku,E9-01,43,OPEN
+E9-04,"[E9-04] Model registry, over-the-air update and rollback",Backlog,Sprint 3,2,Should,E9 Backend and Sync,Nana Yaw,Chelsea,"E5-02, E9-01",44,OPEN
+E10-01,[E10-01] Clinician review screen and feedback loop,Backlog,Sprint 3,3,Should,E10 Review and Admin,Kweku,Nana Yaw,E9-02,45,OPEN
+E10-02,"[E10-02] Admin dashboard: volumes, referral rate, reviewer agreement",Backlog,Sprint 3,3,Should,E10 Review and Admin,Micheal,Kweku,E10-01,46,OPEN
+E11-01,"[E11-01] External validation runs (locked external sets, one-shot)",Backlog,Sprint 3,3,Must,E11 Validation,Chelsea,Kweku,"E2-04, E3-02",47,OPEN
+E11-02,[E11-02] Device benchmark report (reference phone plus one mid-range),Backlog,Sprint 3,2,Must,E11 Validation,Nana Yaw,Micheal,E5-04,48,OPEN
+E11-03,[E11-03] Model cards and results tables,Backlog,Sprint 4,2,Must,E11 Validation,Chelsea,Kweku,E11-01,49,OPEN
+E11-04,"[E11-04] Regression, offline soak and load tests",Backlog,Sprint 4,3,Must,E11 Validation,Nana Yaw,Micheal,All features,50,OPEN
+E12-01,"[E12-01] Ethics pathway: IRB route, protocol outline, clinic contact",Backlog,Sprint 0,1,Must,E12 Ethics and Safety,Kweku,Micheal,,51,OPEN
+E12-02,[E12-02] Hazard log v1,Backlog,Sprint 1,1,Must,E12 Ethics and Safety,Kweku,Chelsea,E0-04,52,OPEN
+E12-03,"[E12-03] Consent and privacy controls (consent screen, deletion, no image upload by default)",Backlog,Sprint 3,2,Must,E12 Ethics and Safety,Kweku,Nana Yaw,E9-03,53,OPEN
+E12-04,[E12-04] Safety case and limitations section,Backlog,Sprint 4,2,Must,E12 Ethics and Safety,Kweku,Chelsea,E12-02,54,OPEN
+E13-01,"[E13-01] Preview deploys, environments and secrets handling",Backlog,Sprint 1,1,Must,E13 DevOps and QA,Nana Yaw,,E0-02,55,OPEN
+E13-02,[E13-02] Offline end-to-end tests (Playwright),Backlog,Sprint 2,2,Must,E13 DevOps and QA,Nana Yaw,Kweku,E8-06,56,OPEN
+E13-03,[E13-03] Performance budgets and security scan in CI,Backlog,Sprint 3,2,Should,E13 DevOps and QA,Nana Yaw,,E13-01,57,OPEN
+E13-04,"[E13-04] Release pipeline, backups and monitoring",Backlog,Sprint 4,3,Must,E13 DevOps and QA,Nana Yaw,Kweku,E13-01,58,OPEN
+E14-01,[E14-01] Report: ML methods and results,Backlog,Sprint 4,4,Must,E14 Delivery,Chelsea,Kweku,E11-01,59,OPEN
+E14-02,[E14-02] Deployment and operations runbook,Backlog,Sprint 4,2,Must,E14 Delivery,Nana Yaw,,E13-04,60,OPEN
+E14-03,"[E14-03] Report: system design, HCI and safety",Backlog,Sprint 4,3,Must,E14 Delivery,Kweku,Micheal,E12-04,61,OPEN
+E14-04,[E14-04] Demo video and live demo script,Backlog,Sprint 4,3,Must,E14 Delivery,Micheal,Kweku,E8-10,62,OPEN
+E14-05,"[E14-05] User guide, README and developer docs",Backlog,Sprint 4,3,Must,E14 Delivery,Micheal,Nana Yaw,E14-02,63,OPEN
+E15-01,"[E15-01] DICOM file support in the browser (parse, window/level, strip tags)",Backlog,Icebox,3,Could,E15 Stretch,,,,64,OPEN
+E15-02,[E15-02] Local retrospective validation at a partner clinic,Backlog,Icebox,8,Could,E15 Stretch,,,,65,OPEN
+E15-03,[E15-03] Lung-field segmentation (U-Net) to crop the X-ray before classification,Backlog,Icebox,5,Could,E15 Stretch,,,,66,OPEN
+E15-04,[E15-04] Printable offline referral slip (PDF),Backlog,Icebox,2,Could,E15 Stretch,,,,67,OPEN
+E15-05,"[E15-05] Twi, Ga and Ewe UI strings with native-speaker review",Backlog,Icebox,3,Could,E15 Stretch,,,,68,OPEN
+E15-06,[E15-06] Agentic evaluation reporter: runs the benchmark suite on each new model and drafts the model card for human review,Backlog,Icebox,3,Could,E15 Stretch,,,,69,OPEN
+E15-07,[E15-07] Native Android build (TFLite) compared with the PWA,Backlog,Icebox,5,Could,E15 Stretch,,,,70,OPEN
+E15-08,"[E15-08] Agentic referral-letter drafting (online only, clinician-edited, never diagnostic)",Backlog,Icebox,5,Could,E15 Stretch,,,,71,OPEN
+E15-09,[E15-09] Lung ultrasound (POCUS) pneumonia classifier prototype,Backlog,Icebox,8,Could,E15 Stretch,,,,72,OPEN
+E15-10,[E15-10] Federated learning simulation across 3 simulated sites,Backlog,Icebox,8,Could,E15 Stretch,,,,73,OPEN

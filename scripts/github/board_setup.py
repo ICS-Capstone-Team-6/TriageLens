@@ -634,7 +634,7 @@ def step_export() -> None:
         w.writerow(cols)
         for b in sorted(board_rows(p), key=lambda b: b["number"]):
             w.writerow([by_num.get(b["number"], ""), b["title"], b.get("Status", ""), b.get("Sprint", ""),
-                        b.get("Points", ""), b.get("MoSCoW", ""), b.get("Epic", ""), b.get("Owner", ""),
+                        (int(b["Points"]) if isinstance(b.get("Points"), float) and b["Points"].is_integer() else b.get("Points", "")), b.get("MoSCoW", ""), b.get("Epic", ""), b.get("Owner", ""),
                         b.get("Support", ""), b.get("Depends on", ""), b["number"], b["state"]])
     print(f"wrote {out.relative_to(ROOT)}")
 

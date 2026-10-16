@@ -17,7 +17,9 @@ Offline-first PWA that runs AI on a low-end Android phone to triage tuberculosis
 ## Commands
 
 - Docs link check: `python3 scripts/check_links.py`
-- SUS scoring tests: `python3 .claude/skills/usability-study-kit/test_sus.py`
+- Wording lint (forbidden result words in UI strings): `python3 scripts/check_wording.py`
+- Script tests: `python3 -m unittest discover -s scripts/tests` and `python3 .claude/skills/usability-study-kit/test_sus.py`
+- Markdown lint: `npx markdownlint-cli2 "**/*.md"`
 - Dev server: TODO (E8-02)
 - Unit tests: TODO (E0-02)
 - Lint: TODO (E0-02)

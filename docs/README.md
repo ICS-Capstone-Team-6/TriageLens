@@ -79,7 +79,9 @@ Every document in `docs/`, who owns it and how it changes.
 | [process/README.md](process/README.md) | How the team works with its tools | Micheal | Living |
 | [process/claude-code-setup.md](process/claude-code-setup.md) | What Claude Code loads, when, and who updates it | Kweku | Living |
 | [process/skills-and-agents.md](process/skills-and-agents.md) | Every Claude Code skill and agent, and how to use /sprint-ops and /board-sync | Kweku | Living |
+| [process/github-board-views.md](process/github-board-views.md) | How to finish the GitHub board views by hand | Micheal | Living |
 | [process/setup-report-01-repo.md](process/setup-report-01-repo.md) | Report on the repository setup | Kweku | Record; do not edit after merge |
+| [process/setup-report-04-github.md](process/setup-report-04-github.md) | Report on labels, milestones, issues and the board | Kweku | Record; do not edit after merge |
 
 ## Folder READMEs
 

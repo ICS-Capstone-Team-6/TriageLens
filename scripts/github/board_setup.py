@@ -103,19 +103,23 @@ NEW_FIELDS = OrderedDict([
     ("Points", ("NUMBER", None)),
     ("Epic", ("SINGLE_SELECT", [f"{k} {v}" for k, v in EPIC_SHORT.items()])),
     ("Owner", ("SINGLE_SELECT", PEOPLE)),
+    ("MoSCoW", ("SINGLE_SELECT", ["Must", "Should", "Could"])),
     ("Support", ("TEXT", None)),
     ("Depends on", ("TEXT", None)),
     ("Requirement", ("TEXT", None)),
 ])
-SELECT_OPTIONS = {"Priority": ["Must", "Should", "Could"]}
-START_FIELD, TARGET_FIELD = "Start date", "Target date"  # existing template fields, reused
+# The template's "Priority", "Start date" and "Target date" are org-wide issue fields, not project
+# fields: the project API cannot change them. MoSCoW gets its own project field (user decision,
+# 16 Oct 2026); sprint dates are written to the org date fields on each issue with setIssueFieldValue.
+SELECT_OPTIONS: dict[str, list[str]] = {}
+START_FIELD, TARGET_FIELD = "Start date", "Target date"  # org issue fields (IssueFieldDate)
 
 VIEWS = [
     ("Board", "BOARD_LAYOUT", 'sprint:"Sprint 0"'),
     ("Sprint plan", "TABLE_LAYOUT", ""),
     ("By person", "TABLE_LAYOUT", ""),
     ("Roadmap by epic", "ROADMAP_LAYOUT", "-sprint:Icebox"),
-    ("Must only", "TABLE_LAYOUT", "priority:Must"),
+    ("Must only", "TABLE_LAYOUT", "moscow:Must"),
     ("Icebox", "TABLE_LAYOUT", "sprint:Icebox"),
     ("Blocked and decisions", "TABLE_LAYOUT", 'label:"type:blocked","needs-decision"'),
 ]
@@ -195,7 +199,7 @@ def fields_by_name(p: dict) -> dict:
 
 def existing_issues() -> dict[str, dict]:
     out = gh(["issue", "list", "--repo", REPO, "--state", "all", "--limit", "500",
-              "--json", "number,title,url,state,assignees,body"])
+              "--json", "id,number,title,url,state,assignees,body"])
     found: dict[str, dict] = {}
     for i in json.loads(out):
         m = re.match(r"\[(E\d+-\d+)\]", i["title"])
@@ -371,9 +375,10 @@ def step_fields() -> None:
         if opts:
             args += ["--single-select-options", ",".join(opts)]
         gh(args, write=True)
+    org_fields = issue_fields()
     for name in (START_FIELD, TARGET_FIELD):
-        if name not in have or have[name]["dataType"] != "DATE":
-            raise SystemExit(f"expected an existing DATE field '{name}'")
+        if org_fields.get(name, {}).get("__typename") != "IssueFieldDate":
+            raise SystemExit(f"expected an org issue date field '{name}'")
     # Add missing options to existing single-select fields, keeping existing options and their IDs.
     for name, wanted in [*SELECT_OPTIONS.items(), ("Status", STATUS_OPTIONS)]:
         f = have.get(name)
@@ -458,6 +463,13 @@ def step_assign() -> None:
             log(f"assign: {k} ({v} issues skipped; re-run after they accept the repo invite)")
 
 
+def issue_fields() -> dict[str, dict]:
+    q = """query($o:String!){organization(login:$o){issueFields(first:50){nodes{__typename
+      ... on IssueFieldDate{id name} ... on IssueFieldSingleSelect{id name} ... on IssueFieldText{id name}
+      ... on IssueFieldNumber{id name}}}}}"""
+    return {n["name"]: n for n in graphql(q, o=OWNER)["data"]["organization"]["issueFields"]["nodes"] if n.get("name")}
+
+
 def project_items(p: dict) -> dict[int, str]:
     out = {}
     cursor = None
@@ -482,6 +494,7 @@ def step_items() -> None:
     f = fields_by_name(p)
     issues = existing_issues()
     items = project_items(p)
+    org = issue_fields()
     opt = lambda field, name: next(o["id"] for o in f[field]["options"] if o["name"] == name) if not DRY or field in f and f[field].get("options") else "DRY"
     for r in rows():
         i = issues.get(r["ID"])
@@ -497,7 +510,7 @@ def step_items() -> None:
         values = [
             ("Sprint", "single", "Icebox" if is_icebox(r) else r["Sprint"]),
             ("Points", "number", int(r["Points"])),
-            ("Priority", "single", r["Priority"]),
+            ("MoSCoW", "single", r["Priority"]),
             ("Epic", "single", f"{epic_key(r)} {EPIC_SHORT[epic_key(r)]}"),
             ("Support", "text", r["Support"]),
             ("Depends on", "text", r["Depends on"]),
@@ -506,11 +519,9 @@ def step_items() -> None:
         ]
         if r["Owner"]:
             values.append(("Owner", "single", r["Owner"]))
-        if not is_icebox(r):
-            a, b = SPRINTS[r["Sprint"]]
-            values += [(START_FIELD, "date", a), (TARGET_FIELD, "date", b)]
         values = [v for v in values if v[2] not in ("", None)]
-        log(f"items: set {len(values)} fields on #{i['number']} {r['ID']}: " + ", ".join(f"{n}={v}" for n, _, v in values))
+        dates = [] if is_icebox(r) else list(zip((START_FIELD, TARGET_FIELD), SPRINTS[r["Sprint"]]))
+        log(f"items: set {len(values)} fields on #{i['number']} {r['ID']}: " + ", ".join(f"{n}={v}" for n, _, v in values) + "".join(f", {n}={v} (issue field)" for n, v in dates))
         if DRY:
             counts["planned writes"] += 1
             continue
@@ -526,6 +537,9 @@ def step_items() -> None:
                 v = f"{{text:{json.dumps(val)}}}"
             parts.append(f'f{idx}:updateProjectV2ItemFieldValue(input:{{projectId:{json.dumps(p["id"])},itemId:{json.dumps(item)},'
                          f'fieldId:{json.dumps(f[name]["id"])},value:{v}}}){{clientMutationId}}')
+        if dates:
+            vals = ",".join(f'{{fieldId:{json.dumps(org[n]["id"])},dateValue:{json.dumps(v)}}}' for n, v in dates)
+            parts.append(f'd0:setIssueFieldValue(input:{{issueId:{json.dumps(i["id"])},issueFields:[{vals}]}}){{clientMutationId}}')
         graphql("mutation{" + " ".join(parts) + "}", write=True)
         time.sleep(SLEEP)  # each batch holds several mutations; give the API extra room
 
@@ -594,7 +608,7 @@ def step_verify() -> None:
             problems.append(f"{r['ID']} #{i['number']}: not on board")
             continue
         want = {"Sprint": "Icebox" if is_icebox(r) else r["Sprint"], "Points": float(r["Points"]),
-                "Priority": r["Priority"], "Epic": f"{epic_key(r)} {EPIC_SHORT[epic_key(r)]}"}
+                "MoSCoW": r["Priority"], "Epic": f"{epic_key(r)} {EPIC_SHORT[epic_key(r)]}"}
         if r["Owner"]:
             want["Owner"] = r["Owner"]
         for k, v in want.items():
@@ -614,13 +628,13 @@ def step_export() -> None:
     issues = existing_issues()
     by_num = {v["number"]: k for k, v in issues.items()}
     out = ROOT / "docs" / "sprints" / f"board-snapshot-{dt.date.today().isoformat()}.csv"
-    cols = ["ID", "Title", "Status", "Sprint", "Points", "Priority", "Epic", "Owner", "Support", "Depends on", "Issue number", "Issue state"]
+    cols = ["ID", "Title", "Status", "Sprint", "Points", "MoSCoW", "Epic", "Owner", "Support", "Depends on", "Issue number", "Issue state"]
     with out.open("w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         w.writerow(cols)
         for b in sorted(board_rows(p), key=lambda b: b["number"]):
             w.writerow([by_num.get(b["number"], ""), b["title"], b.get("Status", ""), b.get("Sprint", ""),
-                        b.get("Points", ""), b.get("Priority", ""), b.get("Epic", ""), b.get("Owner", ""),
+                        b.get("Points", ""), b.get("MoSCoW", ""), b.get("Epic", ""), b.get("Owner", ""),
                         b.get("Support", ""), b.get("Depends on", ""), b["number"], b["state"]])
     print(f"wrote {out.relative_to(ROOT)}")
 

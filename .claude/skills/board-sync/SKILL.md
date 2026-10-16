@@ -28,7 +28,7 @@ Hard rules:
 
 1. If `scripts/github/export_board.sh` exists, run it (ask first). Otherwise:
    `gh project item-list 1 --owner ICS-Capstone-Team-6 --format json --limit 300`
-2. Write `docs/sprints/board-snapshot-YYYY-MM-DD.csv` (today's date) with columns: ID, Title, Status, Sprint, Points, Priority, Epic, Owner, Support, Depends on, Issue number, Issue state.
+2. Write `docs/sprints/board-snapshot-YYYY-MM-DD.csv` (today's date) with columns: ID, Title, Status, Sprint, Points, MoSCoW, Epic, Owner, Support, Depends on, Issue number, Issue state.
 3. Print totals by Sprint and Status.
 
 ## `reconcile`

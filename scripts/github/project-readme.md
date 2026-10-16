@@ -9,12 +9,12 @@ Every card is a GitHub issue created from `docs/planning/product_backlog.csv` (b
 | Status | Backlog, Ready, In progress (at most 2 per person), In review, Done |
 | Sprint | Sprint 0 to Sprint 4, or Icebox |
 | Points | Size. One point is about 2.5 hours. Cap: 8 per person per two-week sprint, 4 in Sprint 0 |
-| Priority | Must (MVP), Should (cut first if behind), Could (icebox) |
+| MoSCoW | Must (MVP), Should (cut first if behind), Could (icebox). The template's Priority field is an org-wide issue field and is not used. |
 | Epic | Workstream E0 to E14, plus E15 Stretch |
 | Owner | Accountable person. Support pairs or reviews |
 | Depends on | Story IDs that must finish first |
 | Requirement | TRD requirement IDs |
-| Start date, Target date | Sprint start and end, for the roadmap |
+| Start date, Target date | Sprint start and end, for the roadmap (org issue fields, set on each issue) |
 
 ## Labels
 

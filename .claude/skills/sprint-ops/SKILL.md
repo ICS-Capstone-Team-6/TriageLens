@@ -14,7 +14,7 @@ Arguments received: `$ARGUMENTS`
 
 Board: https://github.com/orgs/ICS-Capstone-Team-6/projects/1 (owner `ICS-Capstone-Team-6`, number 1). Read it with
 `gh project item-list 1 --owner ICS-Capstone-Team-6 --format json --limit 200`.
-Fields used: Sprint, Points, Priority, Owner, Status.
+Fields used: Sprint, Points, MoSCoW (Must, Should, Could), Owner, Status. The board's "Priority" field is an org-wide issue field and is not used.
 
 Never plan or suggest weekend work or extra hours (Team Rules 3). When behind, cut; do not stretch.
 

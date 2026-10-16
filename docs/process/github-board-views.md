@@ -21,15 +21,15 @@ Board: https://github.com/orgs/ICS-Capstone-Team-6/projects/1
 - **Filter:** `sprint:"Sprint 0"`. Change it at each sprint start to the current sprint (`/sprint-ops start N` reminds you).
 - **Field sum:** Points (shows points per column)
 - **Column limit:** set a limit of 8 on **In progress** (4 people, at most 2 each, Team Rules 3)
-- **Fields shown on cards:** Owner, Points, Priority, Epic
+- **Fields shown on cards:** Owner, Points, MoSCoW, Epic
 
 ### Sprint plan
 
 - **Layout:** Table
 - **Group by:** Sprint
-- **Sort by:** Priority (ascending: Must, Should, Could), then Points (descending)
+- **Sort by:** MoSCoW (ascending: Must, Should, Could), then Points (descending)
 - **Field sum:** Points
-- **Fields:** Title, Status, Owner, Points, Priority, Epic, Depends on
+- **Fields:** Title, Status, Owner, Points, MoSCoW, Epic, Depends on
 - **Filter:** none
 
 ### By person
@@ -38,8 +38,8 @@ Board: https://github.com/orgs/ICS-Capstone-Team-6/projects/1
 - **Group by:** Owner
 - **Slice by:** Sprint (the side panel lets you pick one sprint at a time)
 - **Field sum:** Points. With a sprint slice selected, each group's sum is that person's load for the sprint. It must be 8 or less (4 in Sprint 0).
-- **Sort by:** Sprint, then Priority
-- **Fields:** Title, Status, Sprint, Points, Priority, Support
+- **Sort by:** Sprint, then MoSCoW
+- **Fields:** Title, Status, Sprint, Points, MoSCoW, Support
 
 ### Roadmap by epic
 
@@ -53,7 +53,7 @@ Board: https://github.com/orgs/ICS-Capstone-Team-6/projects/1
 ### Must only
 
 - **Layout:** Table
-- **Filter:** `priority:Must`
+- **Filter:** `moscow:Must`
 - **Group by:** Sprint
 - **Field sum:** Points (should total 121)
 - **Sort by:** Sprint, then ID (title)
@@ -73,6 +73,10 @@ Board: https://github.com/orgs/ICS-Capstone-Team-6/projects/1
 - **Group by:** Owner
 - **Sort by:** Updated (oldest first), so the longest-waiting items are on top
 - **Fields:** Title, Status, Owner, Sprint, Labels
+
+## Priority and date fields
+
+The template's **Priority**, **Start date** and **Target date** are org-wide issue fields (shared by every repo in the org), not project fields. MoSCoW priority is in the project field **MoSCoW**; the org Priority field (Urgent, High, Medium, Low) is not used by this board. Sprint dates are written into the org **Start date** and **Target date** on each issue, so the roadmap views read them as usual.
 
 ## Status options
 

@@ -4,6 +4,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 gh auth status 2>&1 | grep -q "'project'" || { echo "Token lacks the project scope. Run: gh auth refresh -s project -s repo"; exit 1; }
+[ "$(gh api repos/ICS-Capstone-Team-6/TriageLens --jq .permissions.push)" = "true" ] || { echo "No write access to ICS-Capstone-Team-6/TriageLens. Ask an org owner to grant Write or Admin."; exit 1; }
 python3 scripts/github/board_setup.py validate
 for s in 01_labels 02_milestones 03_fields 04_issues 05_project_items; do
   echo "== $s"

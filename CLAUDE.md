@@ -5,6 +5,7 @@ Offline-first PWA that runs AI on a low-end Android phone to triage tuberculosis
 @docs/ai-context.md
 
 ## Repo map
+
 - `apps/pwa/`: React + TypeScript + Vite PWA (capture, results, case log, review, admin). Empty until E8-02.
 - `packages/triage/`: triage rules and wording checks. `packages/quality/`: image quality-gate heuristics.
 - `ml/`: Python data, training, export, evaluation. `ml/manifests/`: split manifests and data cards.
@@ -14,6 +15,7 @@ Offline-first PWA that runs AI on a low-end Android phone to triage tuberculosis
 - `.claude/skills/`, `.claude/agents/`, `.claude/rules/`: Claude Code configuration.
 
 ## Commands
+
 - Docs link check: `python3 scripts/check_links.py`
 - SUS scoring tests: `python3 .claude/skills/usability-study-kit/test_sus.py`
 - Dev server: TODO (E8-02)
@@ -25,6 +27,7 @@ Offline-first PWA that runs AI on a low-end Android phone to triage tuberculosis
 - Offline end-to-end tests: TODO (E13-02)
 
 ## Non-negotiable rules
+
 1. Never use: diagnosis, positive, negative, healthy, "you do not have". Allowed: high risk, low risk, refer, not sure, retake.
 2. Uncertainty moves toward refer or retake, never toward reassurance. Symptoms can raise a zone, never lower it.
 3. No real patient data in the repo, chat, dev or preview. Datasets and model binaries are never committed.
@@ -35,12 +38,14 @@ Offline-first PWA that runs AI on a low-end Android phone to triage tuberculosis
 8. Respect the weekly capacity caps; never plan or suggest weekend work.
 
 ## Workflow
+
 - Work from a backlog story ID (E#-##). Branch `type/E8-05-short-name`. PR title `[E8-05] summary`. One review minimum; CI green; main is protected.
 - Definition of Done: docs/planning/04_Team_Rules_and_Requirements.md section 5.2.
 - Board: https://github.com/orgs/ICS-Capstone-Team-6/projects/1 . Issues mirror docs/planning/product_backlog.csv. Use /board-sync and /sprint-ops.
 - Current sprint: Sprint 0 (19 to 23 Oct 2026). Updated by `/sprint-ops start N`.
 
 ## Read on demand (do not load everything)
+
 - Requirements and ADRs: docs/planning/01_TRD.md
 - What to build and acceptance criteria: docs/planning/02_Product_Backlog.md
 - Dates, gates, per-person plan: docs/planning/03_Sprint_Plan.md
@@ -48,7 +53,9 @@ Offline-first PWA that runs AI on a low-end Android phone to triage tuberculosis
 - Hazards: docs/safety/hazard-log.md
 
 ## Skills and rules
+
 Skills live in .claude/skills (see docs/process/skills-and-agents.md). Scoped rules live in .claude/rules. Use the `safety-reviewer` agent before merging result-screen or triage changes, and `ml-auditor` before freezing a model.
 
 ## When unsure
+
 Ask. Never guess clinical claims, thresholds or dataset licences. Say what you could not verify.

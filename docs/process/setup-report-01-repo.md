@@ -49,7 +49,7 @@ No link fixes were needed. The TRD and Sprint Plan link to `../figures/...`. Fro
 
 ## Link check result
 
-```
+```text
 $ python3 scripts/check_links.py
 Checked 104 relative links in 42 files.
 All relative links resolve.

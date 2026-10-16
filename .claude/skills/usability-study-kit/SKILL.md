@@ -42,7 +42,7 @@ Round 1 (Sprint 3) is before the guidance overlay; round 2 (Sprint 4) is with it
 
 Put responses in a CSV: `participant,q1,...,q10` with values 1 to 5. Run:
 
-```
+```text
 python3 .claude/skills/usability-study-kit/sus.py responses.csv
 ```
 

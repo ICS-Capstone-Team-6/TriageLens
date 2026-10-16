@@ -34,7 +34,7 @@ Type labels: `type:spike` for E4-01; `type:ml` for epics E1, E2, E3, E6, E7, E11
 
 ## Reconciliation (output of `board_setup.py verify`)
 
-```
+```text
 Sprint     CSV pts Board pts  CSV n  Issues On board
 Sprint 0        16        16     11      11       11
 Sprint 1        32        32     15      15       15

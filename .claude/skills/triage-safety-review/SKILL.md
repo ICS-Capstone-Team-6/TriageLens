@@ -74,7 +74,7 @@ If the change mitigates or affects H1, H2, H3, H5, H8 or H10, say which row to u
 
 ## Output format
 
-```
+```text
 Verdict: PASS | BLOCK
 | # | Check | Result | Evidence |
 Tests to add: ...

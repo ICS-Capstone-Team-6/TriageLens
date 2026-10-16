@@ -53,7 +53,7 @@ Every document in `docs/`, who owns it and how it changes.
 
 | Document | Description | Owner | Update rule |
 |----------|-------------|-------|-------------|
-| [safety/intended-use.md](safety/intended-use.md) | Intended-use statement (TRD 3.3) and where it must appear | Kweku | Frozen text; change by ADR |
+| [safety/intended-use.md](safety/intended-use.md) | One-page intended use and success metrics for sign-off (TRD 3.3, 3.4; E0-04) | Kweku | Frozen after sign-off; change by ADR |
 | [safety/hazard-log.md](safety/hazard-log.md) | Hazards H1 to H12 with status and evidence (TRD 12.2) | Kweku | Living |
 | [ethics/irb-checklist.md](ethics/irb-checklist.md) | Ethics pathway checklist (TRD 12.3) | Kweku | Living |
 | [ethics/consent-template.md](ethics/consent-template.md) | Consent form for usability testers; draft pending Ashesi IRB review | Kweku | Living; IRB wording overrides |

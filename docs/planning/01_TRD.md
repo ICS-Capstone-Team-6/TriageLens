@@ -4,6 +4,8 @@ subtitle: "TriageLens: AI-Assisted Triage and Medical Imaging for District Clini
 date: "15 October 2026"
 ---
 
+> Baseline v1.0 (15 Oct 2026). Do not edit in place. Change requirements through an ADR in docs/adr/ and record the change in the change log of docs/planning/04_Team_Rules_and_Requirements.md.
+
 # 1. Document Control
 
 | Item | Detail |

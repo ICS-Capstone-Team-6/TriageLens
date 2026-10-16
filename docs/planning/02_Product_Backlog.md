@@ -4,6 +4,8 @@ subtitle: "TriageLens: AI Triage for District Clinics in Ghana and Africa"
 date: "15 October 2026"
 ---
 
+> Baseline v1.0 (15 Oct 2026). Do not edit in place. Change requirements through an ADR in docs/adr/ and record the change in the change log of docs/planning/04_Team_Rules_and_Requirements.md.
+
 # 1. How to Read This Backlog
 
 This is the single ordered list of everything the team will build. Each story has a priority, a size in points, an owner (who is accountable) and a supporter (who pairs or reviews). The sprint plan and the TRD tables are generated from the same data, so the totals always match.

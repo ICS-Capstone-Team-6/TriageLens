@@ -4,6 +4,8 @@ subtitle: "TriageLens: Nine-Week Fast-Track Delivery"
 date: "15 October 2026"
 ---
 
+> Baseline v1.0 (15 Oct 2026). Do not edit in place. Change requirements through an ADR in docs/adr/ and record the change in the change log of docs/planning/04_Team_Rules_and_Requirements.md.
+
 # 1. Plan at a Glance
 
 The build runs for **nine weeks**: a one-week Sprint 0 and four two-week sprints. Dates assume a start on **Monday 19 October 2026** and a final delivery on **Friday 18 December 2026**. If the real deadline is different, keep the sprint order and cut from the Should list (see the backlog cut order).

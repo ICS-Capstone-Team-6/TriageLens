@@ -4,6 +4,8 @@ subtitle: "TriageLens: How the Team Works and the Quality Bar We Hold"
 date: "15 October 2026"
 ---
 
+> Baseline v1.0 (15 Oct 2026). Do not edit in place. Change requirements through an ADR in docs/adr/ and record the change in the change log of docs/planning/04_Team_Rules_and_Requirements.md.
+
 # 1. Purpose
 
 This document sets the rules for how the four of us work together and the standards our work must meet. It is short on purpose: rules we do not read are rules we do not follow. It becomes active when all four members sign it in Sprint 0 (story E0-03). Changes need the agreement of the team lead and the project manager, and are recorded in the change log at the end.

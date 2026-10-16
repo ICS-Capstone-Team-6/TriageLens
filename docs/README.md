@@ -79,9 +79,16 @@ Every document in `docs/`, who owns it and how it changes.
 | [process/README.md](process/README.md) | How the team works with its tools | Micheal | Living |
 | [process/claude-code-setup.md](process/claude-code-setup.md) | What Claude Code loads, when, and who updates it | Kweku | Living |
 | [process/skills-and-agents.md](process/skills-and-agents.md) | Every Claude Code skill and agent, and how to use /sprint-ops and /board-sync | Kweku | Living |
+| [process/onboarding.md](process/onboarding.md) | First-hour guide for new teammates: tools, sign-in, Claude Code, first PR, rhythm, workload rule | Micheal | Living |
+| [process/how-we-use-claude-code.md](process/how-we-use-claude-code.md) | Plan mode, citing stories, commands, what never to paste, reviewing AI-written code | Kweku | Living |
+| [process/definition-of-ready.md](process/definition-of-ready.md) | Team Rules 5.1 as a checklist | Micheal | Copy of baseline; Team Rules win |
+| [process/definition-of-done.md](process/definition-of-done.md) | Team Rules 5.2 and 5.3 as checklists | Micheal | Copy of baseline; Team Rules win |
+| [process/decision-log.md](process/decision-log.md) | Open decisions D1 to D6 and other team decisions | Micheal | Living |
+| [process/risk-register.md](process/risk-register.md) | Risks R1 to R16 with status; reviewed weekly | Micheal | Living |
 | [process/github-board-views.md](process/github-board-views.md) | How to finish the GitHub board views by hand | Micheal | Living |
 | [process/setup-report-01-repo.md](process/setup-report-01-repo.md) | Report on the repository setup | Kweku | Record; do not edit after merge |
 | [process/setup-report-04-github.md](process/setup-report-04-github.md) | Report on labels, milestones, issues and the board | Kweku | Record; do not edit after merge |
+| [process/setup-report-05-hygiene.md](process/setup-report-05-hygiene.md) | Report on templates, CI, wording lint and process docs | Kweku | Record; do not edit after merge |
 
 ## Folder READMEs
 

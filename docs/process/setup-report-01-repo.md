@@ -69,7 +69,7 @@ The checker also catches broken links. A test file with one missing page and one
 
 ## Open questions
 
-1. **Project board location (needed for Prompt 4).** The repo belongs to the organisation `ICS-Capstone-Team-6`, but the board is a user project (`kaanyen/projects/2`). GitHub may refuse to link a user project to an organisation repo. The alternative is an organisation-level project.
+1. **Project board location (resolved 16 Oct 2026).** The board is the organisation project https://github.com/orgs/ICS-Capstone-Team-6/projects/1 (owner `ICS-Capstone-Team-6`, number 1). It replaces the user project `kaanyen/projects/2` that the setup guide names, so it has the same owner as the repo.
 2. **`gh` token scope.** The token has no `project` scope. Run `gh auth refresh -s project -s repo` before Prompt 4.
 3. **Public repository.** The repo is public. That fits a capstone, but it makes rule 3 (no real data, no secrets) more important, and any dataset-derived file must stay out.
 4. **Sprint 3 end date.** The Sprint Plan gives Mon 23 Nov to Fri 4 Dec, with 4 Dec expected to be a public holiday and G3 on Thu 3 Dec. Prompt 4 uses 3 Dec as the milestone due date. Please confirm the holiday (Sprint Plan 1.1).

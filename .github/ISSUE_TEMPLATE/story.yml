@@ -1,0 +1,106 @@
+name: Story
+description: A backlog story. New stories go to the Icebox unless they swap out equal work (Team Rules 12).
+title: "[E#-##] "
+labels: ["type:story"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Stories come from `docs/planning/product_backlog.csv`. Adding scope follows the **swap rule**: add one, remove one of similar size. A story is ready when it meets the Definition of Ready (Team Rules 5.1).
+  - type: input
+    id: story_id
+    attributes:
+      label: Story ID
+      description: Next free ID in the epic, for example E8-11. Also put it in the title.
+      placeholder: E8-11
+    validations:
+      required: true
+  - type: dropdown
+    id: epic
+    attributes:
+      label: Epic
+      options:
+        - E0 Setup and Governance
+        - E1 Data
+        - E2 Chest X-ray Models
+        - E3 Retinal Model
+        - E4 Quality Gate
+        - E5 On-Device Inference
+        - E6 Calibration and Explainability
+        - E7 Phone-Photo Robustness
+        - E8 App and UX
+        - E9 Backend and Sync
+        - E10 Review and Admin
+        - E11 Validation
+        - E12 Ethics and Safety
+        - E13 DevOps and QA
+        - E14 Delivery
+        - E15 Stretch
+    validations:
+      required: true
+  - type: input
+    id: requirement
+    attributes:
+      label: Requirement IDs
+      description: TRD requirement IDs (FR-.., NFR-.., ML-..), or "-" if none.
+      placeholder: FR-05, NFR-SAFE
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority (MoSCoW)
+      options: [Must, Should, Could]
+    validations:
+      required: true
+  - type: dropdown
+    id: points
+    attributes:
+      label: Points
+      description: One point is about 2.5 hours. Split anything over 4 (Definition of Ready).
+      options: ["1", "2", "3", "4"]
+    validations:
+      required: true
+  - type: dropdown
+    id: owner
+    attributes:
+      label: Owner
+      options: [Kweku, Chelsea, Nana Yaw, Micheal]
+    validations:
+      required: true
+  - type: input
+    id: support
+    attributes:
+      label: Support
+      description: Who pairs or reviews.
+  - type: input
+    id: depends
+    attributes:
+      label: Depends on
+      description: Story IDs and issue numbers, for example "E6-01 (#26)", or "none".
+      placeholder: none
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: Testable criteria, one per line.
+      value: |
+        - [ ] 
+    validations:
+      required: true
+  - type: textarea
+    id: swap
+    attributes:
+      label: Swap (scope change only)
+      description: If this enters a sprint, which story of similar points leaves it, and why. Add the `scope-change` label.
+  - type: checkboxes
+    id: dod
+    attributes:
+      label: Definition of Done (Team Rules 5.2)
+      options:
+        - label: Merged to main after at least one review by a different person
+        - label: Automated tests for the new behaviour pass in CI; lint and type checks are clean
+        - label: Acceptance criteria shown working in the preview build to the project manager (or, for ML stories, results logged and reviewed)
+        - label: "If it changes a model: experiment logged, data manifest hash recorded, parity and size checks pass, model card updated"
+        - label: "If user-facing: strings externalized, contrast and touch-target rules met, wording rules (TRD 7.3) respected"
+        - label: No new high-severity security finding; no secrets in the repo
+        - label: Documentation updated (README, ADR, runbook or model card as relevant)
+        - label: Time recorded against the points

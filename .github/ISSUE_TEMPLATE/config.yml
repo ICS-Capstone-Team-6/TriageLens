@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security issue or suspected data leak
+    url: https://github.com/ICS-Capstone-Team-6/TriageLens/security/advisories/new
+    about: Report privately. Do not open a public issue. See SECURITY.md.
+  - name: Project board
+    url: https://github.com/orgs/ICS-Capstone-Team-6/projects/1
+    about: Find existing stories before opening a new one.

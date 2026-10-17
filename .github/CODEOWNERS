@@ -1,0 +1,11 @@
+# Code owners are asked to review PRs that touch their paths (Team Rules 2 RACI).
+# Later lines win. A PR still needs only one approving review (Team Rules 6).
+# Note: @Chelsea-Owusu-Pokuaah takes effect once she accepts her repo invite.
+
+/apps/pwa/          @kaanyen @Michael-Sylvester
+/packages/          @kaanyen @Michael-Sylvester
+/ml/                @Chelsea-Owusu-Pokuaah @kaanyen
+/supabase/          @Korantengnator @kaanyen
+/.github/           @Korantengnator @kaanyen
+/docs/safety/       @kaanyen
+/docs/ethics/       @kaanyen

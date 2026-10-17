@@ -1,0 +1,26 @@
+// Markdown lint config for CI (markdownlint-cli2).
+{
+  "config": {
+    "default": true,
+    // Long lines are fine: tables and prose are not wrapped.
+    "MD013": false,
+    // Repeated headings such as "Keep" or "Done" are fine in different sections.
+    "MD024": { "siblings_only": true },
+    // HTML comments in templates.
+    "MD033": false,
+    // Pull request and issue templates start without a top-level heading.
+    "MD041": false,
+    // Bare URLs are fine in docs read on GitHub.
+    "MD034": false,
+    // Bold lead-ins ("**Update rules**") are used as labels, not headings.
+    "MD036": false,
+    // Tables in our docs use the compact pipe style.
+    "MD060": false
+  },
+  "ignores": [
+    // Frozen baseline (Pandoc front matter and figure attributes); never edited in place.
+    "docs/planning/**",
+    "**/node_modules/**",
+    "CLAUDE.local.md"
+  ]
+}

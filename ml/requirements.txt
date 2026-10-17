@@ -1,0 +1,5 @@
+# ML data pipeline dependencies (story E1-03). Pinned per Team Rules 6.
+# numpy: hashing and seeded splits. pandas: manifests and reports. pillow: image decode and checks.
+numpy==2.2.6
+pandas==2.3.3
+pillow==12.3.0

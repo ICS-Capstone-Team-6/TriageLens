@@ -47,6 +47,21 @@ class TestHelpers(unittest.TestCase):
         self.assertEqual(bd.parse_reading("male 8months\nnormal")[1], 0)
         self.assertIsNone(bd.parse_reading("male\nnormal")[1])
 
+    def test_parse_reading_real_world_formats(self):
+        # formats seen in the Shenzhen readings: typo, no space, singular unit, comma, tabs
+        self.assertEqual(bd.parse_reading("femal 30yrs\r\nnormal")[:2], ("female", 30))
+        self.assertEqual(bd.parse_reading("male45yrs  \t\r\nnormal")[:2], ("male", 45))
+        self.assertEqual(bd.parse_reading("Male , 50yrs  \t\r\nbilateral PTB \t")[:2], ("male", 50))
+        self.assertEqual(bd.parse_reading("female 61yr\r\nnormal")[:2], ("female", 61))
+        self.assertEqual(bd.parse_reading("female  29yrs\nnormale")[2], "normale")
+
+    def test_abnormal_but_not_tb_conflicts(self):
+        # the source label 1 means "abnormal lung"; the TB task needs TB in the reading
+        self.assertTrue(bd.label_conflicts(1, "right upper pneumonia"))
+        self.assertFalse(bd.label_conflicts(1, "bilateral secondary PTB"))
+        self.assertFalse(bd.label_conflicts(1, "tuberculosis, right upper lobe"))
+        self.assertFalse(bd.label_conflicts(0, "normale"))
+
     def test_label_conflicts(self):
         self.assertFalse(bd.label_conflicts(0, "normal"))
         self.assertFalse(bd.label_conflicts(1, "PTB in the left upper field"))
@@ -54,7 +69,7 @@ class TestHelpers(unittest.TestCase):
         self.assertTrue(bd.label_conflicts(1, "normal"))
 
     def test_near_duplicate_groups(self):
-        groups, pairs = bd.near_duplicate_groups(["a", "b", "c"], [0b0, 0b11, 0xFFFFFFFF])
+        groups, pairs = bd.near_duplicate_groups(["a", "b", "c"], [0, 0b111, (1 << 256) - 1])
         self.assertEqual(groups[0], groups[1])
         self.assertNotEqual(groups[0], groups[2])
         self.assertEqual(len(pairs), 1)

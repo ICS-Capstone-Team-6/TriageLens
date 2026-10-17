@@ -33,7 +33,8 @@ SEED = 591
 SPLIT = {"train": 0.70, "val": 0.15, "test": 0.15}
 MIN_SIDE = 512  # the model input is 512 px; smaller images cannot support it
 MIN_AGE = 15  # TRD 9.1: chest X-ray tasks are for people aged 15 and over
-NEAR_DUP_BITS = 4  # dHash Hamming distance of 4 or less out of 64 bits
+HASH_SIZE = 16  # 16x16 dHash = 256 bits; 8x8 was too coarse for chest X-rays (see README)
+NEAR_DUP_BITS = 12  # Hamming distance of 12 or less out of 256 bits; chosen from the data
 MAX_MISSING_READING = 0.05  # more than this means the source changed: stop
 MAX_PREVALENCE_GAP = 0.05  # TB rate in each split within 5 points of overall
 MIN_RECORDS = 300
@@ -54,8 +55,8 @@ def sha256_file(path):
     return h.hexdigest()
 
 
-def dhash(img, size=8):
-    """64-bit difference hash: survives resizing and small intensity changes."""
+def dhash(img, size=HASH_SIZE):
+    """Difference hash (size*size bits): survives resizing and small intensity changes."""
     g = img.convert("L").resize((size + 1, size), Image.LANCZOS)
     a = np.asarray(g, dtype=np.int16)
     bits = (a[:, 1:] > a[:, :-1]).flatten()
@@ -76,8 +77,9 @@ def parse_reading(text):
     """Clinical reading: first line has sex and age, the rest is the finding."""
     lines = [ln.strip() for ln in text.replace("\r", "").split("\n") if ln.strip()]
     head = lines[0].lower() if lines else ""
-    m = re.search(r"\b(female|male)\b", head)
-    sex = m.group(1) if m else None
+    # real readings include "femal" and "male45yrs", so no word boundaries here
+    m = re.search(r"(female|femal|male)", head)
+    sex = {"femal": "female"}.get(m.group(1), m.group(1)) if m else None
     age = None
     m = re.search(r"(\d+)\s*(yrs?|years?|y)\b", head)
     if m:
@@ -93,10 +95,20 @@ def reading_says_normal(finding):
     return f.startswith("normal")
 
 
+def reading_mentions_tb(finding):
+    f = (finding or "").lower()
+    return bool(re.search(r"tb|tubercul", f))
+
+
 def label_conflicts(label, finding):
-    """True when the file label and the written reading disagree."""
-    normal = reading_says_normal(finding)
-    return (label == 0 and not normal) or (label == 1 and normal)
+    """True when the file label and the written reading disagree.
+
+    The source label 1 means "abnormal lung", not TB. For the TB task a label 1
+    must have a reading that names TB, or the record goes to review.
+    """
+    if label == 0:
+        return not reading_says_normal(finding)
+    return reading_says_normal(finding) or not reading_mentions_tb(finding)
 
 
 def near_duplicate_groups(ids, hashes, max_bits=NEAR_DUP_BITS):
@@ -177,6 +189,16 @@ def run(raw, out, private):
     files = sorted(p for p in img_dir.iterdir() if p.is_file() and not p.name.startswith("."))
     if not files:
         raise HardFail("no images found")
+    # Ingest cache: decoding about 660 3K images takes minutes, so per-file results are
+    # cached by (name, size, mtime). A changed file is re-read; the cache never feeds a decision
+    # about a file it does not match.
+    private.mkdir(parents=True, exist_ok=True)
+    cache_path = private / "ingest_cache.json"
+    try:
+        cache = json.loads(cache_path.read_text()) if cache_path.exists() else {}
+    except ValueError:
+        cache = {}
+    new_entries = 0
     recs = []
     for p in files:
         rec = {"file": p.name}
@@ -185,19 +207,30 @@ def run(raw, out, private):
             q(rec, "ingest", "filename_schema", "name does not match CHNCXR_####_[01].png")
             continue
         rec["patient_id"], rec["label"] = parsed
-        try:
-            with Image.open(p) as im:
-                im.verify()
-            with Image.open(p) as im:
-                im.load()
-                rec.update(width=im.width, height=im.height, mode=im.mode, dhash=dhash(im))
-        except Exception as e:  # any decode failure quarantines the file
-            q(rec, "ingest", "decodable", f"cannot decode image ({type(e).__name__})")
+        st = p.stat()
+        key = f"{p.name}:{st.st_size}:{st.st_mtime_ns}:h{HASH_SIZE}"
+        hit = cache.get(key)
+        if hit is None:
+            try:
+                with Image.open(p) as im:
+                    im.verify()
+                with Image.open(p) as im:
+                    im.load()
+                    hit = {"width": im.width, "height": im.height, "mode": im.mode,
+                           "dhash": dhash(im), "sha256": sha256_file(p), "bytes": st.st_size}
+            except Exception as e:  # any decode failure quarantines the file
+                hit = {"error": type(e).__name__}
+            cache[key] = hit
+            new_entries += 1
+            if new_entries % 50 == 0:
+                cache_path.write_text(json.dumps(cache))
+        if "error" in hit:
+            q(rec, "ingest", "decodable", f"cannot decode image ({hit['error']})")
             continue
+        rec.update(hit)
         if min(rec["width"], rec["height"]) < MIN_SIDE:
             q(rec, "ingest", "min_resolution", f"smallest side below {MIN_SIDE} px")
             continue
-        rec["sha256"], rec["bytes"] = sha256_file(p), p.stat().st_size
         rp = rd_dir / (p.stem + ".txt")
         if rp.exists():
             rec["sex"], rec["age"], rec["finding"] = parse_reading(rp.read_text(errors="replace"))
@@ -205,6 +238,8 @@ def run(raw, out, private):
         else:
             rec.update(sex=None, age=None, finding=None, has_reading=False)
         recs.append(rec)
+    if new_entries:
+        cache_path.write_text(json.dumps(cache))
     if not recs:
         raise HardFail("no image passed the ingest checks")
     df = pd.DataFrame(recs)
@@ -249,9 +284,10 @@ def run(raw, out, private):
         (out / "batch_checks_failed.json").write_text(json.dumps(checks, indent=2))
         raise HardFail("batch checks failed, see batch_checks_failed.json")
 
-    # Outputs
+    # Outputs (a failure file from an earlier run is stale once the checks pass)
+    (out / "batch_checks_failed.json").unlink(missing_ok=True)
     df = df.sort_values("file")
-    df["dhash"] = df["dhash"].map(lambda h: f"{h:016x}")
+    df["dhash"] = df["dhash"].map(lambda h: f"{h:0{HASH_SIZE * HASH_SIZE // 4}x}")
     public_cols = ["file", "patient_id", "group_id", "label", "split", "width", "height", "bytes", "sha256", "dhash"]
     df[public_cols].to_csv(out / "manifest.csv", index=False)
     qdf = pd.DataFrame(quarantine, columns=["file", "patient_id", "label", "stage", "check", "reason"])

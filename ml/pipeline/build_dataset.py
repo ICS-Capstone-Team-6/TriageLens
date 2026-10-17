@@ -31,7 +31,8 @@ from PIL import Image
 PIPELINE_VERSION = "0.1.0"
 SEED = 591
 SPLIT = {"train": 0.70, "val": 0.15, "test": 0.15}
-MIN_SIDE = 512  # the model input is 512 px; smaller images cannot support it
+MIN_SIDE = 512  # quality floor, not the model size: the model input is 320 px (TRD 10.6),
+                # and 512 leaves room to crop to the lungs before resizing
 MIN_AGE = 15  # TRD 9.1: chest X-ray tasks are for people aged 15 and over
 HASH_SIZE = 16  # 16x16 dHash = 256 bits; 8x8 was too coarse for chest X-rays (see README)
 NEAR_DUP_BITS = 12  # Hamming distance of 12 or less out of 256 bits; chosen from the data
@@ -229,7 +230,7 @@ def run(raw, out, private):
             continue
         rec.update(hit)
         if min(rec["width"], rec["height"]) < MIN_SIDE:
-            q(rec, "ingest", "min_resolution", f"smallest side below {MIN_SIDE} px")
+            q(rec, "ingest", "min_resolution", f"smallest side below the {MIN_SIDE} px quality floor")
             continue
         rp = rd_dir / (p.stem + ".txt")
         if rp.exists():

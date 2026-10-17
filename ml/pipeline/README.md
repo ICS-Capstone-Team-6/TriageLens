@@ -21,7 +21,7 @@ python3 -m unittest discover -s ml/tests -v
 | --- | --- | --- | --- |
 | Ingest | Filename matches `CHNCXR_####_[01].png` | Unknown label or patient ID | Quarantine the record |
 | Ingest | Image decodes | Corrupt or truncated file | Quarantine the record |
-| Ingest | Smallest side at least 512 px | Too small for the model input | Quarantine the record |
+| Ingest | Smallest side at least 512 px | Below our quality floor (model input is 320 px, TRD 10.6) | Quarantine the record |
 | Ingest | Clinical reading present for 95% or more | Source changed format or download incomplete | Hard fail: stop, write nothing |
 | Label | Reading present for this image | Label cannot be confirmed | Quarantine the record |
 | Label | File label agrees with the written reading | Possible label error | Quarantine for human review |

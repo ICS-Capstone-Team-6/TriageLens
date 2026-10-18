@@ -235,3 +235,4 @@ By signing, each member agrees to follow these rules and to raise concerns early
 | Date | Change | Agreed by |
 |------------|-----------------------------------------|-----------|
 | 15 Oct 2026 | First version | Draft |
+| 18 Oct 2026 | D4 answered: Modal is the main GPU source, Kaggle plus Colab as fallback ([ADR-13](../adr/0013-modal-gpu-compute.md)) | Pending: team |

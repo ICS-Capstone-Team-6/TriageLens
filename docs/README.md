@@ -48,6 +48,7 @@ Every document in `docs/`, who owns it and how it changes.
 | [adr/0010-opt-in-image-upload.md](adr/0010-opt-in-image-upload.md) | ADR-10. Image upload | Kweku | Living (supersede with a new ADR) |
 | [adr/0011-ecdsa-p256-signing.md](adr/0011-ecdsa-p256-signing.md) | ADR-11. Model signing | Kweku | Living (supersede with a new ADR) |
 | [adr/0012-react-typescript-vite.md](adr/0012-react-typescript-vite.md) | ADR-12. Web framework | Kweku | Living (supersede with a new ADR) |
+| [adr/0013-modal-gpu-compute.md](adr/0013-modal-gpu-compute.md) | ADR-13. GPU compute on Modal (answers D4) | Chelsea | Living (supersede with a new ADR) |
 
 ## Safety and ethics
 

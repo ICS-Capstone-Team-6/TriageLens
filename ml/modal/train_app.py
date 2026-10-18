@@ -183,7 +183,7 @@ def bakeoff(backbones: str = ""):
     print(f"\nSummary saved to {out.relative_to(REPO)}")
     figure = plot_bakeoff_remote.remote([r["run_dir"] for r in results], stamp)
     print(f"Bake-off curves: {figure}. Each run folder also holds curves.png. Download all with:")
-    print("    modal volume get triagelens-runs /bakeoff ml/runs/")
+    print("    modal volume get --force triagelens-runs /bakeoff ml/runs/")
 
 
 @app.local_entrypoint()

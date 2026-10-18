@@ -48,7 +48,7 @@ p95 inference per model at most 2.5 s (floor 4 s, TRD 3.4); capture to result p9
 
 - ADR-1: PWA first.
 - ADR-2: ONNX Runtime Web, WebAssembly with SIMD, threads when available.
-- ADR-3: backbone bake-off in Sprint 1; default MobileNetV3-Large.
+- ADR-3: backbone bake-off in Sprint 1; default MobileNetV3-Large (interim rules in ADR-15).
 - ADR-4: chest X-ray multi-task with masked loss; two models if worse by more than 0.02 AUROC.
 - ADR-5: static int8 with a calibration set.
 - ADR-6: Supabase (Postgres, Auth, Storage, RLS).
@@ -58,12 +58,17 @@ p95 inference per model at most 2.5 s (floor 4 s, TRD 3.4); capture to result p9
 - ADR-10: image upload opt-in with consent; results-only by default.
 - ADR-11: ECDSA P-256 model signing.
 - ADR-12: React, TypeScript and Vite static PWA.
+- ADR-13: Modal is the main GPU source; Kaggle plus Colab as fallback.
+- ADR-14: M2 chest X-ray model has a TB output only (TB logit and feature map); pneumonia later.
+- ADR-15: interim bake-off (MobileNetV3-Large vs EfficientNet-Lite0) on validation AUROC, then int8 drop, then size, until an external set exists.
+- ADR-16: chest X-rays are stretched to 320 by 320, not padded (`cxr-pre-2`); TRD 9.3 "resize with padding" no longer applies.
+- ADR-17: int8 calibration images come from the train split; the bake-off int8 drop is measured on validation.
 
 ## Model interfaces (TRD 10.6)
 
 | Model | Input (float32, normalized) | Outputs | Size |
 |-------|-----------------------------|---------|------|
-| `cxr-tb-pneu` | [1, 3, 320, 320] | TB logit, pneumonia logit, feature map | at most 15 MB |
+| `cxr-tb-pneu` | [1, 3, 320, 320], stretched not padded (ADR-16) | TB logit, pneumonia logit, feature map (M2: TB logit and feature map only, ADR-14) | at most 15 MB |
 | `dr` | [1, 3, 384, 384] | 4 ordinal logits, feature map | at most 15 MB |
 | `gate` | [1, 3, 224, 224] | 5 class logits | at most 3 MB |
 

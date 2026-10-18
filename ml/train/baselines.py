@@ -57,20 +57,24 @@ def frozen_features(x_u8, backbone, batch=64):
     return np.concatenate(feats)
 
 
-def run(data_dir, out_dir, backbones=("mobilenetv3_large", "efficientnet_lite0")):
+def run(data_dir, out_dir, backbones=("mobilenetv3_large", "efficientnet_lite0"), log=print):
     tr, va = load_split(data_dir, "train"), load_split(data_dir, "val")
-    results = {
-        "rung0_image_size_only": _fit_score(tr["meta"], tr["y"], va["meta"], va["y"]),
-        "rung1_pixels_64": _fit_score(pixels(tr["x"]), tr["y"], pixels(va["x"]), va["y"]),
-    }
-    for b in backbones:
-        results[f"rung2_frozen_{b}"] = _fit_score(
-            frozen_features(tr["x"], b), tr["y"], frozen_features(va["x"], b), va["y"])
     prep = json.loads((Path(data_dir) / "prepare_report.json").read_text())
-    report = {"dataset_version_hash": prep["dataset_version_hash"], "split": "val", "results": results}
+    report = {"dataset_version_hash": prep["dataset_version_hash"], "split": "val", "results": {}}
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
-    (out / "baselines.json").write_text(json.dumps(report, indent=2))
+
+    def record(name, result):
+        # saved after every rung, so a later failure does not lose earlier results
+        report["results"][name] = result
+        (out / "baselines.json").write_text(json.dumps(report, indent=2))
+        log(f"{name}: AUROC {result['auroc']:.3f} (95% CI {result['ci95'][0]:.3f} to {result['ci95'][1]:.3f})")
+
+    record("rung0_image_size_only", _fit_score(tr["meta"], tr["y"], va["meta"], va["y"]))
+    record("rung1_pixels_64", _fit_score(pixels(tr["x"]), tr["y"], pixels(va["x"]), va["y"]))
+    for b in backbones:
+        record(f"rung2_frozen_{b}", _fit_score(
+            frozen_features(tr["x"], b), tr["y"], frozen_features(va["x"], b), va["y"]))
     return report
 
 

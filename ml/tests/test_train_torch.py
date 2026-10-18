@@ -46,6 +46,14 @@ class TestModel(unittest.TestCase):
             from_cam = model.cam(fmap).mean() + model.fc.bias[0]
         self.assertAlmostEqual(float(logit[0]), float(from_cam), places=4)
 
+    def test_timm_can_download_pretrained_weights(self):
+        # timm 1.0.11 silently loses its Hugging Face download path with huggingface_hub 2.x,
+        # which broke the first Modal baselines run (rung 2). The pin must keep it working.
+        import timm.models._hub as hub
+
+        self.assertTrue(hub._has_hf_hub, "timm cannot import huggingface_hub: check the pin")
+        self.assertTrue(hub._has_safetensors)
+
     def test_unknown_backbone_rejected(self):
         from models import TBNet
 

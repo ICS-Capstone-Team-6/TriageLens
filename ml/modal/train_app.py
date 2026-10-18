@@ -146,16 +146,17 @@ def bakeoff():
         print(f"{b:20s} {', '.join(f'{a:.3f}' for a in aucs):28s} "
               f"{summary[b]['mean']:6.3f} {summary[b]['sd']:6.3f} {summary[b]['fit_gap_mean']:+8.3f} "
               f"{summary[b]['masked_drop_mean']:12.3f} {summary[b]['shape_corr_mean']:+11.3f}")
-    out = REPO / "ml" / "runs" / "bakeoff_summary.json"  # git-ignored (ml/runs/)
+    import datetime
+
+    stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    # git-ignored (ml/runs/); timestamped so an earlier bake-off is never overwritten
+    out = REPO / "ml" / "runs" / f"bakeoff_summary_{stamp}.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     jitter = sorted({r.get("shape_jitter") for r in results}, key=str)
     print(f"shape_jitter used: {jitter}")
     out.write_text(json.dumps({"git_commit": commit, "git_dirty": dirty, "shape_jitter": jitter,
                                "summary": summary}, indent=2))
     print(f"\nSummary saved to {out.relative_to(REPO)}")
-    import datetime
-
-    stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     figure = plot_bakeoff_remote.remote([r["run_dir"] for r in results], stamp)
     print(f"Bake-off curves: {figure}. Each run folder also holds curves.png. Download all with:")
     print("    modal volume get triagelens-runs /bakeoff ml/runs/")

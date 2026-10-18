@@ -148,7 +148,10 @@ def bakeoff():
               f"{summary[b]['masked_drop_mean']:12.3f} {summary[b]['shape_corr_mean']:+11.3f}")
     out = REPO / "ml" / "runs" / "bakeoff_summary.json"  # git-ignored (ml/runs/)
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(json.dumps({"git_commit": commit, "git_dirty": dirty, "summary": summary}, indent=2))
+    jitter = sorted({r.get("shape_jitter") for r in results}, key=str)
+    print(f"shape_jitter used: {jitter}")
+    out.write_text(json.dumps({"git_commit": commit, "git_dirty": dirty, "shape_jitter": jitter,
+                               "summary": summary}, indent=2))
     print(f"\nSummary saved to {out.relative_to(REPO)}")
     import datetime
 

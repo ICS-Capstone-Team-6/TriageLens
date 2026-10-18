@@ -51,6 +51,7 @@ class Config:
     label_smoothing: float = 0.05
     num_workers: int = 4
     border_mask: float = 0.12  # share of each side hidden in the shortcut check
+    shape_jitter: float = 0.15  # random width/height stretch, 0 = off (data.Augment)
 
 
 def set_seed(seed):
@@ -122,7 +123,7 @@ def run(cfg, data_dir, runs_dir, git_commit="unknown", git_dirty=None, log=print
     data_dir = Path(data_dir)
     train_arr, val_arr = load_split(data_dir, "train"), load_split(data_dir, "val")
     gen = torch.Generator().manual_seed(cfg.seed)
-    train_loader = DataLoader(XrayDataset(train_arr, Augment()), batch_size=cfg.batch_size,
+    train_loader = DataLoader(XrayDataset(train_arr, Augment(cfg.shape_jitter)), batch_size=cfg.batch_size,
                               shuffle=True, generator=gen, num_workers=cfg.num_workers,
                               drop_last=True, persistent_workers=cfg.num_workers > 0)
     val_loader = DataLoader(XrayDataset(val_arr), batch_size=64, num_workers=cfg.num_workers)
@@ -196,7 +197,8 @@ def run(cfg, data_dir, runs_dir, git_commit="unknown", git_dirty=None, log=print
         run_dir / "val_predictions.csv", index=False)
     best_row = next(h for h in history if h["epoch"] == best_epoch)
     metrics = {
-        "backbone": cfg.backbone, "seed": cfg.seed, "best_epoch": best_epoch,
+        "backbone": cfg.backbone, "seed": cfg.seed, "shape_jitter": cfg.shape_jitter,
+        "best_epoch": best_epoch,
         "epochs_run": len(history), "val": summarize(y, probs, seed=cfg.seed),
         # train minus validation AUROC at the best epoch: large = overfitting,
         # both low = underfitting (see ml/train/README.md)

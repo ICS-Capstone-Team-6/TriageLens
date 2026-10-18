@@ -55,7 +55,7 @@ In the Shenzhen set TB images are narrower than normal ones, so image shape pred
 | `within_class_corr` (normal, tb) | Near 0 | Stronger than 0.3 either way: the score follows shape |
 | `by_aspect_third[].auroc` | Close to the overall validation AUROC | More than 0.10 below it inside a third |
 
-The bake-off table shows the mean within-class correlation as `shape corr`. Rung 0 in the baselines still scores about 0.80: it measures the dataset, not the model.
+Training also stretches width and height independently by up to 15% (`shape_jitter`, default 0.15; 0 turns it off), so apparent chest width stops being a reliable clue. Bake-off 1 ran without it and still showed within-class correlations of -0.26 to -0.53. The bake-off table shows the mean within-class correlation as `shape corr`. Rung 0 in the baselines still scores about 0.80: it measures the dataset, not the model.
 
 ## Tests
 

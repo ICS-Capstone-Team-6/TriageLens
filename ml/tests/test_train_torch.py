@@ -54,6 +54,31 @@ class TestModel(unittest.TestCase):
         self.assertTrue(hub._has_hf_hub, "timm cannot import huggingface_hub: check the pin")
         self.assertTrue(hub._has_safetensors)
 
+    def test_aspect_jitter_changes_shape_without_bars(self):
+        # ADR-16 follow-up: stretch width and height by different amounts, then crop.
+        # It only enlarges, so no padding (black bars) can appear.
+        import numpy as np
+
+        from data import aspect_jitter
+
+        flat = np.full((320, 320), 200, np.uint8)
+        self.assertTrue((aspect_jitter(flat, 1.15, 1.0) == 200).all())
+        stripe = np.zeros((320, 320), np.uint8)
+        stripe[:, 150:170] = 255  # a 20 px wide vertical bar
+        wider = aspect_jitter(stripe, 1.15, 1.0)
+        self.assertEqual(wider.shape, (320, 320))
+        self.assertGreaterEqual(int((wider[160] > 127).sum()), 22)  # about 20 x 1.15
+        self.assertEqual(int((aspect_jitter(stripe, 1.0, 1.15)[160] > 127).sum()), 20)
+
+    def test_augment_keeps_size_and_type(self):
+        import numpy as np
+
+        from data import Augment
+
+        out = Augment(shape_jitter=0.15)(np.full((320, 320), 120, np.uint8))
+        self.assertEqual(out.shape, (320, 320))
+        self.assertEqual(out.dtype, np.uint8)
+
     def test_unknown_backbone_rejected(self):
         from models import TBNet
 

@@ -37,6 +37,14 @@ Option 1. Preprocessing version `cxr-pre-2` (`ml/train/preprocess_spec.json`) re
 - Arrays are rebuilt into a new folder per preprocessing version (`processed_v1_cxr-pre-2`), so old and new arrays are never mixed.
 - Change-log entry in `docs/planning/04_Team_Rules_and_Requirements.md`.
 
+## Follow-up: bake-off 1 (18 Oct 2026)
+
+The first bake-off on `cxr-pre-2` (2 backbones x 3 seeds, no shape augmentation) hit the first revisit trigger. The models still separated TB from normal within each third of the aspect-ratio range (validation AUROC 0.833 to 0.951; no third more than 0.10 below the overall score), so they read the lungs. But their scores followed aspect ratio inside each class: Spearman correlation -0.39 to -0.53 for normal images and -0.26 to -0.45 for TB images. Narrow normal X-rays scored as more TB-like, which would raise false referrals.
+
+Part of this may be physiology rather than cropping: thinner people have narrower chests, and TB causes weight loss. The data cannot separate the two.
+
+Response: training augmentation now stretches width and height independently by up to 15% and centre-crops back (`shape_jitter` in `ml/train/data.py`). It only enlarges, so it adds no padding. Bake-off 1 is kept as the "before" result for comparison.
+
 ## Revisit trigger
 
 The shape check shows a within-class correlation stronger than 0.3 in either class, or AUROC within an aspect-ratio third falls more than 0.10 below the overall validation AUROC. Also revisit when other datasets join, since their image shapes may differ.

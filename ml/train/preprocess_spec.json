@@ -1,0 +1,18 @@
+{
+  "version": "cxr-pre-1",
+  "description": "Chest X-ray preprocessing for the TB model (TRD 9.3, 10.6). The app must reproduce these steps exactly; ml/train/preprocess.py is the reference implementation.",
+  "steps": [
+    "decode the image and convert to 8-bit grayscale (PIL mode 'L', ITU-R 601-2 luma)",
+    "scale so the longer side is input_size, keeping the aspect ratio, with bilinear resampling",
+    "paste centred on an input_size x input_size canvas filled with pad_value",
+    "copy the grayscale channel to 3 channels",
+    "divide by 255, then subtract mean and divide by std per channel"
+  ],
+  "input_size": 320,
+  "resample": "bilinear",
+  "pad_value": 0,
+  "channels": 3,
+  "layout": "NCHW float32",
+  "mean": [0.485, 0.456, 0.406],
+  "std": [0.229, 0.224, 0.225]
+}

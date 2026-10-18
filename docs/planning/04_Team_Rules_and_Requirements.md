@@ -236,3 +236,5 @@ By signing, each member agrees to follow these rules and to raise concerns early
 |------------|-----------------------------------------|-----------|
 | 15 Oct 2026 | First version | Draft |
 | 18 Oct 2026 | D4 answered: Modal is the main GPU source, Kaggle plus Colab as fallback ([ADR-13](../adr/0013-modal-gpu-compute.md)) | Pending: team |
+| 18 Oct 2026 | M2 chest X-ray model has a TB output only; pneumonia output deferred until pneumonia data exists; TRD 10.6 interface changed for M2 ([ADR-14](../adr/0014-tb-only-output-m2.md)) | Pending: team |
+| 18 Oct 2026 | Interim backbone bake-off judged on validation AUROC, int8 drop and size until an external set exists ([ADR-15](../adr/0015-interim-bake-off-criteria.md)) | Pending: team |

@@ -1,0 +1,42 @@
+# TB model training
+
+Trains the chest X-ray TB model for the M2 slice (story `E2-01`). One TB output ([ADR-14](../../docs/adr/0014-tb-only-output-m2.md)), two backbone candidates judged by [ADR-15](../../docs/adr/0015-interim-bake-off-criteria.md), a pooling and linear head for the class activation map (ADR-9).
+
+**Owner:** Chelsea. Second: Kweku.
+
+## Files
+
+| File | What it does | Needs torch |
+| --- | --- | --- |
+| `preprocess_spec.json` | The preprocessing steps. The app must follow them exactly. | No |
+| `preprocess.py` | Reference implementation of the spec | No |
+| `prepare_data.py` | Checks every raw file's SHA-256 against the manifest, then saves 320 px arrays per split | No |
+| `metrics.py` | AUROC and 95% bootstrap intervals (TRD 9.8) | No |
+| `data.py` | Loads splits, refuses the test split (ML-DATA-04), augmentation without flips (TRD 9.4) | Yes |
+| `models.py` | `TBNet`: backbone, pooling, one linear layer, class activation map | Yes |
+| `train.py` | One run: head warm-up, full fine-tune, early stopping, shortcut check, run log | Yes |
+| `baselines.py` | Baseline ladder: image size only, 64 px pixels, frozen backbone | Yes |
+
+## Run on Modal
+
+From the repo root, after the raw set is in the `triagelens-data` volume (see `ml/modal/README.md`). Commit first: each run records the commit, and a dirty tree is flagged.
+
+```sh
+pip install -r ml/requirements-modal.txt
+modal run ml/modal/train_app.py::prepare      # hash check and 320 px arrays (CPU)
+modal run ml/modal/train_app.py::baselines    # rungs 0 to 2
+modal run ml/modal/train_app.py::bakeoff      # 2 backbones x 3 seeds in parallel
+```
+
+`prepare` stops with a hard fail if any raw file is missing or differs from `ml/manifests/shenzhen_v1/manifest.csv`.
+
+## What each run records
+
+Every run folder in the `triagelens-runs` volume holds `config.json` (recipe, seed, code commit, dataset version hash, preprocessing version), `history.csv`, `metrics.json`, `val_predictions.csv` and `best.pt` (Team Rules 7). The test split is never read here. It is used once per frozen candidate (Team Rules 7).
+
+## Tests
+
+```sh
+python3 -m unittest discover -s ml/tests -v                 # CI: torch tests are skipped
+pip install -r ml/requirements-train.txt                     # then the torch tests run too
+```

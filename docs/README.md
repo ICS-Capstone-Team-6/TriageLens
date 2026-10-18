@@ -49,6 +49,8 @@ Every document in `docs/`, who owns it and how it changes.
 | [adr/0011-ecdsa-p256-signing.md](adr/0011-ecdsa-p256-signing.md) | ADR-11. Model signing | Kweku | Living (supersede with a new ADR) |
 | [adr/0012-react-typescript-vite.md](adr/0012-react-typescript-vite.md) | ADR-12. Web framework | Kweku | Living (supersede with a new ADR) |
 | [adr/0013-modal-gpu-compute.md](adr/0013-modal-gpu-compute.md) | ADR-13. GPU compute on Modal (answers D4) | Chelsea | Living (supersede with a new ADR) |
+| [adr/0014-tb-only-output-m2.md](adr/0014-tb-only-output-m2.md) | ADR-14. TB-only output for the chest X-ray model at M2 | Chelsea | Living (supersede with a new ADR) |
+| [adr/0015-interim-bake-off-criteria.md](adr/0015-interim-bake-off-criteria.md) | ADR-15. Interim bake-off criteria while no external test set exists | Chelsea | Living (supersede with a new ADR) |
 
 ## Safety and ethics
 

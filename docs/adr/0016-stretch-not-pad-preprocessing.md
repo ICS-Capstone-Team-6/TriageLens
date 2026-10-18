@@ -45,6 +45,23 @@ Part of this may be physiology rather than cropping: thinner people have narrowe
 
 Response: training augmentation now stretches width and height independently by up to 15% and centre-crops back (`shape_jitter` in `ml/train/data.py`). It only enlarges, so it adds no padding. Bake-off 1 is kept as the "before" result for comparison.
 
+## Follow-up: bake-off 2 and the texture finding (18 Oct 2026)
+
+Bake-off 2 added the shape augmentation. Validation AUROC was unchanged (MobileNetV3-Large 0.912 +/- 0.008, EfficientNet-Lite0 0.924 +/- 0.014), and so was the shape correlation (mean within-class -0.398 and -0.372, against -0.414 and -0.353 in bake-off 1). The augmentation did not work, so apparent chest width was not the cause.
+
+A follow-up analysis of bake-off 1's validation predictions (no new training) compared the TB score with several image properties inside each class:
+
+| Property | Within-class correlation with TB score (6 runs) | Correlation with aspect ratio |
+| --- | --- | --- |
+| Edge energy (fine texture and sharpness, at model input size) | +0.47 to +0.65 | -0.39 |
+| File bytes per pixel | +0.36 to +0.60 | -0.24 |
+| Aspect ratio | -0.33 to -0.48 | (itself) |
+| Mean brightness | -0.04 to -0.26 | 0.00 |
+
+The score follows image texture more strongly than shape. Narrow images are also more textured, which explains the shape correlation. Texture is ambiguous: TB lesions add texture, but a strong effect inside the normal class suggests the provider processed TB and normal films differently. Shenzhen alone cannot separate the two.
+
+Decision: no further training changes for this. Texture augmentation (blur, noise) could remove real disease signal along with the artefact, and Shenzhen could not show which was removed. The question is answered instead by the locked external test on the Montgomery set (different hospital, country and processing), evaluated once on the frozen model. This is recorded against hazard H11.
+
 ## Revisit trigger
 
 The shape check shows a within-class correlation stronger than 0.3 in either class, or AUROC within an aspect-ratio third falls more than 0.10 below the overall validation AUROC. Also revisit when other datasets join, since their image shapes may differ.

@@ -3,7 +3,7 @@
 For every manifest row this checks the raw file's SHA-256 against the manifest before
 using it. A missing or changed file stops the run: the manifest is the provenance record
 (Section B4) and training must not see bytes it does not describe. Images are then
-letterboxed to the model input size once (preprocess_spec.json) and saved per split.
+resized to the model input size once (preprocess_spec.json) and saved per split.
 
 Output in <out>: train.npz, val.npz, test.npz and prepare_report.json.
 The test split is written but only loaded by evaluation of a frozen model (ML-DATA-04).
@@ -25,7 +25,7 @@ import pandas as pd
 from PIL import Image
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from preprocess import letterbox, load_spec  # noqa: E402
+from preprocess import load_spec, to_model_size  # noqa: E402
 
 SPLITS = ("train", "val", "test")
 
@@ -57,7 +57,7 @@ def _process(args):
     if actual != expected_sha:
         return ("changed", path.name, None)
     with Image.open(path) as im:
-        return ("ok", path.name, letterbox(im, spec))
+        return ("ok", path.name, to_model_size(im, spec))
 
 
 def prepare(raw, manifest_path, out, workers=4):

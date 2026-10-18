@@ -1,16 +1,15 @@
 {
-  "version": "cxr-pre-1",
-  "description": "Chest X-ray preprocessing for the TB model (TRD 9.3, 10.6). The app must reproduce these steps exactly; ml/train/preprocess.py is the reference implementation.",
+  "version": "cxr-pre-2",
+  "description": "Chest X-ray preprocessing for the TB model (TRD 9.3, 10.6; ADR-16). The app must reproduce these steps exactly; ml/train/preprocess.py is the reference implementation.",
   "steps": [
     "decode the image and convert to 8-bit grayscale (PIL mode 'L', ITU-R 601-2 luma)",
-    "scale so the longer side is input_size, keeping the aspect ratio, with bilinear resampling",
-    "paste centred on an input_size x input_size canvas filled with pad_value",
+    "resize straight to input_size x input_size with bilinear resampling, ignoring the aspect ratio (no padding)",
     "copy the grayscale channel to 3 channels",
     "divide by 255, then subtract mean and divide by std per channel"
   ],
+  "why_no_padding": "cxr-pre-1 kept the aspect ratio and padded to a square. In the Shenzhen set TB images are narrower than normal ones (aspect ratio alone gives AUROC 0.716), so the padding bars told the model the label. Stretching removes that cue (ADR-16).",
   "input_size": 320,
   "resample": "bilinear",
-  "pad_value": 0,
   "channels": 3,
   "layout": "NCHW float32",
   "mean": [0.485, 0.456, 0.406],

@@ -24,7 +24,8 @@ APP_NAME = "triagelens-train"
 DATA_DIR = "/data"
 RUNS_DIR = "/runs"
 RAW = f"{DATA_DIR}/shenzhen/raw"  # where ml/modal/README.md uploads the raw set
-PROCESSED = f"{DATA_DIR}/shenzhen/processed_v1_320"
+# One folder per preprocessing version, so arrays from an old spec are never mixed in.
+PROCESSED = f"{DATA_DIR}/shenzhen/processed_v1_cxr-pre-2"
 MANIFEST = "/root/ml/manifests/shenzhen_v1/manifest.csv"
 GPU = "T4"  # same as app.py; enough for MobileNet-sized backbones
 BACKBONES = ("mobilenetv3_large", "efficientnet_lite0")
@@ -128,20 +129,23 @@ def bakeoff():
     jobs = [(b, s, commit, dirty) for b in BACKBONES for s in SEEDS]
     results = list(train_remote.starmap(jobs))
     print(f"\n{'backbone':20s} {'val AUROC per seed':28s} {'mean':>6s} {'sd':>6s} "
-          f"{'fit gap':>8s} {'masked drop':>12s}")
+          f"{'fit gap':>8s} {'masked drop':>12s} {'shape corr':>11s}")
     summary = {}
     for b in BACKBONES:
         rs = [r for r in results if r["backbone"] == b]
         aucs = [r["val"]["auroc"] for r in rs]
         drops = [r["shortcut_check"]["drop"] for r in rs]
         gaps = [r["fit"]["gap"] for r in rs]
+        corrs = [(r["shape_check"]["within_class_corr"]["normal"]
+                  + r["shape_check"]["within_class_corr"]["tb"]) / 2 for r in rs]
         summary[b] = {"val_auroc": aucs, "mean": statistics.mean(aucs), "sd": statistics.stdev(aucs),
                       "fit_gap_mean": statistics.mean(gaps),
                       "best_epoch_is_last": [r["fit"]["best_epoch_is_last"] for r in rs],
-                      "masked_drop_mean": statistics.mean(drops), "runs": [r["run_dir"] for r in rs]}
+                      "masked_drop_mean": statistics.mean(drops),
+                      "shape_corr_mean": statistics.mean(corrs), "runs": [r["run_dir"] for r in rs]}
         print(f"{b:20s} {', '.join(f'{a:.3f}' for a in aucs):28s} "
               f"{summary[b]['mean']:6.3f} {summary[b]['sd']:6.3f} {summary[b]['fit_gap_mean']:+8.3f} "
-              f"{summary[b]['masked_drop_mean']:12.3f}")
+              f"{summary[b]['masked_drop_mean']:12.3f} {summary[b]['shape_corr_mean']:+11.3f}")
     out = REPO / "ml" / "runs" / "bakeoff_summary.json"  # git-ignored (ml/runs/)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps({"git_commit": commit, "git_dirty": dirty, "summary": summary}, indent=2))

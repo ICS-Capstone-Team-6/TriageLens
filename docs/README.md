@@ -51,6 +51,7 @@ Every document in `docs/`, who owns it and how it changes.
 | [adr/0013-modal-gpu-compute.md](adr/0013-modal-gpu-compute.md) | ADR-13. GPU compute on Modal (answers D4) | Chelsea | Living (supersede with a new ADR) |
 | [adr/0014-tb-only-output-m2.md](adr/0014-tb-only-output-m2.md) | ADR-14. TB-only output for the chest X-ray model at M2 | Chelsea | Living (supersede with a new ADR) |
 | [adr/0015-interim-bake-off-criteria.md](adr/0015-interim-bake-off-criteria.md) | ADR-15. Interim bake-off criteria while no external test set exists | Chelsea | Living (supersede with a new ADR) |
+| [adr/0016-stretch-not-pad-preprocessing.md](adr/0016-stretch-not-pad-preprocessing.md) | ADR-16. Stretch chest X-rays to square instead of padding | Chelsea | Living (supersede with a new ADR) |
 
 ## Safety and ethics
 

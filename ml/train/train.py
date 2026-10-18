@@ -7,7 +7,7 @@ train and validation splits are read; the test split stays locked (ML-DATA-04).
 Each run writes to <runs>/<backbone>_seed<seed>_<time>/:
   config.json       recipe, seed, code commit, dataset hash, library versions
   history.csv       per-epoch loss and AUROC: train (augmented and clean) and validation
-  metrics.json      best validation AUROC with its 95% CI, the fit gap, the shortcut check
+  metrics.json      best validation AUROC with its 95% CI, the fit gap, the shape and border checks
   curves.png        learning curves for the report (ml/train/plot_curves.py)
   val_predictions.csv, best.pt
 
@@ -32,7 +32,7 @@ from torch.utils.data import DataLoader
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from data import Augment, XrayDataset, load_split  # noqa: E402
-from metrics import auroc, summarize  # noqa: E402
+from metrics import auroc, shape_check, summarize  # noqa: E402
 from models import TBNet  # noqa: E402
 
 
@@ -64,7 +64,7 @@ def set_seed(seed):
 def mask_border(x, frac):
     """Hide the outer band of each image, where Shenzhen X-rays carry text and markers.
 
-    Works on normalised (B, 3, H, W) tensors; the band is set to the padding value.
+    Works on normalised (B, 3, H, W) tensors; the band is set to black.
     """
     pad = torch.tensor([-m / s for m, s in zip((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))],
                        device=x.device, dtype=x.dtype)[None, :, None, None]
@@ -206,6 +206,8 @@ def run(cfg, data_dir, runs_dir, git_commit="unknown", git_dirty=None, log=print
             "gap": best_row["train_auroc_clean"] - best_row["val_auroc"],
             "best_epoch_is_last": best_epoch == len(history),
         },
+        # ADR-16: does the score follow image shape (aspect ratio) instead of the lungs?
+        "shape_check": shape_check(y, probs, val_arr["meta"][:, 0] / val_arr["meta"][:, 1]),
         "shortcut_check": {
             "border_masked": cfg.border_mask,
             "val_auroc_masked": auroc(y, masked),

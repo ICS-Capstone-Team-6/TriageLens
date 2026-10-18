@@ -60,7 +60,7 @@ class TestModel(unittest.TestCase):
         with self.assertRaises(ValueError):
             TBNet("resnet50", pretrained=False)
 
-    def test_border_mask_sets_padding_value(self):
+    def test_border_mask_sets_black(self):
         import torch
 
         from preprocess import normalize
@@ -101,6 +101,7 @@ class TestTrainingRun(unittest.TestCase):
                 self.assertIn(key, config)  # Team Rules 7: every run logs these
             self.assertEqual(m["epochs_run"], 3)
             self.assertIn("val_auroc_masked", m["shortcut_check"])
+            self.assertIn("within_class_corr", m["shape_check"])  # ADR-16
             # over- and underfitting evidence: clean train AUROC beside validation, per epoch
             import pandas as pd
             history = pd.read_csv(run_dir / "history.csv")
@@ -127,6 +128,7 @@ class TestTrainingRun(unittest.TestCase):
             prepare_data.prepare(root / "raw", manifest, root / "data", workers=1)
             report = baselines.run(root / "data", root / "out", backbones=())
             self.assertEqual(set(report["results"]), {"rung0_image_size_only", "rung1_pixels_64"})
+            self.assertIn("aspect_ratio", report["shortcut_features_val"])
             self.assertTrue((root / "out" / "baselines.json").exists())
 
 

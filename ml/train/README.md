@@ -8,7 +8,7 @@ Trains the chest X-ray TB model for the M2 slice (story `E2-01`). One TB output 
 
 | File | What it does | Needs torch |
 | --- | --- | --- |
-| `preprocess_spec.json` | The preprocessing steps. The app must follow them exactly. | No |
+| `preprocess_spec.json` | The preprocessing steps (`cxr-pre-2`: stretch to 320 x 320, no padding, ADR-16). The app must follow them exactly. | No |
 | `preprocess.py` | Reference implementation of the spec | No |
 | `prepare_data.py` | Checks every raw file's SHA-256 against the manifest, then saves 320 px arrays per split | No |
 | `metrics.py` | AUROC and 95% bootstrap intervals (TRD 9.8) | No |
@@ -45,6 +45,17 @@ Each epoch scores the training images twice: with augmentation (the loss the mod
 | Both AUROC lines low and close; both losses high and flat | Underfitting | More epochs, higher learning rate, unfreeze more |
 | Best epoch is the last epoch (`fit.best_epoch_is_last`) | Still improving when stopped | Raise `epochs_max` |
 | Wide spread across the three seeds | Result depends on luck | Report the spread; do not pick the best seed |
+
+## Shape check (ADR-16)
+
+In the Shenzhen set TB images are narrower than normal ones, so image shape predicts the label (aspect ratio alone: validation AUROC about 0.70 in reverse). Preprocessing stretches every image to a square so no padding bars show the shape. Each run's `metrics.json` holds `shape_check`:
+
+| Field | Healthy | Warning sign |
+| --- | --- | --- |
+| `within_class_corr` (normal, tb) | Near 0 | Stronger than 0.3 either way: the score follows shape |
+| `by_aspect_third[].auroc` | Close to the overall validation AUROC | More than 0.10 below it inside a third |
+
+The bake-off table shows the mean within-class correlation as `shape corr`. Rung 0 in the baselines still scores about 0.80: it measures the dataset, not the model.
 
 ## Tests
 

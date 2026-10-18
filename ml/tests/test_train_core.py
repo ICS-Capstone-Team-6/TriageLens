@@ -45,17 +45,27 @@ class TestPreprocess(unittest.TestCase):
         self.assertEqual(spec["input_size"], 320)  # TRD 10.6
         self.assertEqual(spec["channels"], 3)
 
-    def test_letterbox_keeps_aspect_and_pads(self):
-        img = Image.new("L", (640, 320), 200)  # wide image: padding above and below
-        out = preprocess.letterbox(img)
+    def test_spec_is_stretch_version(self):
+        spec = preprocess.load_spec()
+        self.assertEqual(spec["version"], "cxr-pre-2")  # ADR-16
+        self.assertNotIn("pad_value", spec)
+
+    def test_wide_image_fills_square_with_no_bars(self):
+        # cxr-pre-1 padded a wide image with black bars; bars encoded the aspect ratio,
+        # which predicts TB in Shenzhen (ADR-16). cxr-pre-2 stretches, so no bars.
+        out = preprocess.to_model_size(Image.new("L", (640, 320), 200))
         self.assertEqual(out.shape, (320, 320))
         self.assertEqual(out.dtype, np.uint8)
-        self.assertEqual(out[0, 160], 0)  # top band is padding
-        self.assertEqual(out[160, 160], 200)  # centre is the image
-        self.assertEqual(out[160, 0], 200)  # full width used
+        self.assertTrue((out == 200).all())
 
-    def test_letterbox_converts_colour_to_grayscale(self):
-        out = preprocess.letterbox(Image.new("RGB", (400, 400), (255, 0, 0)))
+    def test_image_shape_leaves_no_trace(self):
+        # a narrow and a wide image of the same uniform content give identical inputs
+        narrow = preprocess.to_model_size(Image.new("L", (2600, 3000), 120))
+        wide = preprocess.to_model_size(Image.new("L", (3000, 2900), 120))
+        self.assertTrue(np.array_equal(narrow, wide))
+
+    def test_converts_colour_to_grayscale(self):
+        out = preprocess.to_model_size(Image.new("RGB", (400, 400), (255, 0, 0)))
         self.assertEqual(out.shape, (320, 320))
 
     def test_normalize_shapes_and_values(self):
@@ -84,6 +94,24 @@ class TestMetrics(unittest.TestCase):
 
     def test_auroc_one_class_is_nan(self):
         self.assertTrue(np.isnan(metrics.auroc([1, 1], [0.2, 0.9])))
+
+    def test_spearman_known_values(self):
+        self.assertAlmostEqual(metrics.spearman([1, 2, 3, 4], [10, 20, 30, 40]), 1.0)
+        self.assertAlmostEqual(metrics.spearman([1, 2, 3, 4], [9, 7, 5, 1]), -1.0)
+
+    def test_shape_check_flags_a_shape_reader(self):
+        # a "model" whose score is just narrowness: strong within-class correlation
+        rng = np.random.default_rng(1)
+        y = np.repeat([0, 1], 60)
+        aspect = np.where(y == 1, 0.94, 1.0) + rng.normal(0, 0.05, 120)
+        reader = metrics.shape_check(y, -aspect, aspect)
+        self.assertLess(reader["within_class_corr"]["tb"], -0.9)
+        self.assertLess(reader["within_class_corr"]["normal"], -0.9)
+        # a score unrelated to shape: weak within-class correlation
+        honest = metrics.shape_check(y, y + rng.normal(0, 0.5, 120), aspect)
+        self.assertLess(abs(honest["within_class_corr"]["tb"]), 0.4)
+        self.assertEqual(len(honest["by_aspect_third"]), 3)
+        self.assertEqual(sum(b["n"] for b in honest["by_aspect_third"]), 120)
 
     def test_bootstrap_ci_brackets_estimate(self):
         rng = np.random.default_rng(0)

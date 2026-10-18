@@ -18,21 +18,15 @@ def load_spec(path=SPEC_PATH):
     return json.loads(Path(path).read_text())
 
 
-def letterbox(img, spec=None):
-    """Grayscale, scale the longer side to input_size, centre on a padded square.
+def to_model_size(img, spec=None):
+    """Grayscale, then resize straight to input_size x input_size (ADR-16).
 
-    Returns a uint8 array of shape (input_size, input_size).
+    The aspect ratio is not kept and nothing is padded: padding bars encoded image
+    shape, and shape predicts the label in the Shenzhen set. Returns uint8 (size, size).
     """
     spec = spec or load_spec()
-    size, pad = spec["input_size"], spec["pad_value"]
-    gray = img.convert("L")
-    w, h = gray.size
-    scale = size / max(w, h)
-    nw, nh = max(1, round(w * scale)), max(1, round(h * scale))
-    resized = gray.resize((nw, nh), Image.BILINEAR)
-    canvas = Image.new("L", (size, size), pad)
-    canvas.paste(resized, ((size - nw) // 2, (size - nh) // 2))
-    return np.asarray(canvas, dtype=np.uint8)
+    size = spec["input_size"]
+    return np.asarray(img.convert("L").resize((size, size), Image.BILINEAR), dtype=np.uint8)
 
 
 def normalize(u8, spec=None):
@@ -52,4 +46,4 @@ def preprocess_file(path, spec=None):
     """Full reference path for one image file: float32 (1, 3, size, size)."""
     spec = spec or load_spec()
     with Image.open(path) as im:
-        return normalize(letterbox(im, spec), spec)[None]
+        return normalize(to_model_size(im, spec), spec)[None]

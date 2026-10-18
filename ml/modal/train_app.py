@@ -30,7 +30,10 @@ GPU = "T4"  # same as app.py; enough for MobileNet-sized backbones
 BACKBONES = ("mobilenetv3_large", "efficientnet_lite0")
 SEEDS = (1, 2, 3)  # TRD 9.4: three seeds per configuration
 
-REPO = Path(__file__).resolve().parents[2]
+# On the laptop this file is ml/modal/train_app.py, two levels under the repo root.
+# In the Modal container it is /root/train_app.py and the repo is not there, so the
+# repo path is only worked out locally (it is only used to build the image and log git).
+REPO = Path(__file__).resolve().parents[2] if modal.is_local() else Path("/root")
 image = (
     modal.Image.debian_slim(python_version="3.11")
     .pip_install_from_requirements(str(REPO / "ml" / "requirements-train.txt"))

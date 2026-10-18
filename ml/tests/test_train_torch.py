@@ -69,6 +69,9 @@ class TestModel(unittest.TestCase):
         self.assertEqual(wider.shape, (320, 320))
         self.assertGreaterEqual(int((wider[160] > 127).sum()), 22)  # about 20 x 1.15
         self.assertEqual(int((aspect_jitter(stripe, 1.0, 1.15)[160] > 127).sum()), 20)
+        # a stretch that rounds to no change must still return a writable array, or
+        # torch.from_numpy warns about a read-only tensor (seen in bake-off 2)
+        self.assertTrue(aspect_jitter(flat, 1.0001, 1.0001).flags.writeable)
 
     def test_augment_keeps_size_and_type(self):
         import numpy as np

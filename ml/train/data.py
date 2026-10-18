@@ -39,7 +39,8 @@ def aspect_jitter(u8, sx, sy):
     nw, nh = max(w, round(w * sx)), max(h, round(h * sy))
     big = np.asarray(Image.fromarray(u8).resize((nw, nh), Image.BILINEAR))
     x0, y0 = (nw - w) // 2, (nh - h) // 2
-    return big[y0:y0 + h, x0:x0 + w]
+    # a copy, so the result is writable even when the crop is the whole image
+    return big[y0:y0 + h, x0:x0 + w].copy()
 
 
 class Augment:

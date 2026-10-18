@@ -70,7 +70,8 @@ def shortcut_features(meta, y):
 def run(data_dir, out_dir, backbones=("mobilenetv3_large", "efficientnet_lite0"), log=print):
     tr, va = load_split(data_dir, "train"), load_split(data_dir, "val")
     prep = json.loads((Path(data_dir) / "prepare_report.json").read_text())
-    report = {"dataset_version_hash": prep["dataset_version_hash"], "split": "val", "results": {}}
+    report = {"dataset_version_hash": prep["dataset_version_hash"],
+              "preprocess_spec": prep["preprocess_spec"], "split": "val", "results": {}}
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
 

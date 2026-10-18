@@ -16,6 +16,11 @@ ml/data/ is git-ignored: the images stay on this machine and the Modal data volu
 Usage, from the repo root:
     pip install kagglehub==1.0.2
     python3 ml/pipeline/download_montgomery.py
+    python3 ml/pipeline/download_montgomery.py --check-only   # re-check, e.g. after adding
+                                                               # the NLM clinical readings
+
+Kaggle version 1 (18 Oct 2026) has the 138 images but no clinical-reading files, only a
+third-party montgomery_metadata.csv. The readings come from NLM instead (ml/pipeline/README.md).
 """
 
 import argparse
@@ -91,19 +96,27 @@ def main(argv=None):
     ap.add_argument("--version", type=int, help="Kaggle dataset version (default: latest)")
     ap.add_argument("--dest", type=Path, default=DEST)
     ap.add_argument("--force", action="store_true", help="replace an existing download")
+    ap.add_argument("--check-only", action="store_true",
+                    help="no download: re-check the files already in --dest and update SOURCE.json")
     ap.add_argument("--keep-cache", action="store_true",
                     help="keep kagglehub's cached copy (default: delete it, so one copy exists)")
     a = ap.parse_args(argv)
 
-    if a.dest.exists() and any(a.dest.iterdir()) and not a.force:
-        print(f"{a.dest} is not empty. Use --force to replace it.")
-        return 1
-    cache, version = download(version=a.version)
-    if a.dest.exists():
-        shutil.rmtree(a.dest)
-    shutil.copytree(cache, a.dest)
-    if not a.keep_cache:
-        shutil.rmtree(cache, ignore_errors=True)
+    if a.check_only:
+        if not (a.dest / "SOURCE.json").exists():
+            print(f"No download in {a.dest}: run without --check-only first.")
+            return 1
+        version = json.loads((a.dest / "SOURCE.json").read_text())["version"]
+    else:
+        if a.dest.exists() and any(a.dest.iterdir()) and not a.force:
+            print(f"{a.dest} is not empty. Use --force to replace it, or --check-only to re-check it.")
+            return 1
+        cache, version = download(version=a.version)
+        if a.dest.exists():
+            shutil.rmtree(a.dest)
+        shutil.copytree(cache, a.dest)
+        if not a.keep_cache:
+            shutil.rmtree(cache, ignore_errors=True)
 
     summary = layout(a.dest)
     record = {

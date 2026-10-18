@@ -49,6 +49,20 @@ class TestDownloadMontgomery(unittest.TestCase):
             self.assertEqual(self.run_with(cache, dest), 2)
             self.assertIn("clinical readings", " ".join(dm.problems(dm.layout(dest))))
 
+    def test_check_only_sees_readings_added_later(self):
+        # Kaggle version 1 has no readings; they are added from NLM, then re-checked
+        with tempfile.TemporaryDirectory() as d:
+            dest = Path(d) / "m"
+            self.assertEqual(self.run_with(fake_set(Path(d) / "c", readings=False), dest), 2)
+            readings = dest / "ClinicalReadings"
+            readings.mkdir()
+            for img in (dest / "images").glob("*.png"):
+                (readings / f"{img.stem}.txt").write_text("Patient's Age: 040Y\n")
+            self.assertEqual(self.run_with(Path(d) / "unused", dest, "--check-only"), 0)
+            record = json.loads((dest / "SOURCE.json").read_text())
+            self.assertEqual(record["version"], 3)
+            self.assertEqual(record["layout"]["readings_matching_an_image"], 138)
+
     def test_wrong_counts_are_flagged(self):
         with tempfile.TemporaryDirectory() as d:
             dest = Path(d) / "m"

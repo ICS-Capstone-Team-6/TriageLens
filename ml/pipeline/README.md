@@ -68,3 +68,13 @@ python3 ml/pipeline/download_montgomery.py
 ```
 
 The source is the Kaggle copy `raddar/tuberculosis-chest-xrays-montgomery`, a third-party re-upload of the NLM set. The script writes `SOURCE.json` (Kaggle version, date, SHA-256 of every file) for the data card, and compares what arrived with the NLM description: 138 images (80 normal, 58 TB) named `MCUCXR_####_L.png`, each with a clinical reading. It exits with code 2 and lists the differences if they do not match. If Kaggle asks for a login, run `python3 -c "import kagglehub; kagglehub.login()"` first.
+
+**Clinical readings come from NLM.** Kaggle version 1 (18 Oct 2026) has the 138 images, the right label counts and the original sizes (4020 by 4892, either way round), but no reading files: only `montgomery_metadata.csv`, a third-party transcription. Age (the 15-and-over rule) and the label check must rest on the official readings, so download them (about 140 small text files) and re-check:
+
+```sh
+wget -r -np -nH --cut-dirs=4 -R "index.html*" -P ml/data/raw/montgomery \
+  https://data.lhncbc.nlm.nih.gov/public/Tuberculosis-Chest-X-ray-Datasets/Montgomery-County-CXR-Set/MontgomerySet/ClinicalReadings/index.html
+python3 ml/pipeline/download_montgomery.py --check-only
+```
+
+The CSV is kept as a cross-check against the readings, not as a source of labels.

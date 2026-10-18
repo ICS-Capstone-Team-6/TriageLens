@@ -6,6 +6,7 @@ Run from the repo root, in this order:
     modal run ml/modal/train_app.py::baselines    # baseline ladder, rungs 0 to 2 (GPU)
     modal run ml/modal/train_app.py::bakeoff      # 2 backbones x 3 seeds (GPU, in parallel)
     modal run ml/modal/train_app.py::train_one --backbone mobilenetv3_large --seed 1
+    modal run ml/modal/train_app.py::export       # ONNX and static int8 for the latest bake-off (CPU)
 
 The training code is plain Python in ml/train/ (ADR-13). This file only moves it to a GPU.
 Raw images are read from the triagelens-data volume, runs are written to triagelens-runs.
@@ -39,6 +40,7 @@ image = (
     modal.Image.debian_slim(python_version="3.11")
     .pip_install_from_requirements(str(REPO / "ml" / "requirements-train.txt"))
     .add_local_dir(str(REPO / "ml" / "train"), "/root/ml/train")
+    .add_local_dir(str(REPO / "ml" / "export"), "/root/ml/export")
     .add_local_dir(str(REPO / "ml" / "manifests"), "/root/ml/manifests")
 )
 data_volume = modal.Volume.from_name("triagelens-data")
@@ -91,6 +93,20 @@ def train_remote(backbone: str, seed: int, git_commit: str, git_dirty: bool) -> 
                            git_commit=git_commit, git_dirty=git_dirty)
     runs_volume.commit()
     return {"run_dir": str(run_dir), **metrics}
+
+
+@app.function(cpu=4, memory=8192, timeout=30 * 60,
+              volumes={DATA_DIR: data_volume, RUNS_DIR: runs_volume})
+def export_remote(run_dir: str) -> dict:
+    """Story E5-02: fp32 ONNX, int8 QDQ and int8 QOperator for one run, with the drop check."""
+    _train_code()
+    sys.path.insert(0, "/root/ml/export")
+    import export_onnx
+
+    runs_volume.reload()
+    report = export_onnx.export_run(run_dir, PROCESSED)
+    runs_volume.commit()
+    return report
 
 
 def _git_state():
@@ -168,3 +184,55 @@ def bakeoff(backbones: str = ""):
     figure = plot_bakeoff_remote.remote([r["run_dir"] for r in results], stamp)
     print(f"Bake-off curves: {figure}. Each run folder also holds curves.png. Download all with:")
     print("    modal volume get triagelens-runs /bakeoff ml/runs/")
+
+
+@app.local_entrypoint()
+def export(summary: str = ""):
+    """ADR-15 rule 2: export every run of a bake-off and compare the int8 AUROC drop.
+
+    summary: a bake-off summary file in ml/runs/; the latest one when left empty.
+    """
+    runs_dir = REPO / "ml" / "runs"
+    path = Path(summary) if summary else sorted(runs_dir.glob("bakeoff_summary_*.json"))[-1]
+    bake = json.loads(path.read_text())
+    print(f"Exporting the runs listed in {path.name} (shape_jitter {bake.get('shape_jitter')})")
+    run_dirs = [r for b in bake["summary"].values() for r in b["runs"]]
+    reports = list(export_remote.map(run_dirs))
+
+    print(f"\n{'backbone':20s} {'seed':>4s} {'fp32':>6s} {'QDQ drop':>9s} {'QOp drop':>9s} "
+          f"{'int8 MB':>8s} {'CAM r':>6s} {'QDQ ms':>7s} {'QOp ms':>7s} {'parity':>8s}")
+    table = {}
+    for r in reports:
+        f = r["formats"]
+        print(f"{r['backbone']:20s} {r['seed']:4d} {f['fp32']['auroc']:6.3f} "
+              f"{f['int8_qdq']['auroc_drop']:+9.3f} {f['int8_qop']['auroc_drop']:+9.3f} "
+              f"{f['int8_qdq']['size_mb']:8.2f} {f['int8_qdq']['cam_corr_with_fp32']:6.3f} "
+              f"{f['int8_qdq']['cpu_latency_ms_1thread']:7.1f} {f['int8_qop']['cpu_latency_ms_1thread']:7.1f} "
+              f"{r['parity_fp32_max_abs_logit']:8.1e}")
+        table.setdefault(r["backbone"], []).append(r)
+    for b, rs in table.items():
+        ops = rs[0]["formats"]["int8_qop"]["ops"]
+        print(f"  {b}: float ops left in int8 {ops['float_ops'] or 'none'}, "
+              f"int8/float conversions {ops['quantize_dequantize_pairs']}")
+    print("\nADR-15 rule 2 (drop at most 0.015) and rule 3 (at most 15 MB), per backbone:")
+    out = {"bakeoff_summary": path.name, "backbones": {}}
+    for b, rs in table.items():
+        row = {}
+        for fmt in ("int8_qdq", "int8_qop"):
+            drops = [r["formats"][fmt]["auroc_drop"] for r in rs]
+            sizes = [r["formats"][fmt]["size_mb"] for r in rs]
+            row[fmt] = {"drops": drops, "mean_drop": statistics.mean(drops), "max_drop": max(drops),
+                        "size_mb": max(sizes),
+                        "rule2_pass_all_seeds": all(d <= 0.015 for d in drops),
+                        "rule3_pass": max(sizes) <= 15.0}
+            print(f"  {b:20s} {fmt:9s} mean drop {row[fmt]['mean_drop']:+.3f}  worst {row[fmt]['max_drop']:+.3f}  "
+                  f"rule 2 {'pass' if row[fmt]['rule2_pass_all_seeds'] else 'FAIL'}  "
+                  f"size {row[fmt]['size_mb']:.2f} MB rule 3 {'pass' if row[fmt]['rule3_pass'] else 'FAIL'}")
+        out["backbones"][b] = row
+    import datetime
+
+    stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    dest = runs_dir / f"export_summary_{stamp}.json"  # git-ignored
+    dest.write_text(json.dumps(out, indent=2))
+    print(f"\nSummary saved to {dest.relative_to(REPO)}. The ONNX files stay in each run's onnx/ folder:")
+    print("    modal volume get --force triagelens-runs /bakeoff ml/runs/")

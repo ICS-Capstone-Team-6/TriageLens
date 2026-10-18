@@ -12,13 +12,13 @@ import tempfile
 import unittest
 from pathlib import Path
 
-HAS_TORCH = all(importlib.util.find_spec(m) for m in ("torch", "timm", "torchvision", "sklearn"))
+HAS_TORCH = all(importlib.util.find_spec(m) for m in ("torch", "timm", "torchvision", "sklearn", "matplotlib"))
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "train"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 
-@unittest.skipUnless(HAS_TORCH, "torch, timm, torchvision or scikit-learn not installed")
+@unittest.skipUnless(HAS_TORCH, "ml/requirements-train.txt not installed")
 class TestModel(unittest.TestCase):
     def test_both_backbones_give_one_logit_and_a_feature_map(self):
         import torch
@@ -65,7 +65,7 @@ class TestModel(unittest.TestCase):
         self.assertTrue(torch.equal(masked[0, :, 160, 160], x[0, :, 160, 160]))
 
 
-@unittest.skipUnless(HAS_TORCH, "torch, timm, torchvision or scikit-learn not installed")
+@unittest.skipUnless(HAS_TORCH, "ml/requirements-train.txt not installed")
 class TestTrainingRun(unittest.TestCase):
     def test_test_split_is_locked(self):
         from data import LockedSplitError, load_split
@@ -85,13 +85,28 @@ class TestTrainingRun(unittest.TestCase):
             cfg = Config(pretrained=False, epochs_head=1, epochs_max=2, patience=5,
                          batch_size=8, num_workers=0)
             run_dir, m = run(cfg, root / "data", root / "runs", git_commit="test", log=lambda *_: None)
-            for f in ("config.json", "history.csv", "metrics.json", "val_predictions.csv", "best.pt"):
+            for f in ("config.json", "history.csv", "metrics.json", "val_predictions.csv", "best.pt",
+                      "curves.png"):
                 self.assertTrue((run_dir / f).exists(), f)
             config = json.loads((run_dir / "config.json").read_text())
             for key in ("seed", "git_commit", "dataset_version_hash", "preprocess_spec"):
                 self.assertIn(key, config)  # Team Rules 7: every run logs these
             self.assertEqual(m["epochs_run"], 3)
             self.assertIn("val_auroc_masked", m["shortcut_check"])
+            # over- and underfitting evidence: clean train AUROC beside validation, per epoch
+            import pandas as pd
+            history = pd.read_csv(run_dir / "history.csv")
+            for col in ("train_loss_aug", "train_loss_clean", "train_auroc_clean", "val_loss", "val_auroc"):
+                self.assertIn(col, history.columns)
+            self.assertAlmostEqual(m["fit"]["gap"], m["fit"]["train_auroc_clean"] - m["fit"]["val_auroc"])
+
+            # the bake-off figure from several runs
+            from plot_curves import plot_bakeoff
+            run_dir2, _ = run(Config(pretrained=False, epochs_head=1, epochs_max=1, batch_size=8,
+                                     num_workers=0, seed=2), root / "data", root / "runs",
+                              log=lambda *_: None)
+            out = plot_bakeoff([run_dir, run_dir2], root / "bakeoff.png")
+            self.assertGreater(out.stat().st_size, 10_000)
 
     def test_baselines_rungs_0_and_1(self):
         import baselines

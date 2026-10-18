@@ -6,8 +6,9 @@ train and validation splits are read; the test split stays locked (ML-DATA-04).
 
 Each run writes to <runs>/<backbone>_seed<seed>_<time>/:
   config.json       recipe, seed, code commit, dataset hash, library versions
-  history.csv       per-epoch train loss, validation loss and AUROC
-  metrics.json      best validation AUROC with its 95% CI, and the shortcut check
+  history.csv       per-epoch loss and AUROC: train (augmented and clean) and validation
+  metrics.json      best validation AUROC with its 95% CI, the fit gap, the shortcut check
+  curves.png        learning curves for the report (ml/train/plot_curves.py)
   val_predictions.csv, best.pt
 
 Usage:
@@ -125,6 +126,9 @@ def run(cfg, data_dir, runs_dir, git_commit="unknown", git_dirty=None, log=print
                               shuffle=True, generator=gen, num_workers=cfg.num_workers,
                               drop_last=True, persistent_workers=cfg.num_workers > 0)
     val_loader = DataLoader(XrayDataset(val_arr), batch_size=64, num_workers=cfg.num_workers)
+    # The training images again, without augmentation: the fair comparison with validation
+    # for spotting over- and underfitting (train loss on augmented images is not).
+    train_eval_loader = DataLoader(XrayDataset(train_arr), batch_size=64, num_workers=cfg.num_workers)
 
     model = TBNet(cfg.backbone, pretrained=cfg.pretrained).to(device)
     scaler = torch.amp.GradScaler(enabled=device.type == "cuda")
@@ -146,11 +150,13 @@ def run(cfg, data_dir, runs_dir, git_commit="unknown", git_dirty=None, log=print
     def evaluate(epoch, phase, train_loss):
         nonlocal best_auc, best_epoch, stale
         probs, y, val_loss = predict(model, val_loader, device)
-        val_auc = auroc(y, probs)
-        history.append({"epoch": epoch, "phase": phase, "train_loss": train_loss,
+        tr_probs, tr_y, tr_loss = predict(model, train_eval_loader, device)
+        val_auc, tr_auc = auroc(y, probs), auroc(tr_y, tr_probs)
+        history.append({"epoch": epoch, "phase": phase, "train_loss_aug": train_loss,
+                        "train_loss_clean": tr_loss, "train_auroc_clean": tr_auc,
                         "val_loss": val_loss, "val_auroc": val_auc})
-        log(f"epoch {epoch:2d} {phase:4s} train_loss {train_loss:.4f} "
-            f"val_loss {val_loss:.4f} val_auroc {val_auc:.4f}")
+        log(f"epoch {epoch:2d} {phase:4s} train_loss {tr_loss:.4f} train_auroc {tr_auc:.4f} "
+            f"val_loss {val_loss:.4f} val_auroc {val_auc:.4f} gap {tr_auc - val_auc:+.4f}")
         if val_auc > best_auc:
             best_auc, best_epoch, stale = val_auc, epoch, 0
             torch.save(model.state_dict(), run_dir / "best.pt")
@@ -188,9 +194,18 @@ def run(cfg, data_dir, runs_dir, git_commit="unknown", git_dirty=None, log=print
     pd.DataFrame(history).to_csv(run_dir / "history.csv", index=False)
     pd.DataFrame({"file": val_arr["files"], "label": y.astype(int), "prob_tb": probs}).to_csv(
         run_dir / "val_predictions.csv", index=False)
+    best_row = next(h for h in history if h["epoch"] == best_epoch)
     metrics = {
         "backbone": cfg.backbone, "seed": cfg.seed, "best_epoch": best_epoch,
         "epochs_run": len(history), "val": summarize(y, probs, seed=cfg.seed),
+        # train minus validation AUROC at the best epoch: large = overfitting,
+        # both low = underfitting (see ml/train/README.md)
+        "fit": {
+            "train_auroc_clean": best_row["train_auroc_clean"],
+            "val_auroc": best_row["val_auroc"],
+            "gap": best_row["train_auroc_clean"] - best_row["val_auroc"],
+            "best_epoch_is_last": best_epoch == len(history),
+        },
         "shortcut_check": {
             "border_masked": cfg.border_mask,
             "val_auroc_masked": auroc(y, masked),
@@ -198,6 +213,11 @@ def run(cfg, data_dir, runs_dir, git_commit="unknown", git_dirty=None, log=print
         },
     }
     (run_dir / "metrics.json").write_text(json.dumps(metrics, indent=2))
+    try:
+        from plot_curves import plot_run
+        plot_run(run_dir)
+    except ImportError:
+        log("matplotlib not installed: curves.png skipped (run ml/train/plot_curves.py later)")
     log(json.dumps(metrics, indent=2))
     return run_dir, metrics
 

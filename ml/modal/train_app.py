@@ -66,6 +66,17 @@ def baselines_remote(stamp: str) -> dict:
     return report
 
 
+@app.function(timeout=10 * 60, volumes={RUNS_DIR: runs_volume})
+def plot_bakeoff_remote(run_dirs: list, stamp: str) -> str:
+    _train_code()
+    from plot_curves import plot_bakeoff
+
+    runs_volume.reload()
+    out = plot_bakeoff(run_dirs, f"{RUNS_DIR}/bakeoff/bakeoff_curves_{stamp}.png")
+    runs_volume.commit()
+    return str(out)
+
+
 @app.function(gpu=GPU, cpu=4, memory=16384, timeout=60 * 60,
               volumes={DATA_DIR: data_volume, RUNS_DIR: runs_volume})
 def train_remote(backbone: str, seed: int, git_commit: str, git_dirty: bool) -> dict:
@@ -113,17 +124,28 @@ def bakeoff():
     commit, dirty = _git_state()
     jobs = [(b, s, commit, dirty) for b in BACKBONES for s in SEEDS]
     results = list(train_remote.starmap(jobs))
-    print(f"\n{'backbone':20s} {'val AUROC per seed':28s} {'mean':>6s} {'sd':>6s} {'masked drop':>12s}")
+    print(f"\n{'backbone':20s} {'val AUROC per seed':28s} {'mean':>6s} {'sd':>6s} "
+          f"{'fit gap':>8s} {'masked drop':>12s}")
     summary = {}
     for b in BACKBONES:
         rs = [r for r in results if r["backbone"] == b]
         aucs = [r["val"]["auroc"] for r in rs]
         drops = [r["shortcut_check"]["drop"] for r in rs]
+        gaps = [r["fit"]["gap"] for r in rs]
         summary[b] = {"val_auroc": aucs, "mean": statistics.mean(aucs), "sd": statistics.stdev(aucs),
+                      "fit_gap_mean": statistics.mean(gaps),
+                      "best_epoch_is_last": [r["fit"]["best_epoch_is_last"] for r in rs],
                       "masked_drop_mean": statistics.mean(drops), "runs": [r["run_dir"] for r in rs]}
         print(f"{b:20s} {', '.join(f'{a:.3f}' for a in aucs):28s} "
-              f"{summary[b]['mean']:6.3f} {summary[b]['sd']:6.3f} {summary[b]['masked_drop_mean']:12.3f}")
+              f"{summary[b]['mean']:6.3f} {summary[b]['sd']:6.3f} {summary[b]['fit_gap_mean']:+8.3f} "
+              f"{summary[b]['masked_drop_mean']:12.3f}")
     out = REPO / "ml" / "runs" / "bakeoff_summary.json"  # git-ignored (ml/runs/)
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps({"git_commit": commit, "git_dirty": dirty, "summary": summary}, indent=2))
     print(f"\nSummary saved to {out.relative_to(REPO)}")
+    import datetime
+
+    stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    figure = plot_bakeoff_remote.remote([r["run_dir"] for r in results], stamp)
+    print(f"Bake-off curves: {figure}. Each run folder also holds curves.png. Download all with:")
+    print("    modal volume get triagelens-runs /bakeoff ml/runs/")

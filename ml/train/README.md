@@ -16,6 +16,7 @@ Trains the chest X-ray TB model for the M2 slice (story `E2-01`). One TB output 
 | `models.py` | `TBNet`: backbone, pooling, one linear layer, class activation map | Yes |
 | `train.py` | One run: head warm-up, full fine-tune, early stopping, shortcut check, run log | Yes |
 | `baselines.py` | Baseline ladder: image size only, 64 px pixels, frozen backbone | Yes |
+| `plot_curves.py` | Learning curves per run (`curves.png`) and the bake-off comparison | matplotlib |
 
 ## Run on Modal
 
@@ -32,7 +33,18 @@ modal run ml/modal/train_app.py::bakeoff      # 2 backbones x 3 seeds in paralle
 
 ## What each run records
 
-Every run folder in the `triagelens-runs` volume holds `config.json` (recipe, seed, code commit, dataset version hash, preprocessing version), `history.csv`, `metrics.json`, `val_predictions.csv` and `best.pt` (Team Rules 7). The test split is never read here. It is used once per frozen candidate (Team Rules 7).
+Every run folder in the `triagelens-runs` volume holds `config.json` (recipe, seed, code commit, dataset version hash, preprocessing version), `history.csv`, `metrics.json`, `curves.png`, `val_predictions.csv` and `best.pt` (Team Rules 7). Download them with `modal volume get triagelens-runs /bakeoff ml/runs/`. The test split is never read here. It is used once per frozen candidate (Team Rules 7).
+
+## Reading the curves: over- and underfitting
+
+Each epoch scores the training images twice: with augmentation (the loss the model trains on) and without it (`train_auroc_clean`, `train_loss_clean`). Only the clean numbers compare fairly with validation. `metrics.json` holds `fit.gap`, clean train AUROC minus validation AUROC at the best epoch.
+
+| Pattern in `curves.png` | Meaning | What to try |
+| --- | --- | --- |
+| Train AUROC near 1, validation well below, gap widening; validation loss turns up | Overfitting | Stronger augmentation, freeze early layers, lower backbone learning rate |
+| Both AUROC lines low and close; both losses high and flat | Underfitting | More epochs, higher learning rate, unfreeze more |
+| Best epoch is the last epoch (`fit.best_epoch_is_last`) | Still improving when stopped | Raise `epochs_max` |
+| Wide spread across the three seeds | Result depends on luck | Report the spread; do not pick the best seed |
 
 ## Tests
 

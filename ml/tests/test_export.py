@@ -81,6 +81,37 @@ class TestExport(unittest.TestCase):
                 for key in ("auroc_drop", "auroc_drop_ci95", "cam_corr_with_fp32", "passes"):
                     self.assertIn(key, entry)
 
+    def test_sweep_compares_settings_without_using_validation_to_choose(self):
+        import prepare_data
+        from test_train_core import make_raw
+        from train import Config, run
+
+        import export_onnx
+
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            manifest = make_raw(root / "raw", n=40)
+            prepare_data.prepare(root / "raw", manifest, root / "data", workers=1)
+            run_dir, _ = run(Config(pretrained=False, epochs_head=1, epochs_max=1, batch_size=8, num_workers=0),
+                             root / "data", root / "runs", log=lambda *_: None)
+            out = export_onnx.sweep_run(run_dir, root / "data", configs=["minmax", "minmax_reduce_range"],
+                                        log=lambda *_: None)
+            self.assertEqual(set(out["configs"]), {"minmax", "minmax_reduce_range"})
+            for row in out["configs"].values():
+                self.assertIn("logit_rmse", row["holdout"])  # the label-free choosing number
+                self.assertIn("val_drop", row)
+            self.assertFalse(list((run_dir / "onnx" / "sweep").glob("*.onnx")))  # temp models removed
+
+    def test_calibration_and_holdout_do_not_overlap(self):
+        import numpy as np
+
+        import export_onnx
+
+        x = np.arange(444)[:, None, None] * np.ones((1, 2, 2), np.int64)
+        calib, hold = export_onnx.calibration_split(x)
+        self.assertEqual((len(calib), len(hold)), (300, 144))
+        self.assertFalse(set(calib[:, 0, 0]) & set(hold[:, 0, 0]))
+
     def test_refuses_a_run_from_another_preprocessing_version(self):
         import export_onnx
 

@@ -7,6 +7,7 @@ Run from the repo root, in this order:
     modal run ml/modal/train_app.py::bakeoff      # 2 backbones x 3 seeds (GPU, in parallel)
     modal run ml/modal/train_app.py::train_one --backbone mobilenetv3_large --seed 1
     modal run ml/modal/train_app.py::export       # ONNX and static int8 for the latest bake-off (CPU)
+    modal run ml/modal/train_app.py::quant_sweep  # compare int8 settings when the drop is too big
 
 The training code is plain Python in ml/train/ (ADR-13). This file only moves it to a GPU.
 Raw images are read from the triagelens-data volume, runs are written to triagelens-runs.
@@ -107,6 +108,20 @@ def export_remote(run_dir: str) -> dict:
     report = export_onnx.export_run(run_dir, PROCESSED)
     runs_volume.commit()
     return report
+
+
+@app.function(cpu=4, memory=16384, timeout=60 * 60,
+              volumes={DATA_DIR: data_volume, RUNS_DIR: runs_volume})
+def sweep_remote(run_dir: str) -> dict:
+    """Story E5-02: try each int8 setting on one run (ADR-17 follow-up)."""
+    _train_code()
+    sys.path.insert(0, "/root/ml/export")
+    import export_onnx
+
+    runs_volume.reload()
+    out = export_onnx.sweep_run(run_dir, PROCESSED)
+    runs_volume.commit()
+    return out
 
 
 def _git_state():
@@ -236,3 +251,45 @@ def export(summary: str = ""):
     dest.write_text(json.dumps(out, indent=2))
     print(f"\nSummary saved to {dest.relative_to(REPO)}. The ONNX files stay in each run's onnx/ folder:")
     print("    modal volume get --force triagelens-runs /bakeoff ml/runs/")
+
+
+@app.local_entrypoint()
+def quant_sweep(summary: str = ""):
+    """Compare int8 settings on every run of a bake-off.
+
+    Choosing rule, fixed before the results (export_onnx.sweep_run): per backbone, the
+    setting with the lowest mean logit RMSE on held-out training images. The validation
+    drop is printed beside it and is the ADR-15 rule 2 number; it does not choose.
+    """
+    runs_dir = REPO / "ml" / "runs"
+    path = Path(summary) if summary else sorted(runs_dir.glob("bakeoff_summary_*.json"))[-1]
+    bake = json.loads(path.read_text())
+    run_dirs = [r for b in bake["summary"].values() for r in b["runs"]]
+    print(f"Sweeping int8 settings for the runs in {path.name}")
+    results = list(sweep_remote.map(run_dirs))
+
+    by_backbone = {}
+    for r in results:
+        by_backbone.setdefault(r["backbone"], []).append(r)
+    out = {"bakeoff_summary": path.name, "backbones": {}}
+    for b, rs in by_backbone.items():
+        print(f"\n{b} (fp32 val AUROC {statistics.mean(r['val_auroc_fp32'] for r in rs):.3f})")
+        print(f"  {'setting':26s} {'holdout RMSE':>12s} {'max prob diff':>14s} {'val drop mean':>14s} {'worst':>7s}")
+        rows = {}
+        for name in rs[0]["configs"]:
+            rmse = statistics.mean(r["configs"][name]["holdout"]["logit_rmse"] for r in rs)
+            pdiff = max(r["configs"][name]["holdout"]["max_abs_prob_diff"] for r in rs)
+            drops = [r["configs"][name]["val_drop"] for r in rs]
+            rows[name] = {"holdout_logit_rmse": rmse, "holdout_max_prob_diff": pdiff, "val_drops": drops,
+                          "val_drop_mean": statistics.mean(drops), "val_drop_worst": max(drops)}
+            print(f"  {name:26s} {rmse:12.3f} {pdiff:14.3f} {statistics.mean(drops):+14.3f} {max(drops):+7.3f}")
+        best = min(rows, key=lambda n: rows[n]["holdout_logit_rmse"])
+        rule2 = rows[best]["val_drop_worst"] <= 0.015
+        print(f"  chosen (lowest holdout RMSE): {best}; rule 2 on every seed: {'pass' if rule2 else 'FAIL'}")
+        out["backbones"][b] = {"settings": rows, "chosen": best, "rule2_pass_all_seeds": rule2}
+    import datetime
+
+    stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    dest = runs_dir / f"quant_sweep_{stamp}.json"  # git-ignored
+    dest.write_text(json.dumps(out, indent=2))
+    print(f"\nSummary saved to {dest.relative_to(REPO)}")

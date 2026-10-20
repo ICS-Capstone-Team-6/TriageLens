@@ -74,12 +74,33 @@ def export_fp32(model, path, size=320):
 
 def calibration_images(train_u8, n=CALIB_IMAGES, seed=591):
     """A fixed random subset of training images (uint8, no augmentation), same every run."""
-    idx = np.random.default_rng(seed).permutation(len(train_u8))[:n]
-    return train_u8[np.sort(idx)]
+    return calibration_split(train_u8, n, seed)[0]
 
 
-def quantize(fp32_path, out_path, calib_u8, fmt, spec=None):
-    """Static int8: per-channel int8 weights, uint8 activations, MinMax ranges (ADR-5)."""
+def calibration_split(train_u8, n=CALIB_IMAGES, seed=591):
+    """(calibration images, the other training images). The held-out training images
+    measure how closely int8 follows fp32 without labels and without validation."""
+    if len(train_u8) <= n:  # small sets (tests): keep a held-out third
+        n = len(train_u8) * 2 // 3
+    perm = np.random.default_rng(seed).permutation(len(train_u8))
+    return train_u8[np.sort(perm[:n])], train_u8[np.sort(perm[n:])]
+
+
+# Quantization settings compared by sweep_run (ADR-5, ADR-17). "minmax" is the first export.
+QUANT_CONFIGS = {
+    "minmax": {},
+    "minmax_reduce_range": {"reduce_range": True},  # 7-bit weights: avoids x86 int8 saturation
+    "percentile": {"method": "Percentile", "extra": {"CalibPercentile": 99.999}},
+    "percentile_reduce_range": {"method": "Percentile", "extra": {"CalibPercentile": 99.999},
+                                "reduce_range": True},
+    "entropy": {"method": "Entropy"},
+    "per_tensor": {"per_channel": False},
+}
+
+
+def quantize(fp32_path, out_path, calib_u8, fmt, spec=None, config=None):
+    """Static int8: per-channel int8 weights, uint8 activations, MinMax ranges (ADR-5).
+    config: one of QUANT_CONFIGS to change the range method, weight range or granularity."""
     from onnxruntime.quantization import (CalibrationDataReader, CalibrationMethod, QuantFormat,
                                           QuantType, quantize_static)
     from onnxruntime.quantization.shape_inference import quant_pre_process
@@ -100,10 +121,13 @@ def quantize(fp32_path, out_path, calib_u8, fmt, spec=None):
     # Folds BatchNorm and fills in shapes first, as ONNX Runtime recommends before quantizing.
     prepped = Path(out_path).with_suffix(".prep.onnx")
     quant_pre_process(str(fp32_path), str(prepped))
+    config = config or {}
     quantize_static(str(prepped), str(out_path), Reader(),
                     quant_format={"qdq": QuantFormat.QDQ, "qop": QuantFormat.QOperator}[fmt],
-                    per_channel=True, activation_type=QuantType.QUInt8, weight_type=QuantType.QInt8,
-                    calibrate_method=CalibrationMethod.MinMax)
+                    per_channel=config.get("per_channel", True), reduce_range=config.get("reduce_range", False),
+                    activation_type=QuantType.QUInt8, weight_type=QuantType.QInt8,
+                    calibrate_method=getattr(CalibrationMethod, config.get("method", "MinMax")),
+                    extra_options=config.get("extra", {}))
     prepped.unlink()
     return out_path
 
@@ -233,6 +257,54 @@ def export_run(run_dir, data_dir, log=print):
     (out / "export_report.json").write_text(json.dumps(report, indent=2))
     log(json.dumps(report, indent=2))
     return report
+
+
+def fidelity(ref_logit, q_logit):
+    """How closely int8 follows fp32, no labels needed."""
+    p_ref, p_q = 1 / (1 + np.exp(-ref_logit)), 1 / (1 + np.exp(-q_logit))
+    return {"logit_rmse": float(np.sqrt(np.mean((ref_logit - q_logit) ** 2))),
+            "max_abs_prob_diff": float(np.max(np.abs(p_ref - p_q))),
+            "rank_corr": float(np.corrcoef(np.argsort(np.argsort(ref_logit)),
+                                           np.argsort(np.argsort(q_logit)))[0, 1])}
+
+
+def sweep_run(run_dir, data_dir, configs=None, log=print):
+    """Compare quantization settings for one run (QDQ format only: both formats gave the
+    same accuracy in the first export).
+
+    Choosing rule, fixed before the results: per backbone, the setting with the lowest mean
+    logit_rmse on the held-out TRAINING images (label-free, not validation). The validation
+    drop is reported beside it, as the ADR-15 rule 2 number, but does not choose.
+    """
+    run_dir, data_dir = Path(run_dir), Path(data_dir)
+    configs = configs or list(QUANT_CONFIGS)
+    cfg = json.loads((run_dir / "config.json").read_text())
+    spec = load_spec()
+    model = TBNet(cfg["backbone"], pretrained=False)
+    model.load_state_dict(torch.load(run_dir / "best.pt", map_location="cpu", weights_only=True))
+    model.eval()
+    work = run_dir / "onnx" / "sweep"
+    work.mkdir(parents=True, exist_ok=True)
+    val, train = load_split(data_dir, "val"), load_split(data_dir, "train")
+    calib, holdout = calibration_split(train["x"])
+    y = val["y"].astype(int)
+    fp32 = export_fp32(model, work / "fp32.onnx", spec["input_size"])
+    ref_hold, _ = run_onnx(fp32, holdout, spec)
+    ref_val, _ = run_onnx(fp32, val["x"], spec)
+    rows = {}
+    for name in configs:
+        log(f"{run_dir.name}: {name}")
+        path = quantize(fp32, work / f"{name}.onnx", calib, "qdq", spec, QUANT_CONFIGS[name])
+        q_hold, _ = run_onnx(path, holdout, spec)
+        q_val, _ = run_onnx(path, val["x"], spec)
+        rows[name] = {"holdout": fidelity(ref_hold, q_hold),
+                      "val_auroc": auroc(y, q_val), "val_drop": auroc(y, ref_val) - auroc(y, q_val)}
+        path.unlink()
+    fp32.unlink()
+    out = {"run": run_dir.name, "backbone": cfg["backbone"], "seed": cfg["seed"],
+           "holdout_images": int(len(holdout)), "val_auroc_fp32": auroc(y, ref_val), "configs": rows}
+    (run_dir / "onnx" / "quant_sweep.json").write_text(json.dumps(out, indent=2))
+    return out
 
 
 def main(argv=None):

@@ -38,6 +38,16 @@ It prints one row per run and a pass or fail per backbone for rule 2 (drop at mo
 | CAM agreement | The heatmap comes from `features`, so int8 must keep it, not only the score |
 | Count of float operations | MobileNetV3's HardSigmoid has no int8 kernel in ONNX Runtime, so each one converts int8 data to float and back. That costs time on the phone even when accuracy holds. |
 
+## When the int8 drop is too big: the settings sweep
+
+The first export (20 Oct 2026) failed rule 2 on both backbones: mean drops of 0.075 (MobileNetV3) and 0.053 (EfficientNet), far more than these networks usually lose. `quant_sweep` tries the usual remedies on every run, in QDQ format: MinMax (the first export), 7-bit weights (`reduce_range`, avoids an int8 saturation problem on x86 CPUs), Percentile and Entropy ranges (ignore extreme activations), and per-tensor weights.
+
+```sh
+modal run ml/modal/train_app.py::quant_sweep
+```
+
+**Choosing rule, fixed before the results:** per backbone, the setting with the lowest mean logit RMSE between int8 and fp32 on the 144 training images not used for calibration. This needs no labels and does not touch validation. The validation drop is printed beside it as the rule 2 number, but does not choose, so the drop is not tuned on validation.
+
 CPU latency in the report is ONNX Runtime on the build machine, one thread. It only ranks formats and backbones; the phone numbers come from `E5-01`.
 
 ## Tests

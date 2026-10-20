@@ -1,5 +1,7 @@
 # Data card: Shenzhen TB chest X-ray set, version 1
 
+> Validation status: these outputs were generated with pipeline 0.1.0. Rerun pipeline 0.1.1 on the licensed raw files and review its quarantine results before using these outputs for training. See [pipeline validation notes](../../pipeline/README.md#pipeline-011-validation).
+
 Story `E1-03`. Built by `ml/pipeline/build_dataset.py` (pipeline 0.1.0, seed 591).
 Dataset version hash: `702a4658c7447e13`. Log this hash with every training run (Team Rules 7).
 

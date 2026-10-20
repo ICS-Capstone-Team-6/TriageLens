@@ -21,8 +21,8 @@ jobs:
     name: Docs link check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
       - run: python scripts/check_links.py
@@ -31,8 +31,8 @@ jobs:
     name: Markdown lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: DavidAnson/markdownlint-cli2-action@v16
+      - uses: actions/checkout@v7
+      - uses: DavidAnson/markdownlint-cli2-action@v24
         with:
           globs: "**/*.md"
 
@@ -40,8 +40,8 @@ jobs:
     name: Wording lint (TRD 7.3)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
       - name: Unit tests for the lint and helper scripts
@@ -55,7 +55,7 @@ jobs:
     name: Secret scan
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Install gitleaks 8.18.4
@@ -69,8 +69,8 @@ jobs:
     name: ML data pipeline tests (E1-03)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: "3.11"
       - run: pip install -r ml/requirements.txt
@@ -83,7 +83,7 @@ jobs:
     if: ${{ false }} # TODO(E0-02): enable when apps/pwa has package.json and lint/typecheck scripts
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: echo "TODO(E0-02) run the PWA lint and type-check commands"
 
   unit-tests:
@@ -91,7 +91,7 @@ jobs:
     if: ${{ false }} # TODO(E0-02): enable with the first unit tests (Vitest for apps/pwa and packages, pytest for ml)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: echo "TODO(E0-02) run unit tests; triage rules, sync and quality gate need at least 70% coverage (NFR-MAINT-01)"
 
   build:
@@ -99,7 +99,7 @@ jobs:
     if: ${{ false }} # TODO(E8-02): enable when the PWA shell builds
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: echo "TODO(E8-02) build the PWA"
 
   bundle-budget:
@@ -107,7 +107,7 @@ jobs:
     if: ${{ false }} # TODO(E13-03): fail if the app shell is over 300 KB gzip (NFR-PERF-05)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: echo "TODO(E13-03) measure gzip size of the app shell and fail over 300 KB"
 
   onnx-parity:
@@ -115,7 +115,7 @@ jobs:
     if: ${{ false }} # TODO(E5-03): fail if browser output differs from PyTorch beyond tolerance
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: echo "TODO(E5-03) run the parity test on the fixed image set"
 
   e2e-offline:
@@ -123,7 +123,7 @@ jobs:
     if: ${{ false }} # TODO(E13-02): offline capture-to-result flow with network disabled
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: echo "TODO(E13-02) run Playwright with the network disabled"
 
   rls-tests:
@@ -131,7 +131,7 @@ jobs:
     if: ${{ false }} # TODO(E9-01): facility A cannot read facility B; audit rows written
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: echo "TODO(E9-01) run RLS tests against a local Supabase"
 
   dependency-scan:
@@ -139,5 +139,5 @@ jobs:
     if: ${{ false }} # TODO(E13-03): fail on high-severity findings once lockfiles exist (NFR-SEC-04)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - run: echo "TODO(E13-03) run npm audit and pip-audit against the lockfiles"

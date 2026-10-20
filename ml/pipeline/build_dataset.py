@@ -28,7 +28,7 @@ import numpy as np
 import pandas as pd
 from PIL import Image
 
-PIPELINE_VERSION = "0.1.0"
+PIPELINE_VERSION = "0.1.1"
 SEED = 591
 SPLIT = {"train": 0.70, "val": 0.15, "test": 0.15}
 MIN_SIDE = 512  # quality floor, not the model size: the model input is 320 px (TRD 10.6),
@@ -92,28 +92,35 @@ def parse_reading(text):
 
 
 def reading_says_normal(finding):
+    # Accept only a complete, unambiguous normal finding, including the source typo.
     f = (finding or "").lower().strip(" .")
-    return f.startswith("normal")
+    return bool(re.fullmatch(r"normale?(?:\s+(?:chest|lungs?|cxr|x-ray))?", f))
 
 
 def reading_mentions_tb(finding):
-    f = (finding or "").lower()
-    return bool(re.search(r"tb|tubercul", f))
+    return bool(re.search(r"\b(?:p?tb|tuberculosis|tuberculous|tubercular)\b", (finding or "").lower()))
 
 
 def label_conflicts(label, finding):
-    """True when the file label and the written reading disagree.
+    """Quarantine contradictions and ambiguous readings for human review.
 
-    The source label 1 means "abnormal lung", not TB. For the TB task a label 1
-    must have a reading that names TB, or the record goes to review.
+    Source label 1 means abnormal lung, not confirmed TB. This conservative
+    vocabulary is a validation gate, not a clinical text classifier. Negation,
+    uncertainty or mixed normal/abnormal findings require a human decision,
+    even when a qualifier might refer to a different finding in the sentence.
     """
     if label == 0:
         return not reading_says_normal(finding)
-    return reading_says_normal(finding) or not reading_mentions_tb(finding)
+    f = (finding or "").lower()
+    ambiguous = re.search(
+        r"\b(?:no|not|without|negative|normal|normale|possible|possibly|probable|"
+        r"probably|suspect\w*|uncertain|unlikely|cannot|can't|exclude\w*|"
+        r"rule[ds]?\s+out|question\w*)\b|\?", f)
+    return label != 1 or bool(ambiguous) or not reading_mentions_tb(finding)
 
 
 def near_duplicate_groups(ids, hashes, max_bits=NEAR_DUP_BITS):
-    """Union-find over near-identical images, so a group never straddles splits."""
+    """Union-find over shared patient IDs and near-identical images."""
     parent = list(range(len(ids)))
 
     def find(i):
@@ -121,6 +128,15 @@ def near_duplicate_groups(ids, hashes, max_bits=NEAR_DUP_BITS):
             parent[i] = parent[parent[i]]
             i = parent[i]
         return i
+
+    # Union patient identities first; image similarity can then connect whole
+    # patient components transitively, never split one patient's records apart.
+    first_patient = {}
+    for i, patient in enumerate(ids):
+        if patient in first_patient:
+            parent[find(i)] = find(first_patient[patient])
+        else:
+            first_patient[patient] = i
 
     pairs = []
     for i in range(len(ids)):
@@ -161,6 +177,8 @@ def batch_checks(df):
     def add(name, ok, detail):
         checks.append({"check": name, "passed": bool(ok), "detail": detail})
 
+    add("no_patient_across_splits", df.groupby("patient_id")["split"].nunique().max() == 1,
+        "each patient identity sits in one split, independently of image grouping")
     add("no_patient_group_across_splits", df.groupby("group_id")["split"].nunique().max() == 1,
         "each patient or near-duplicate group sits in one split")
     add("no_identical_image_across_splits", df.groupby("sha256")["split"].nunique().max() == 1,
@@ -191,8 +209,8 @@ def run(raw, out, private):
     if not files:
         raise HardFail("no images found")
     # Ingest cache: decoding about 660 3K images takes minutes, so per-file results are
-    # cached by (name, size, mtime). A changed file is re-read; the cache never feeds a decision
-    # about a file it does not match.
+    # cached by filename, content SHA-256 and hash size. Always hash current bytes;
+    # filesystem size and timestamps cannot establish that cached decoding is valid.
     private.mkdir(parents=True, exist_ok=True)
     cache_path = private / "ingest_cache.json"
     try:
@@ -209,7 +227,8 @@ def run(raw, out, private):
             continue
         rec["patient_id"], rec["label"] = parsed
         st = p.stat()
-        key = f"{p.name}:{st.st_size}:{st.st_mtime_ns}:h{HASH_SIZE}"
+        content_sha = sha256_file(p)
+        key = f"{p.name}:{content_sha}:h{HASH_SIZE}"
         hit = cache.get(key)
         if hit is None:
             try:
@@ -218,7 +237,7 @@ def run(raw, out, private):
                 with Image.open(p) as im:
                     im.load()
                     hit = {"width": im.width, "height": im.height, "mode": im.mode,
-                           "dhash": dhash(im), "sha256": sha256_file(p), "bytes": st.st_size}
+                           "dhash": dhash(im), "sha256": content_sha, "bytes": st.st_size}
             except Exception as e:  # any decode failure quarantines the file
                 hit = {"error": type(e).__name__}
             cache[key] = hit

@@ -5,6 +5,7 @@ Run from the repo root: python3 -m unittest discover -s ml/tests -v
 """
 
 import sys
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -74,6 +75,33 @@ class TestHelpers(unittest.TestCase):
         self.assertNotEqual(groups[0], groups[2])
         self.assertEqual(len(pairs), 1)
 
+    def test_patient_identity_links_near_duplicate_components(self):
+        # a's dissimilar images each match a different patient's image.
+        groups, _ = bd.near_duplicate_groups(
+            ["a", "a", "b", "c"], [0, (1 << 256) - 1, 1, (1 << 256) - 2])
+        self.assertEqual(len(set(groups)), 1)
+
+    def test_batch_checks_detect_patient_leakage_independently(self):
+        df = pd.DataFrame({"patient_id": ["a", "a", "b"],
+                           "group_id": ["x", "y", "z"],
+                           "sha256": ["1", "2", "3"],
+                           "split": ["train", "test", "val"], "label": [0, 1, 0]})
+        checks = {c["check"]: c["passed"] for c in bd.batch_checks(df)}
+        self.assertFalse(checks["no_patient_across_splits"])
+
+    def test_negated_uncertain_and_mixed_readings_go_to_review(self):
+        for finding in ["No evidence of tuberculosis", "TB ruled out", "without PTB", "tuberculin test",
+                        "negative for TB", "not tuberculosis", "rule out TB",
+                        "possible PTB", "cannot exclude tuberculosis", "suspected TB",
+                        "normal lungs; no TB", "Normal left lung; right upper lobe PTB"]:
+            with self.subTest(finding=finding):
+                self.assertTrue(bd.label_conflicts(1, finding))
+        for finding in ["Normal left lung; right upper lobe PTB", "normally aerated left lung",
+                        "normal; right pneumonia", "normal except scarring"]:
+            with self.subTest(finding=finding):
+                self.assertTrue(bd.label_conflicts(0, finding))
+        self.assertTrue(bd.label_conflicts(1, "softball injury"))
+
     def test_dhash_survives_resize(self):
         with tempfile.TemporaryDirectory() as d:
             make_image(Path(d) / "a.png", seed=1)
@@ -132,6 +160,30 @@ class TestPipeline(unittest.TestCase):
         h1 = self.run_pipeline()["dataset_version_hash"]
         h2 = self.run_pipeline()["dataset_version_hash"]
         self.assertEqual(h1, h2)
+
+    def test_same_patient_stays_in_one_split_end_to_end(self):
+        raw = self.root / "raw"
+        make_dataset(raw)
+        make_image(raw / "CXR_png" / "CHNCXR_0001_0.png", seed=1001)
+        (raw / "ClinicalReadings" / "CHNCXR_0001_0.txt").write_text("male 40yrs\nnormal\n")
+        self.run_pipeline()
+        m = pd.read_csv(self.root / "out" / "manifest.csv", dtype={"patient_id": str})
+        self.assertEqual(len(m[m["patient_id"] == "0001"]), 2)
+        self.assertEqual(m.groupby("patient_id")["split"].nunique().max(), 1)
+
+    def test_cache_rechecks_corruption_with_unchanged_size_and_mtime(self):
+        raw = self.root / "raw"
+        make_dataset(raw)
+        before = self.run_pipeline()["dataset_version_hash"]
+        p = raw / "CXR_png" / "CHNCXR_0001_1.png"
+        st = p.stat()
+        data = p.read_bytes()
+        p.write_bytes(b"badbytes" + data[8:])
+        os.utime(p, ns=(st.st_atime_ns, st.st_mtime_ns))
+        after = self.run_pipeline()["dataset_version_hash"]
+        self.assertNotEqual(before, after)
+        q = pd.read_csv(self.root / "out" / "quarantine.csv")
+        self.assertIn("CHNCXR_0001_1.png", set(q.loc[q["check"] == "decodable", "file"]))
 
     def test_missing_readings_hard_fail(self):
         make_dataset(self.root / "raw", readings=False)

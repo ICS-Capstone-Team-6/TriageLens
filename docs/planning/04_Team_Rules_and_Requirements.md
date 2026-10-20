@@ -228,7 +228,7 @@ By signing, each member agrees to follow these rules and to raise concerns early
 | Kweku | Team lead and product owner | | |
 | Micheal | Project manager | | |
 | Chelsea | ML lead | | |
-| Nana Yaw | DevOps and QA lead | | |
+| Nana Yaw | DevOps and QA lead | Nana Yaw Koranteng | 20 Oct 2026 |
 
 # 15. Change Log
 

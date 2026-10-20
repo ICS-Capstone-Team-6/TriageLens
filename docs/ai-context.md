@@ -63,6 +63,7 @@ p95 inference per model at most 2.5 s (floor 4 s, TRD 3.4); capture to result p9
 - ADR-15: interim bake-off (MobileNetV3-Large vs EfficientNet-Lite0) on validation AUROC, then int8 drop, then size, until an external set exists.
 - ADR-16: chest X-rays are stretched to 320 by 320, not padded (`cxr-pre-2`); TRD 9.3 "resize with padding" no longer applies.
 - ADR-17: int8 calibration images come from the train split; the bake-off int8 drop is measured on validation.
+- ADR-18: M2 backbone EfficientNet-Lite0, frozen run `efficientnet_lite0_seed2_20261018T153928Z` (median seed), shipped as fp32 ONNX (12.8 MB) until int8 passes the drop rule in ONNX Runtime Web.
 
 ## Model interfaces (TRD 10.6)
 

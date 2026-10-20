@@ -78,3 +78,11 @@ python3 ml/pipeline/download_montgomery.py --check-only
 ```
 
 The CSV is kept as a cross-check against the readings, not as a source of labels.
+
+Then build the manifest (about a minute):
+
+```sh
+python3 ml/pipeline/build_external.py
+```
+
+It writes `ml/manifests/montgomery_v1/` (committed: `manifest.csv`, `quarantine.csv`, `near_duplicates.csv`, `run_report.json`, `DATA_CARD.md`) and the private metadata to `ml/data/interim/montgomery_v1/`. It reuses the Shenzhen checks, with three differences explained in its docstring and the data card: no split (every record is `external`), a label check that accepts TB findings without the word TB, and patient groups from readings that name another image. It also quarantines any image that matches Shenzhen.

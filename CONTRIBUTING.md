@@ -23,6 +23,30 @@ This summarises the [Team Rules](docs/planning/04_Team_Rules_and_Requirements.md
 - CI must be green. `main` is protected: no direct pushes.
 - Changes to result screens or triage rules: run the `safety-reviewer` agent. Model changes: run `ml-auditor`.
 
+## Required CI checks
+
+Every PR to `main` must pass these GitHub Actions checks:
+
+| Check | What it runs |
+|-------|--------------|
+| Docs link check | `python scripts/check_links.py` |
+| Markdown lint | markdownlint-cli2 on Markdown files |
+| Wording lint (TRD 7.3) | Helper-script unit tests, SUS scoring tests and `python scripts/check_wording.py` |
+| Secret scan | Gitleaks over the full Git history |
+
+These checks are required for admins too. Update your branch with `main` before merging; a failing or missing required check blocks the merge. One approval from a different person and resolved review conversations are also required. New commits dismiss earlier approvals.
+
+Run the Python checks locally before opening a PR:
+
+```bash
+python3 scripts/check_links.py
+python3 -m unittest discover -s scripts/tests -v
+python3 .claude/skills/usability-study-kit/test_sus.py -v
+python3 scripts/check_wording.py
+```
+
+Application lint, type-check, unit-test and build jobs are disabled placeholders until the application and its commands exist. Enable them in the PR that adds that code, and add the active jobs to the required checks. A green badge currently covers the four checks above.
+
 ## Definition of Done
 
 A story is done only when it meets [Team Rules 5.2](docs/process/definition-of-done.md): reviewed and merged, tests green, acceptance criteria shown in the preview build, model card and docs updated, no secrets, time recorded.

@@ -21,14 +21,16 @@ import hashlib
 import json
 import platform
 import re
+import subprocess
 import sys
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import PIL
 from PIL import Image
 
-PIPELINE_VERSION = "0.2.0"
+PIPELINE_VERSION = "0.2.1"
 SEED = 591
 SPLIT = {"train": 0.70, "val": 0.15, "test": 0.15}
 MIN_SIDE = 512  # quality floor, not the model size: the model input is 320 px (TRD 10.6),
@@ -101,22 +103,67 @@ def reading_mentions_tb(finding):
     return bool(re.search(r"\b(?:p?tb|tuberculosis|tuberculous|tubercular)\b", (finding or "").lower()))
 
 
-def label_conflicts(label, finding):
-    """Quarantine contradictions and ambiguous readings for human review.
+AMBIGUOUS_RE = re.compile(
+    r"\b(?:no|not|without|negative|normal|normale|possible|possibly|probable|"
+    r"probably|suspect\w*|uncertain|unlikely|cannot|can't|exclude\w*|"
+    r"rule[ds]?\s+out|question\w*)\b|\?")
+
+
+def label_check(label, finding):
+    """Why the file label is not confirmed by the reading, or None when it is.
 
     Source label 1 means abnormal lung, not confirmed TB. This conservative
     vocabulary is a validation gate, not a clinical text classifier. Negation,
     uncertainty or mixed normal/abnormal findings require a human decision,
     even when a qualifier might refer to a different finding in the sentence.
+    The reason names the rule and the matched term, so a reviewer can see which
+    word sent the record to review (many quarantined readings share one template).
     """
     if label == 0:
-        return not reading_says_normal(finding)
-    f = (finding or "").lower()
-    ambiguous = re.search(
-        r"\b(?:no|not|without|negative|normal|normale|possible|possibly|probable|"
-        r"probably|suspect\w*|uncertain|unlikely|cannot|can't|exclude\w*|"
-        r"rule[ds]?\s+out|question\w*)\b|\?", f)
-    return label != 1 or bool(ambiguous) or not reading_mentions_tb(finding)
+        return None if reading_says_normal(finding) else "label 0: reading is not plainly normal"
+    if label != 1:
+        return f"unknown label {label}"
+    m = AMBIGUOUS_RE.search((finding or "").lower())
+    if m:
+        return f"label 1: reading contains '{m.group(0)}'"
+    if not reading_mentions_tb(finding):
+        return "label 1: reading does not name TB"
+    return None
+
+
+def label_conflicts(label, finding):
+    """True when the reading does not confirm the file label (see label_check)."""
+    return label_check(label, finding) is not None
+
+
+def duplicate_label_conflicts(df, max_bits=NEAR_DUP_BITS):
+    """Index labels of images whose identical or near-identical copy has the other label.
+
+    One image cannot be both normal and TB, so neither copy's label can be trusted and
+    both go to review. Checked before duplicates are merged, so keeping the first copy
+    or taking a group's maximum label can never hide the conflict. Images of the same
+    patient that are not near-identical may differ (a later X-ray) and are not flagged.
+    """
+    rows = list(df[["label", "dhash"]].itertuples())
+    bad = set()
+    for i in range(len(rows)):
+        for j in range(i + 1, len(rows)):
+            if rows[i].label != rows[j].label and hamming(rows[i].dhash, rows[j].dhash) <= max_bits:
+                bad.update((rows[i].Index, rows[j].Index))
+    return bad
+
+
+def code_commit():
+    """Git commit of the code that built the outputs, '+dirty' if the pipeline folder has edits."""
+    here = Path(__file__).resolve().parent
+    try:
+        sha = subprocess.run(["git", "rev-parse", "HEAD"], cwd=here, capture_output=True,
+                             text=True, check=True).stdout.strip()
+        dirty = subprocess.run(["git", "status", "--porcelain", "--", "."], cwd=here,
+                               capture_output=True, text=True, check=True).stdout.strip()
+    except (OSError, subprocess.CalledProcessError):
+        return "unknown"
+    return sha + ("+dirty" if dirty else "")
 
 
 def near_duplicate_groups(ids, hashes, max_bits=NEAR_DUP_BITS):
@@ -235,7 +282,8 @@ def run(raw, out, private, prior_manifest=None):
     if not files:
         raise HardFail("no images found")
     # Ingest cache: decoding about 660 3K images takes minutes, so per-file results are
-    # cached by filename, content SHA-256 and hash size. Always hash current bytes;
+    # cached by filename, content SHA-256, hash size and Pillow version (a new decoder can
+    # decode or resize differently, so it must not reuse old results). Always hash current bytes;
     # filesystem size and timestamps cannot establish that cached decoding is valid.
     private.mkdir(parents=True, exist_ok=True)
     cache_path = private / "ingest_cache.json"
@@ -252,9 +300,8 @@ def run(raw, out, private, prior_manifest=None):
             q(rec, "ingest", "filename_schema", "name does not match CHNCXR_####_[01].png")
             continue
         rec["patient_id"], rec["label"] = parsed
-        st = p.stat()
         content_sha = sha256_file(p)
-        key = f"{p.name}:{content_sha}:h{HASH_SIZE}"
+        key = f"{p.name}:{content_sha}:h{HASH_SIZE}:pil{PIL.__version__}"
         hit = cache.get(key)
         if hit is None:
             try:
@@ -263,7 +310,7 @@ def run(raw, out, private, prior_manifest=None):
                 with Image.open(p) as im:
                     im.load()
                     hit = {"width": im.width, "height": im.height, "mode": im.mode,
-                           "dhash": dhash(im), "sha256": content_sha, "bytes": st.st_size}
+                           "dhash": dhash(im), "sha256": content_sha, "bytes": p.stat().st_size}
             except Exception as e:  # any decode failure quarantines the file
                 hit = {"error": type(e).__name__}
             cache[key] = hit
@@ -298,12 +345,17 @@ def run(raw, out, private, prior_manifest=None):
     for _, r in df[no_reading].iterrows():
         q(r, "label", "reading_present", "no clinical reading to confirm the label")
     df = df[~no_reading].copy()
-    conflict = df.apply(lambda r: label_conflicts(r["label"], r["finding"]), axis=1)
-    for _, r in df[conflict].iterrows():
-        q(r, "label", "label_vs_reading", f"file label {r['label']} disagrees with the reading")
+    reasons = df.apply(lambda r: label_check(r["label"], r["finding"]), axis=1)
+    conflict = reasons.notna()
+    for i, r in df[conflict].iterrows():
+        q(r, "label", "label_vs_reading", reasons[i])
     df = df[~conflict].copy()
 
-    # Stage 3: duplicates
+    # Stage 3: duplicates. Copies with different labels go to review first, all of them.
+    clash = df.index.isin(duplicate_label_conflicts(df))
+    for _, r in df[clash].iterrows():
+        q(r, "dedup", "duplicate_label_conflict", "an identical or near-identical image has the other label")
+    df = df[~clash].copy()
     dup = df.duplicated("sha256", keep="first")
     for _, r in df[dup].iterrows():
         q(r, "dedup", "exact_duplicate", "byte-identical to an earlier file")
@@ -362,6 +414,8 @@ def run(raw, out, private, prior_manifest=None):
         "python": platform.python_version(),
         "numpy": np.__version__,
         "pandas": pd.__version__,
+        "pillow": PIL.__version__,
+        "code_commit": code_commit(),
         "images_found": len(files),
         "records_kept": int(len(df)),
         "records_quarantined": int(len(qdf)),

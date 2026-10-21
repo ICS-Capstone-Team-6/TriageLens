@@ -398,6 +398,7 @@ def review(summary: str = "", backbone: str = "efficientnet_lite0", per_kind: in
         print(f"{r['set']:13s} {r['error']:12s} {r['prob_tb']:6.3f} {r['border_heat_share']:12.0%} "
               f"{'yes' if r['landscape'] else '':>10s}")
     name = Path(run_dir).name
-    print("\nImages stay private (git-ignored). Download, then tag review_sheet.csv (see HOW_TO_REVIEW.md):")
+    print("\nImages stay private (git-ignored). To look at them:")
     print("    modal volume get --force triagelens-runs /review ml/runs/")
+    print(f"Optional, only after two people have tagged ml/runs/review/{name}/review_sheet.csv:")
     print(f"    python3 ml/train/error_review.py agreement ml/runs/review/{name}/review_sheet.csv")

@@ -216,7 +216,8 @@ def cohen_kappa(a, b, labels=TAGS):
     a, b = list(a), list(b)
     n = len(a)
     if n == 0:
-        raise ValueError("no rows with both tags")
+        raise ValueError("no rows have both reviewer_1_tag and reviewer_2_tag filled in yet; "
+                         "tag the sheet first (HOW_TO_REVIEW.md)")
     observed = sum(x == y for x, y in zip(a, b)) / n
     expected = sum((a.count(k) / n) * (b.count(k) / n) for k in labels)
     kappa = (observed - expected) / (1 - expected) if expected < 1 else 1.0

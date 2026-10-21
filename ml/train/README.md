@@ -65,7 +65,7 @@ ONNX export, int8 and the rule 2 comparison: [`ml/export/README.md`](../export/R
 
 ## One-time evaluation of the frozen model
 
-ML-DATA-04: the internal test split and Montgomery are scored once per frozen model. `evaluate.py` refuses to run into a folder that already holds a result and logs every attempt.
+ML-DATA-04: the Shenzhen held-out split (`test`) and Montgomery are scored once per frozen model. `evaluate.py` checks the preprocessing version first, then claims each set with a lock file before reading it and saves its result at once. A retry reuses saved results and never scores a set again; a set claimed by an attempt that died while scoring it is refused, and the gap must be reported. Every attempt is logged.
 
 ```sh
 modal volume put triagelens-data ml/data/raw/montgomery /montgomery/raw   # once

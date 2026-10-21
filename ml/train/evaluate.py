@@ -1,8 +1,16 @@
 """One-time evaluation of the frozen model on the locked test sets (stories E2-02, E11-01).
 
-ML-DATA-04: the internal test split and every external set are scored once per frozen
-model. This module refuses to run again into an existing result folder, and nothing it
-measures is used to choose or tune anything.
+ML-DATA-04: the held-out sets (Shenzhen's held-out validation split, named `test` in the
+files, and every external set) are scored once per frozen model, and nothing measured here
+is used to choose or tune anything. Enforced per set, not per run:
+- each set is reserved atomically (O_EXCL lock file) before its data is read, so two
+  attempts can never both score it;
+- its result is saved as soon as it is scored, so a retry after a later failure reuses it
+  instead of scoring it again;
+- a set that was reserved but has no saved result (the attempt died while scoring it) is
+  never scored again: the run stops and the gap must be reported.
+Before anything is reserved or read, the checkpoint and every prepared folder must match
+this code's preprocessing version (check_preprocessing).
 
 What is frozen, and how (ADR-18): the median seed by validation AUROC from a bake-off
 summary, at full precision. int8 (QDQ, reduce_range, the setting chosen by the label-free
@@ -21,7 +29,9 @@ the team's machine from predictions.csv and the git-ignored metadata (subgroups.
 """
 
 import datetime
+import hashlib
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -34,7 +44,7 @@ sys.path.insert(0, str(HERE.parent / "export"))
 from data import load_split  # noqa: E402
 from metrics import auroc, shape_check, summarize  # noqa: E402
 from models import TBNet  # noqa: E402
-from preprocess import load_spec, normalize  # noqa: E402
+from preprocess import check_preprocessing, load_spec, normalize  # noqa: E402
 
 TARGET_SENSITIVITY = 0.90  # TRD 3.4: TB triage at 90% sensitivity
 INT8_SETTING = "minmax_reduce_range"  # chosen by the label-free sweep (ADR-17, ADR-18)
@@ -95,6 +105,49 @@ def _sigmoid(z):
     return 1 / (1 + np.exp(-z))
 
 
+def _now():
+    return datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds")
+
+
+def _sha256(path):
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for block in iter(lambda: f.read(1 << 20), b""):
+            h.update(block)
+    return h.hexdigest()
+
+
+def _write_atomic(path, text):
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(text)
+    os.replace(tmp, path)
+
+
+def reserve(out_dir, name, checkpoint_sha):
+    """Claim one locked set, once. False if any attempt already claimed it."""
+    locks = out_dir / "locked_sets"
+    locks.mkdir(parents=True, exist_ok=True)
+    try:
+        fd = os.open(locks / f"{name}.json", os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+    except FileExistsError:
+        return False
+    with os.fdopen(fd, "w") as f:
+        json.dump({"set": name, "checkpoint_sha256": checkpoint_sha, "reserved_utc": _now()}, f)
+    return True
+
+
+def set_status(out_dir, name, checkpoint_sha):
+    """'new', 'done' (scored and saved) or 'exposed' (claimed, result missing)."""
+    lock = out_dir / "locked_sets" / f"{name}.json"
+    result = out_dir / "results" / f"{name}.json"
+    if result.exists():
+        saved = json.loads(result.read_text())
+        if saved["checkpoint_sha256"] != checkpoint_sha:
+            raise AlreadyEvaluated(f"{name} was scored with another checkpoint in {out_dir}")
+        return "done"
+    return "exposed" if lock.exists() else "new"
+
+
 def evaluate(run_dir, sets, out_dir, train_data_dir, int8=True, log=print):
     """sets: {name: (processed folder, split)}, e.g. {"shenzhen_test": (..., "test"),
     "montgomery": (..., "external")}. train_data_dir holds val (threshold) and train
@@ -102,16 +155,26 @@ def evaluate(run_dir, sets, out_dir, train_data_dir, int8=True, log=print):
     run_dir, out_dir, train_data_dir = Path(run_dir), Path(out_dir), Path(train_data_dir)
     if (out_dir / "eval_report.json").exists():
         raise AlreadyEvaluated(f"{out_dir} already holds an evaluation; the locked sets are scored once")
+    spec = load_spec()
+    cfg = json.loads((run_dir / "config.json").read_text())
+    # Preflight before any reservation or read of a locked set
+    check_preprocessing(cfg, [train_data_dir, *(Path(d) for d, _ in sets.values())], spec)
+    checkpoint_sha = _sha256(run_dir / "best.pt")
+    status = {name: set_status(out_dir, name, checkpoint_sha) for name in sets}
+    exposed = [n for n, st in status.items() if st == "exposed"]
+    if exposed:
+        raise AlreadyEvaluated(
+            f"{exposed} were opened by an earlier attempt that did not finish; they cannot be scored "
+            "again (ML-DATA-04). Report the gap; a new frozen candidate is needed for a new score.")
     out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / "results").mkdir(exist_ok=True)
     # Every attempt is logged, including ones that crash before producing a result, so the
     # record shows how many times the locked sets were touched (ML-DATA-04).
     attempts_path = out_dir / "attempts.json"
     attempts = json.loads(attempts_path.read_text()) if attempts_path.exists() else []
-    attempts.append({"started_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
-                     "finished": False})
-    attempts_path.write_text(json.dumps(attempts, indent=2))
-    spec = load_spec()
-    cfg = json.loads((run_dir / "config.json").read_text())
+    attempts.append({"started_utc": _now(), "finished": False,
+                     "reused": [n for n, st in status.items() if st == "done"]})
+    _write_atomic(attempts_path, json.dumps(attempts, indent=2))
     model = TBNet(cfg["backbone"], pretrained=False)
     model.load_state_dict(torch.load(run_dir / "best.pt", map_location="cpu", weights_only=True))
     model.eval()
@@ -122,8 +185,8 @@ def evaluate(run_dir, sets, out_dir, train_data_dir, int8=True, log=print):
     report = {
         "run": run_dir.name, "backbone": cfg["backbone"], "seed": cfg["seed"],
         "trained_on": cfg.get("dataset_version_hash"), "code_commit_of_run": cfg.get("git_commit"),
-        "preprocess_spec": spec["version"],
-        "evaluated_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
+        "preprocess_spec": spec["version"], "checkpoint_sha256": checkpoint_sha,
+        "evaluated_utc": _now(),
         "operating_point": {"rule": f"threshold reaching {TARGET_SENSITIVITY:.0%} sensitivity on validation",
                             "logit_threshold": t, "probability_threshold": float(_sigmoid(t)),
                             "validation": at_threshold(val["y"], val_logit, t)},
@@ -132,7 +195,7 @@ def evaluate(run_dir, sets, out_dir, train_data_dir, int8=True, log=print):
     }
 
     q_path = None
-    if int8:
+    if int8 and "new" in status.values():
         import export_onnx
 
         work = out_dir / "onnx"
@@ -145,6 +208,16 @@ def evaluate(run_dir, sets, out_dir, train_data_dir, int8=True, log=print):
     import pandas as pd
 
     for name, (data_dir, split) in sets.items():
+        result_path = out_dir / "results" / f"{name}.json"
+        if status[name] == "done":
+            saved = json.loads(result_path.read_text())
+            if saved["logit_threshold"] != t:
+                raise AlreadyEvaluated(f"{name} was scored at another threshold; not mixing results")
+            log(f"{name}: already scored by an earlier attempt, reusing the saved result")
+            report["sets"][name] = saved["entry"]
+            continue
+        if not reserve(out_dir, name, checkpoint_sha):
+            raise AlreadyEvaluated(f"{name} was claimed by another attempt (ML-DATA-04)")
         log(f"scoring {name} ({split}) once")
         d = load_split(data_dir, split, allow_test=True)
         y = d["y"].astype(int)
@@ -166,9 +239,11 @@ def evaluate(run_dir, sets, out_dir, train_data_dir, int8=True, log=print):
                              "at_validation_threshold": at_threshold(y, q_logit, t)}
             rows["prob_int8"] = _sigmoid(q_logit)
         pd.DataFrame(rows).to_csv(out_dir / f"predictions_{name}.csv", index=False)
+        _write_atomic(result_path, json.dumps({"checkpoint_sha256": checkpoint_sha, "logit_threshold": t,
+                                               "scored_utc": _now(), "entry": entry}, indent=2))
         report["sets"][name] = entry
     attempts[-1]["finished"] = True
-    attempts_path.write_text(json.dumps(attempts, indent=2))
+    _write_atomic(attempts_path, json.dumps(attempts, indent=2))
     report["attempts"] = attempts
-    (out_dir / "eval_report.json").write_text(json.dumps(report, indent=2))
+    _write_atomic(out_dir / "eval_report.json", json.dumps(report, indent=2))
     return report

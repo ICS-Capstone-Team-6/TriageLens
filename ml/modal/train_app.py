@@ -134,7 +134,7 @@ def sweep_remote(run_dir: str) -> dict:
 @app.function(cpu=4, memory=16384, timeout=60 * 60,
               volumes={DATA_DIR: data_volume, RUNS_DIR: runs_volume})
 def evaluate_remote(run_dir: str) -> dict:
-    """Stories E2-02 and E11-01: score the frozen model once on the Shenzhen test split and
+    """Stories E2-02 and E11-01: score the frozen model once on the Shenzhen held-out split and
     Montgomery (ML-DATA-04). Refuses if this run was already scored."""
     _train_code()
     sys.path.insert(0, "/root/ml/export")
@@ -353,7 +353,7 @@ def evaluate(summary: str = "", backbone: str = "efficientnet_lite0"):
     ranked = sorted(zip(entry["val_auroc"], entry["runs"]))
     val_auc, run_dir = ranked[len(ranked) // 2]
     print(f"Frozen model (median of {len(ranked)} seeds in {path.name}): {run_dir}, validation AUROC {val_auc:.3f}")
-    print("Scoring the Shenzhen test split and Montgomery ONCE (ML-DATA-04).")
+    print("Scoring the Shenzhen held-out split and Montgomery ONCE (ML-DATA-04).")
     r = evaluate_remote.remote(run_dir)
 
     op = r["operating_point"]

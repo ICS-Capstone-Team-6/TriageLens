@@ -51,6 +51,119 @@ class TestHelpers(unittest.TestCase):
         self.assertLessEqual(hi, 1.0)
 
 
+def build_fixture(root):
+    """Prepared synthetic data, a one-epoch run and the two locked sets."""
+    import prepare_data
+    from test_train_core import make_raw
+    from train import Config, run
+
+    manifest = make_raw(root / "raw", n=40)
+    prepare_data.prepare(root / "raw", manifest, root / "data", workers=1)
+    ext_manifest = make_raw(root / "ext_raw" / "images", n=20, seed=1)
+    m = pd.read_csv(ext_manifest)
+    m["split"] = "external"
+    m.to_csv(ext_manifest, index=False)
+    prepare_data.prepare(root / "ext_raw" / "images", ext_manifest, root / "ext", workers=1, splits=("external",))
+    run_dir, _ = run(Config(pretrained=False, epochs_head=1, epochs_max=1, batch_size=8, num_workers=0),
+                     root / "data", root / "runs", log=lambda *_: None)
+    sets = {"internal_test": (root / "data", "test"), "external": (root / "ext", "external")}
+    return run_dir, sets
+
+
+def locked_reads(load):
+    """Locked splits a mocked load_split was asked for."""
+    return [c.args[1] for c in load.call_args_list if c.args[1] in ("test", "external")]
+
+
+@unittest.skipUnless(HAS_DEPS, "ml/requirements-train.txt not installed")
+class TestOnceOnly(unittest.TestCase):
+    """PR #84 review: a retry must never score a locked set a second time."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp = tempfile.TemporaryDirectory()
+        cls.root = Path(cls.tmp.name)
+        cls.run_dir, cls.sets = build_fixture(cls.root)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls.tmp.cleanup()
+
+    def test_failure_between_sets_resumes_without_rescoring_the_first(self):
+        from unittest import mock
+
+        import evaluate as ev
+
+        out = self.root / "eval_between"
+        real_reserve = ev.reserve
+
+        def crash_after_first_set(*a):
+            if (out / "results" / "internal_test.json").exists():
+                raise RuntimeError("crash between the two sets")
+            return real_reserve(*a)
+
+        with mock.patch.object(ev, "reserve", side_effect=crash_after_first_set), self.assertRaises(RuntimeError):
+            ev.evaluate(self.run_dir, self.sets, out, self.root / "data", int8=False, log=lambda *_: None)
+        self.assertTrue((out / "results" / "internal_test.json").exists())
+        with mock.patch.object(ev, "load_split", side_effect=ev.load_split) as load:
+            report = ev.evaluate(self.run_dir, self.sets, out, self.root / "data", int8=False, log=lambda *_: None)
+        self.assertEqual(locked_reads(load), ["external"])  # the first set was not read again
+        self.assertEqual(set(report["sets"]), {"internal_test", "external"})
+        self.assertEqual([a["reused"] for a in report["attempts"]], [[], ["internal_test"]])
+
+    def test_failure_while_scoring_a_set_refuses_any_retry(self):
+        from unittest import mock
+
+        import evaluate as ev
+
+        out = self.root / "eval_during"
+        real = ev.shape_check
+        calls = []
+
+        def crash_on_second(*a, **k):
+            calls.append(1)
+            if len(calls) == 2:
+                raise RuntimeError("crash while scoring set two")
+            return real(*a, **k)
+
+        with mock.patch.object(ev, "shape_check", side_effect=crash_on_second), self.assertRaises(RuntimeError):
+            ev.evaluate(self.run_dir, self.sets, out, self.root / "data", int8=False, log=lambda *_: None)
+        with mock.patch.object(ev, "load_split", side_effect=ev.load_split) as load:
+            with self.assertRaises(ev.AlreadyEvaluated):
+                ev.evaluate(self.run_dir, self.sets, out, self.root / "data", int8=False, log=lambda *_: None)
+        self.assertEqual(locked_reads(load), [])
+        self.assertFalse((out / "eval_report.json").exists())
+
+    def test_a_set_claimed_by_another_attempt_is_not_scored(self):
+        from unittest import mock
+
+        import evaluate as ev
+
+        out = self.root / "eval_claimed"
+        self.assertTrue(ev.reserve(out, "external", "someone-else"))  # e.g. a concurrent attempt
+        with mock.patch.object(ev, "load_split", side_effect=ev.load_split) as load:
+            with self.assertRaises(ev.AlreadyEvaluated):
+                ev.evaluate(self.run_dir, self.sets, out, self.root / "data", int8=False, log=lambda *_: None)
+        self.assertEqual(locked_reads(load), [])
+
+    def test_other_preprocessing_is_refused_before_any_locked_read(self):
+        from unittest import mock
+
+        import evaluate as ev
+
+        run_dir = self.root / "old_run"
+        run_dir.mkdir()
+        cfg = json.loads((self.run_dir / "config.json").read_text())
+        cfg["preprocess_spec"] = "cxr-pre-1"
+        (run_dir / "config.json").write_text(json.dumps(cfg))
+        (run_dir / "best.pt").write_bytes((self.run_dir / "best.pt").read_bytes())
+        out = self.root / "eval_old"
+        with mock.patch.object(ev, "load_split") as load, self.assertRaises(ValueError):
+            ev.evaluate(run_dir, self.sets, out, self.root / "data", int8=False, log=lambda *_: None)
+        load.assert_not_called()
+        self.assertFalse((out / "locked_sets").exists())
+
+
 @unittest.skipUnless(HAS_DEPS, "ml/requirements-train.txt not installed")
 class TestEvaluate(unittest.TestCase):
     def test_external_split_is_locked_like_test(self):

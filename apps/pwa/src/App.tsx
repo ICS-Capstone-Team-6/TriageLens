@@ -8,7 +8,7 @@ import { PREPROCESS_VERSION } from './lib/preprocess';
 import type { RetakeReason } from './lib/quality';
 import { MODEL_RUN, saveScreening, type AgeBand } from './lib/records';
 import { backendConfigured, supabase } from './lib/supabase';
-import { ageAfter, canScreen, type EndAction } from './lib/session';
+import { ageAfter, backendRequired, canScreen, modelMatches, type EndAction } from './lib/session';
 import { sigmoid, zoneFor } from './lib/triage';
 import { Monitor } from './screens/Monitor';
 import { Home } from './screens/Home';
@@ -92,6 +92,7 @@ export function App() {
     setView((v) => (v.name === 'result' ? { ...v, saved } : v));
   }
 
+  if (backendRequired(import.meta.env.PROD, backendConfigured)) return <Blocked title={t('not_ready_title')} body={t('backend_required')} />;
   if (backendConfigured && signedIn === null) return null;
   if (backendConfigured && !signedIn) return <SignIn onSignIn={signIn} error={signInError} />;
   if (route === 'monitor') return <Monitor onBack={() => go('#/')} />;
@@ -104,7 +105,7 @@ export function App() {
     return <Blocked title={t('not_ready_title')} body={body} />;
   }
   if (model === 'failed') return <Blocked title={t('not_ready_title')} body={t('not_ready_model')} />;
-  if (thresholds?.ok && typeof model === 'object' && model.modelSha256 !== thresholds.modelSha256) {
+  if (thresholds?.ok && typeof model === 'object' && !modelMatches(model.modelSha256, thresholds.modelSha256)) {
     return <Blocked title={t('not_ready_title')} body={t('not_ready_invalid')} />;
   }
 

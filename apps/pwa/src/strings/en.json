@@ -12,6 +12,7 @@
   "signin_failed": "That email or password did not work. Check them and try again.",
   "no_clinic": "Your account has no clinic yet. Ask Nana Yaw to add you to the demo clinic.",
   "backend_missing": "This copy of the app is not connected to the team backend. Results will not be saved.",
+  "backend_required": "This copy of the app is not connected to the team backend, so it cannot be used for screening. Tell Nana Yaw.",
   "sign_out": "Sign out",
   "home_title": "Screen a chest X-ray for TB",
   "home_body": "Photograph the film or upload the image. It takes about a minute.",

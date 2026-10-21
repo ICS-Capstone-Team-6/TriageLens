@@ -42,6 +42,17 @@ class TestHelpers(unittest.TestCase):
         # p_o = 0.8; p_e = 0.5*0.7 + 0.5*0.3 = 0.5; kappa = (0.8 - 0.5) / 0.5 = 0.6
         self.assertEqual((k["raw_agreement"], k["chance_agreement"], k["cohen_kappa"]), (0.8, 0.5, 0.6))
 
+    def test_compare_errors_separates_errors_from_correct_calls(self):
+        y = np.array([1, 1, 0, 0, 1, 0])
+        p = np.array([0.9, 0.1, 0.1, 0.8, 0.7, 0.2])  # errors: index 1 (missed) and 3 (false alarm)
+        border = np.array([0.1, 0.6, 0.1, 0.8, 0.1, 0.1])
+        landscape = np.array([False, True, False, True, False, False])
+        out = er.compare_errors(y, p, 0.5, border, landscape)
+        self.assertEqual((out["errors"], out["missed_tb"], out["false_alarms"]), (2, 1, 1))
+        self.assertEqual(out["border_heat_median_errors"], 0.7)
+        self.assertEqual(out["border_heat_median_correct"], 0.1)
+        self.assertEqual((out["error_rate_landscape"], out["error_rate_portrait"]), (1.0, 0.0))
+
     def test_agreement_rejects_unknown_tags(self):
         with tempfile.TemporaryDirectory() as d:
             p = Path(d) / "sheet.csv"
@@ -64,7 +75,7 @@ class TestReview(unittest.TestCase):
             prepare_data.prepare(root / "raw", manifest, root / "data", workers=1)
             run_dir, _ = run(Config(pretrained=False, epochs_head=1, epochs_max=1, batch_size=8, num_workers=0),
                              root / "data", root / "runs", log=lambda *_: None)
-            rows = er.review(run_dir, {"val": (root / "data", "val")}, threshold=0.5, out_dir=root / "rev",
+            rows, summary = er.review(run_dir, {"val": (root / "data", "val")}, threshold=0.5, out_dir=root / "rev",
                              per_kind=2, log=lambda *_: None)
             sheet = pd.read_csv(root / "rev" / "review_sheet.csv")
             self.assertEqual(list(sheet.columns), er.SHEET_COLUMNS)
@@ -74,6 +85,8 @@ class TestReview(unittest.TestCase):
                 self.assertTrue((root / "rev" / r["image"]).exists())
                 self.assertTrue(0.0 <= r["border_heat_share"] <= 1.0)
             self.assertTrue((root / "rev" / "HOW_TO_REVIEW.md").exists())
+            self.assertIn("border_heat_median_correct", summary["val"])
+            self.assertTrue((root / "rev" / "review_summary.json").exists())
             if rows:
                 self.assertTrue((root / "rev" / "contact_sheet_val.png").exists())
 

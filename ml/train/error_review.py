@@ -140,12 +140,14 @@ def review(run_dir, sets, threshold, out_dir, per_kind=5, log=print):
     model.load_state_dict(torch.load(run_dir / "best.pt", map_location="cpu", weights_only=True))
     model.eval()
 
-    rows = []
+    rows, summary = [], {}
     for name, (data_dir, split) in sets.items():
         log(f"reviewing {name} ({split}): worst {per_kind} missed TB and {per_kind} false alarms")
         d = load_split(data_dir, split, allow_test=True)  # description only, see module notes
         prob, cams = _cams(model, d["x"], spec)
         aspect = d["meta"][:, 0] / d["meta"][:, 1]
+        summary[name] = compare_errors(d["y"], prob, threshold, np.array([border_share(c) for c in cams]),
+                                       aspect > 1.05)
         paths = []
         for rank, (i, kind) in enumerate(worst_errors(d["y"], prob, threshold, per_kind), start=1):
             img = out_dir / name / f"{rank:02d}_{kind}_{Path(str(d['files'][i])).stem}.png"
@@ -164,8 +166,27 @@ def review(run_dir, sets, threshold, out_dir, per_kind=5, log=print):
                          "reviewer_1_tag": "", "reviewer_2_tag": "", "notes": ""})
         _contact_sheet(paths, out_dir / f"contact_sheet_{name}.png")
     pd.DataFrame(rows, columns=SHEET_COLUMNS).to_csv(out_dir / "review_sheet.csv", index=False)
+    (out_dir / "review_summary.json").write_text(json.dumps({"threshold": threshold, "sets": summary}, indent=2))
     (out_dir / "HOW_TO_REVIEW.md").write_text(HOW_TO)
-    return rows
+    return rows, summary
+
+
+def compare_errors(y, prob, threshold, border, landscape):
+    """Machine-measured error analysis, no radiology needed: do the model's errors put more
+    heat on the border band (text, markers) than its correct calls, and are landscape films
+    over-represented among errors? Every image of the set is used, not only the worst."""
+    y, prob, border, landscape = map(np.asarray, (y, prob, border, landscape))
+    wrong = (prob >= threshold) != (y == 1)
+    out = {"n": int(len(y)), "errors": int(wrong.sum()),
+           "missed_tb": int(((y == 1) & (prob < threshold)).sum()),
+           "false_alarms": int(((y == 0) & (prob >= threshold)).sum())}
+    for key, sel in (("errors", wrong), ("correct", ~wrong)):
+        out[f"border_heat_median_{key}"] = round(float(np.median(border[sel])), 3) if sel.any() else None
+        out[f"landscape_share_{key}"] = round(float(landscape[sel].mean()), 3) if sel.any() else None
+    if landscape.any() and (~landscape).any():
+        out["error_rate_landscape"] = round(float(wrong[landscape].mean()), 3)
+        out["error_rate_portrait"] = round(float(wrong[~landscape].mean()), 3)
+    return out
 
 
 HOW_TO = """# How to tag these errors

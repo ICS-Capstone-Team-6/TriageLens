@@ -154,7 +154,7 @@ def evaluate_remote(run_dir: str) -> dict:
 
 @app.function(cpu=4, memory=8192, timeout=30 * 60,
               volumes={DATA_DIR: data_volume, RUNS_DIR: runs_volume})
-def review_remote(run_dir: str, per_kind: int) -> list:
+def review_remote(run_dir: str, per_kind: int) -> dict:
     """Prosit 2 C2: heatmaps of the worst errors on validation and Montgomery. Describes the
     errors only; uses the threshold the one-time evaluation took from validation."""
     _train_code()
@@ -163,11 +163,11 @@ def review_remote(run_dir: str, per_kind: int) -> list:
     runs_volume.reload()
     name = Path(run_dir).name
     report = json.loads(Path(f"{RUNS_DIR}/eval/{name}/eval_report.json").read_text())
-    rows = error_review.review(run_dir, {"shenzhen_val": (PROCESSED, "val"), "montgomery": (MONT_PROCESSED, "external")},
+    rows, summary = error_review.review(run_dir, {"shenzhen_val": (PROCESSED, "val"), "montgomery": (MONT_PROCESSED, "external")},
                                report["operating_point"]["probability_threshold"], f"{RUNS_DIR}/review/{name}",
                                per_kind=per_kind)
     runs_volume.commit()
-    return rows
+    return {"rows": rows, "summary": summary}
 
 
 def _git_state():
@@ -382,7 +382,17 @@ def review(summary: str = "", backbone: str = "efficientnet_lite0", per_kind: in
     entry = json.loads(path.read_text())["summary"][backbone]
     ranked = sorted(zip(entry["val_auroc"], entry["runs"]))
     run_dir = ranked[len(ranked) // 2][1]
-    rows = review_remote.remote(run_dir, per_kind)
+    out = review_remote.remote(run_dir, per_kind)
+    rows = out["rows"]
+    print("\nAll images in each set at the evaluation threshold (no radiology needed):")
+    print(f"{'set':13s} {'errors':>7s} {'border heat, errors':>20s} {'correct':>8s} "
+          f"{'error rate landscape':>21s} {'portrait':>9s}")
+    for name, s in out["summary"].items():
+        fmt = lambda v: f"{v:.2f}" if v is not None else "-"  # noqa: E731
+        print(f"{name:13s} {s['errors']:3d}/{s['n']:<3d} {fmt(s['border_heat_median_errors']):>20s} "
+              f"{fmt(s['border_heat_median_correct']):>8s} {fmt(s.get('error_rate_landscape')):>21s} "
+              f"{fmt(s.get('error_rate_portrait')):>9s}")
+    print("\nWorst errors drawn as heatmaps:")
     print(f"\n{'set':13s} {'error':12s} {'prob':>6s} {'border heat':>12s} {'landscape':>10s}")
     for r in rows:
         print(f"{r['set']:13s} {r['error']:12s} {r['prob_tb']:6.3f} {r['border_heat_share']:12.0%} "

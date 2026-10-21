@@ -7,7 +7,7 @@
 
 ## Context
 
-ADR-3 and TRD 9.3 pick the backbone by a bake-off judged on external AUROC, latency on the reference phone and heatmap compatibility. At M2 there is no external test set (Montgomery and the India sets are not downloaded) and no reference-phone benchmark (`E5-01`). The internal test split must stay locked until a model is frozen (ML-DATA-04), so it cannot be used to choose.
+ADR-3 and TRD 9.3 pick the backbone by a bake-off judged on external AUROC, latency on the reference phone and heatmap compatibility. At M2 there is no external test set (Montgomery and the India sets are not downloaded) and no reference-phone benchmark (`E5-01`). The held-out split (Shenzhen's `test`, a second validation set) must stay locked until a model is frozen (ML-DATA-04), so it cannot be used to choose.
 
 ## Options considered
 
@@ -22,7 +22,7 @@ Option 2. Two candidates, MobileNetV3-Large and EfficientNet-Lite0, are trained 
 2. AUROC drop after static int8 quantization, which must be 0.015 or less (ADR-5).
 3. File size after int8, which must be 15 MB or less (TRD 10.6).
 
-The internal test split is not used to choose.
+The held-out split (`test`) is not used to choose.
 
 ## Consequences
 

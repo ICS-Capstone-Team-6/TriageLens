@@ -58,12 +58,12 @@ p95 inference per model at most 2.5 s (floor 4 s, TRD 3.4); capture to result p9
 - ADR-10: image upload opt-in with consent; results-only by default.
 - ADR-11: ECDSA P-256 model signing.
 - ADR-12: React, TypeScript and Vite static PWA.
-- ADR-13: Modal is the main GPU source; Kaggle plus Colab as fallback.
-- ADR-14: M2 chest X-ray model has a TB output only (TB logit and feature map); pneumonia later.
-- ADR-15: interim bake-off (MobileNetV3-Large vs EfficientNet-Lite0) on validation AUROC, then int8 drop, then size, until an external set exists.
-- ADR-16: chest X-rays are stretched to 320 by 320, not padded (`cxr-pre-2`); TRD 9.3 "resize with padding" no longer applies.
-- ADR-17: int8 calibration images come from the train split; the bake-off int8 drop is measured on validation.
-- ADR-18: M2 backbone EfficientNet-Lite0, frozen run `efficientnet_lite0_seed2_20261018T153928Z` (median seed), shipped as fp32 ONNX (12.8 MB) until int8 passes the drop rule in ONNX Runtime Web.
+- ADR-13 (proposed, team agreement at G0): Modal is the main GPU source; Kaggle plus Colab as fallback.
+- ADR-14 (proposed, team agreement at G0): M2 chest X-ray model has a TB output only (TB logit and feature map); pneumonia later.
+- ADR-15 (proposed, team agreement at G0): interim bake-off (MobileNetV3-Large vs EfficientNet-Lite0) on validation AUROC, then int8 drop, then size, until an external set exists.
+- ADR-16 (proposed, team agreement at G0): chest X-rays are stretched to 320 by 320, not padded (`cxr-pre-2`); TRD 9.3 "resize with padding" no longer applies.
+- ADR-17 (proposed, team agreement at G0): int8 calibration images come from the train split; the bake-off int8 drop is measured on validation.
+- ADR-18 (proposed, team agreement at G0): M2 backbone EfficientNet-Lite0, frozen run `efficientnet_lite0_seed1_20261021T114608Z` (median seed of the Shenzhen v2 retrain; the earlier v1 run `efficientnet_lite0_seed2_20261018T153928Z` is superseded), shipped as fp32 ONNX (12.8 MB) until int8 passes the drop rule in ONNX Runtime Web.
 
 ## Model interfaces (TRD 10.6)
 

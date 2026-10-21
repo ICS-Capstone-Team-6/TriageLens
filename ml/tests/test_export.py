@@ -121,6 +121,32 @@ class TestExport(unittest.TestCase):
             with self.assertRaises(ValueError):
                 export_onnx.export_run(d, d, log=lambda *_: None)
 
+    def test_sweep_refuses_another_preprocessing_version_before_reading_data(self):
+        from unittest import mock
+
+        import export_onnx
+
+        with tempfile.TemporaryDirectory() as d:
+            (Path(d) / "config.json").write_text(json.dumps(
+                {"backbone": "mobilenetv3_large", "seed": 1, "preprocess_spec": "cxr-pre-1"}))
+            with mock.patch.object(export_onnx, "load_split") as load, self.assertRaises(ValueError):
+                export_onnx.sweep_run(d, d, log=lambda *_: None)
+            load.assert_not_called()
+
+    def test_sweep_refuses_prepared_data_from_another_version(self):
+        from unittest import mock
+
+        import export_onnx
+
+        with tempfile.TemporaryDirectory() as d:
+            spec = export_onnx.load_spec()["version"]
+            (Path(d) / "config.json").write_text(json.dumps(
+                {"backbone": "mobilenetv3_large", "seed": 1, "preprocess_spec": spec}))
+            (Path(d) / "prepare_report.json").write_text(json.dumps({"preprocess_spec": "cxr-pre-1"}))
+            with mock.patch.object(export_onnx, "load_split") as load, self.assertRaises(ValueError):
+                export_onnx.sweep_run(d, d, log=lambda *_: None)
+            load.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()

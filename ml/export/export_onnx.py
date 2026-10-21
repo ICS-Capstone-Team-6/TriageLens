@@ -39,7 +39,7 @@ sys.path.insert(0, str(TRAIN_CODE))
 from data import load_split  # noqa: E402
 from metrics import auroc  # noqa: E402
 from models import TBNet  # noqa: E402
-from preprocess import load_spec, normalize  # noqa: E402
+from preprocess import check_preprocessing, load_spec, normalize  # noqa: E402
 
 OPSET = 17
 INPUT = "image"
@@ -199,8 +199,7 @@ def export_run(run_dir, data_dir, log=print):
     run_dir, data_dir = Path(run_dir), Path(data_dir)
     cfg = json.loads((run_dir / "config.json").read_text())
     spec = load_spec()
-    if cfg.get("preprocess_spec") not in (None, spec["version"]):
-        raise ValueError(f"run used {cfg['preprocess_spec']}, this code is {spec['version']}")
+    check_preprocessing(cfg, [data_dir], spec)
     model = TBNet(cfg["backbone"], pretrained=False)
     model.load_state_dict(torch.load(run_dir / "best.pt", map_location="cpu", weights_only=True))
     model.eval()
@@ -280,6 +279,7 @@ def sweep_run(run_dir, data_dir, configs=None, log=print):
     configs = configs or list(QUANT_CONFIGS)
     cfg = json.loads((run_dir / "config.json").read_text())
     spec = load_spec()
+    check_preprocessing(cfg, [data_dir], spec)  # same preflight as export_run
     model = TBNet(cfg["backbone"], pretrained=False)
     model.load_state_dict(torch.load(run_dir / "best.pt", map_location="cpu", weights_only=True))
     model.eval()

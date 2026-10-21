@@ -63,6 +63,19 @@ Training also stretches width and height independently by up to 15% (`shape_jitt
 
 ONNX export, int8 and the rule 2 comparison: [`ml/export/README.md`](../export/README.md).
 
+## One-time evaluation of the frozen model
+
+ML-DATA-04: the internal test split and Montgomery are scored once per frozen model. `evaluate.py` refuses to run into a folder that already holds a result and logs every attempt.
+
+```sh
+modal volume put triagelens-data ml/data/raw/montgomery /montgomery/raw   # once
+modal run ml/modal/train_app.py::evaluate        # median seed of the latest bake-off (ADR-18)
+modal volume get --force triagelens-runs /eval ml/runs/
+python3 ml/train/subgroups.py ml/runs/eval/<run>  # sex, age, active vs inactive TB; runs locally
+```
+
+The only operating point uses a threshold set on validation (90% sensitivity). `subgroups.py` reads the git-ignored private metadata on the team's machine and saves counts and rates only. Results for the frozen model: ADR-18, section "Results".
+
 ## Tests
 
 ```sh

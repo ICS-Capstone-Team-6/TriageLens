@@ -77,3 +77,24 @@ Dataset v2 (`0445b087fed038c4`) applies stricter label checks and keeps every re
 | Mean, sd | 0.922, 0.005 (v1: 0.924, 0.014) |
 
 By the rule above, the frozen run is now the median seed: `efficientnet_lite0_seed1_20261021T114608Z` (validation AUROC 0.922; fit gap +0.067 mean over seeds, border-mask drop 0.027, shape correlation -0.387). It is scored once on the Shenzhen v2 test split and the Montgomery external set by `modal run ml/modal/train_app.py::evaluate` (`ml/train/evaluate.py`), full precision and int8 side by side; the only operating point reported uses a threshold set on validation.
+
+## Results: the one-time evaluation (21 Oct 2026)
+
+The frozen model was scored once on the locked sets (`modal run ml/modal/train_app.py::evaluate`; report in the `triagelens-runs` volume under `/eval/efficientnet_lite0_seed1_20261021T114608Z/`). A first attempt crashed in the shape check before any result was computed or shown (commit `bace296`); the run that produced these figures is the only completed one. The threshold was set on validation to reach 90% sensitivity (probability 0.184) and not changed on either test set.
+
+| Set | Images (TB) | AUROC (95% CI) | Sensitivity (95% CI) | Specificity (95% CI) | int8 drop |
+| --- | --- | --- | --- | --- | --- |
+| Shenzhen validation | 94 (49) | 0.922 | 0.918 (0.808 to 0.968) | 0.800 (0.662 to 0.891) | |
+| Shenzhen test (v2) | 93 (47) | 0.978 (0.942 to 1.000) | 0.957 (0.858 to 0.988) | 0.891 (0.770 to 0.953) | 0.016 |
+| Montgomery (external) | 127 (57) | 0.887 (0.830 to 0.938) | 0.702 (0.573 to 0.805) | 0.900 (0.808 to 0.951) | 0.029 |
+| Montgomery, active TB | 106 (36) | 0.908 | 0.722 (0.560 to 0.842) | 0.900 | |
+| Montgomery, inactive or healed TB | 91 (21) | 0.850 | 0.667 (0.454 to 0.828) | 0.900 | |
+| Montgomery, portrait / landscape films | 93 (45) / 34 (12) | 0.920 / 0.803 | | | |
+
+What this means for this decision:
+
+- The external AUROC (0.887) is above the TRD floor of 0.80, so the revisit trigger on external AUROC has not fired. Its interval includes the 0.90 target.
+- The threshold does not transfer between sites: at the Shenzhen-set threshold the model catches 70% of Montgomery TB, and 72% of active TB, against a 90% target. Per-site calibration is required before use at any site (TRD 9.6, story E6).
+- The int8 drop on the test sets (0.016, 0.029) confirms that full precision ships for now.
+- Landscape films score worse (0.80 against 0.92 for portrait) and cross the ADR-16 warning sign. Shenzhen has almost no landscape films. The heatmap review of the worst errors comes next.
+- Subgroups (`ml/train/subgroups.py`, run locally): on the Shenzhen test, specificity for women is 0.733 (11 of 15 normal women) against 0.968 for men (30 of 31); small groups, tracked in Section B7.

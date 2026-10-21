@@ -43,6 +43,7 @@ Copy the values into `apps/pwa/.env.local` (git-ignored) for development, and in
 Two reviewed files in `public/config/` control results:
 
 - `thresholds.json`: the two thresholds, the run ID and the model SHA-256 (ADR-20). Until Chelsea sets `status` to `set` with all values, **the app shows no results**. If the loaded model's hash differs from the file's, the app shows no results.
+  Fill it with `python3 scripts/set_thresholds.py --val val_logits.csv --model <fp32.onnx>`: the validation split's `label,logit` CSV and the exact model file. It applies the ADR-20 rules, reports sensitivity and specificity with 95% CIs, and refuses to write if the thresholds cross.
 - `reference.json`: the validation score histogram and training input-statistic histograms for drift (PSI). Made with `scripts/make_reference.py`. Until it is set, the monitoring page shows live numbers only.
 
 ## Deploy on Vercel (Nana Yaw)

@@ -16,3 +16,7 @@ matplotlib==3.9.2
 numpy==2.2.6
 pandas==2.3.3
 pillow==12.3.0
+# ONNX export and static int8 quantization (story E5-02; TRD 9.5; ADR-2, ADR-5).
+# onnxruntime here is the CPU build used for quantizing and checking; the app uses ONNX Runtime Web.
+onnx==1.17.0
+onnxruntime==1.20.1

@@ -52,6 +52,8 @@ Every document in `docs/`, who owns it and how it changes.
 | [adr/0014-tb-only-output-m2.md](adr/0014-tb-only-output-m2.md) | ADR-14. TB-only output for the chest X-ray model at M2 | Chelsea | Living (supersede with a new ADR) |
 | [adr/0015-interim-bake-off-criteria.md](adr/0015-interim-bake-off-criteria.md) | ADR-15. Interim bake-off criteria while no external test set exists | Chelsea | Living (supersede with a new ADR) |
 | [adr/0016-stretch-not-pad-preprocessing.md](adr/0016-stretch-not-pad-preprocessing.md) | ADR-16. Stretch chest X-rays to square instead of padding | Chelsea | Living (supersede with a new ADR) |
+| [adr/0017-int8-calibration-from-train.md](adr/0017-int8-calibration-from-train.md) | ADR-17. int8 calibration images come from the train split | Chelsea | Living (supersede with a new ADR) |
+| [adr/0018-efficientnet-lite0-full-precision.md](adr/0018-efficientnet-lite0-full-precision.md) | ADR-18. EfficientNet-Lite0 chosen; shipped at full precision until int8 passes | Chelsea | Living (supersede with a new ADR) |
 
 ## Safety and ethics
 

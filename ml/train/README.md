@@ -33,7 +33,7 @@ modal run ml/modal/train_app.py::bakeoff      # 2 backbones x 3 seeds in paralle
 
 ## What each run records
 
-Every run folder in the `triagelens-runs` volume holds `config.json` (recipe, seed, code commit, dataset version hash, preprocessing version), `history.csv`, `metrics.json`, `curves.png`, `val_predictions.csv` and `best.pt` (Team Rules 7). Download them with `modal volume get triagelens-runs /bakeoff ml/runs/`. The test split is never read here. It is used once per frozen candidate (Team Rules 7).
+Every run folder in the `triagelens-runs` volume holds `config.json` (recipe, seed, code commit, dataset version hash, preprocessing version), `history.csv`, `metrics.json`, `curves.png`, `val_predictions.csv` and `best.pt` (Team Rules 7). Download them with `modal volume get --force triagelens-runs /bakeoff ml/runs/` (`--force` because the folder exists after the first download). The test split is never read here. It is used once per frozen candidate (Team Rules 7).
 
 ## Reading the curves: over- and underfitting
 
@@ -56,6 +56,12 @@ In the Shenzhen set TB images are narrower than normal ones, so image shape pred
 | `by_aspect_third[].auroc` | Close to the overall validation AUROC | More than 0.10 below it inside a third |
 
 Training also stretches width and height independently by up to 15% (`shape_jitter`, default 0.15; 0 turns it off), so apparent chest width stops being a reliable clue. Bake-off 1 ran without it and still showed within-class correlations of -0.26 to -0.53. The bake-off table shows the mean within-class correlation as `shape corr`. Rung 0 in the baselines still scores about 0.80: it measures the dataset, not the model.
+
+**Result (bake-off 2, 18 Oct 2026).** The augmentation changed nothing: shape correlation -0.40 (MobileNetV3) and -0.37 (EfficientNet), as before. Within each class the score follows image texture more strongly (edge energy +0.47 to +0.65), and narrow images are more textured, which explains the shape correlation. Texture may be disease or the provider's processing; Shenzhen alone cannot tell. No further training changes for this: the locked Montgomery external test answers it ([ADR-16](../../docs/adr/0016-stretch-not-pad-preprocessing.md) follow-ups).
+
+## After the bake-off
+
+ONNX export, int8 and the rule 2 comparison: [`ml/export/README.md`](../export/README.md).
 
 ## Tests
 

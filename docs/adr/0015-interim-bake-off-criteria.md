@@ -29,6 +29,8 @@ The held-out split (`test`) is not used to choose.
 - The M2 choice is provisional and is reported as such.
 - Both backbones keep a plain pooling and linear head, so both support the class activation map (ADR-9).
 - The bake-off re-runs on external AUROC and phone latency before the model is frozen for release.
+- Rule 2 is measured by `ml/export/export_onnx.py` (`modal run ml/modal/train_app.py::export`), with calibration images from train ([ADR-17](0017-int8-calibration-from-train.md)).
+- Bake-offs 1 and 2 tied on rule 1 (ADR-16 follow-ups), so rule 2 decides. Montgomery is the first external set planned; it is scored once on the frozen model.
 - Change-log entry in `docs/planning/04_Team_Rules_and_Requirements.md`.
 
 ## Revisit trigger

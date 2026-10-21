@@ -79,6 +79,7 @@ Every document in `docs/`, who owns it and how it changes.
 | [sprints/sprint-03.md](sprints/sprint-03.md) | Sprint 3 plan, gate, review, retro, workload, velocity | Micheal | Living |
 | [sprints/sprint-04.md](sprints/sprint-04.md) | Sprint 4 plan, gate, review, retro, workload, velocity | Micheal | Living |
 | [sprints/board-snapshot-2026-10-16.csv](sprints/board-snapshot-2026-10-16.csv) | First board snapshot, taken after setup | Micheal | Record |
+| [Supabase teammate handoff](../supabase/TEAM_HANDOFF.md) | Live Prosit 2 backend, app accounts, connection and RPC contract | Nana Yaw | Living |
 | [runbook/README.md](runbook/README.md) | Deploy, rollback, keys, model publishing, incidents (placeholders until E14-02) | Nana Yaw | Living |
 | [process/README.md](process/README.md) | How the team works with its tools | Micheal | Living |
 | [process/claude-code-setup.md](process/claude-code-setup.md) | What Claude Code loads, when, and who updates it | Kweku | Living |

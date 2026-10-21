@@ -116,12 +116,21 @@ jobs:
       - run: echo "TODO(E13-02) run Playwright with the network disabled"
 
   rls-tests:
-    name: Supabase RLS tests (TODO E9-01)
-    if: ${{ false }} # TODO(E9-01): facility A cannot read facility B; audit rows written
+    name: Supabase RLS tests (E9-01)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
-      - run: echo "TODO(E9-01) run RLS tests against a local Supabase"
+      - uses: supabase/setup-cli@v1
+        with:
+          version: 2.121.0
+      - name: Start isolated local Supabase and apply migrations
+        run: supabase start
+      - name: Verify access, immutability, audit and replay rules
+        run: supabase db query --local --file supabase/tests/authorization.sql
+      - name: Stop local Supabase
+        if: always()
+        run: supabase stop --no-backup
 
   dependency-scan:
     name: Dependency scan (TODO E13-03)

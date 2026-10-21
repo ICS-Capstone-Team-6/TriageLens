@@ -55,6 +55,8 @@ Every document in `docs/`, who owns it and how it changes.
 |----------|-------------|-------|-------------|
 | [safety/intended-use.md](safety/intended-use.md) | One-page intended use and success metrics for sign-off (TRD 3.3, 3.4; E0-04) | Kweku | Frozen after sign-off; change by ADR |
 | [safety/hazard-log.md](safety/hazard-log.md) | Hazards H1 to H12 with status and evidence (TRD 12.2) | Kweku | Living |
+| [ethics/ethics-pathway.md](ethics/ethics-pathway.md) | Review route, protocol outline, submission checklist, timing (E12-01) | Kweku | Living |
+| [ethics/clinic-contacts.md](ethics/clinic-contacts.md) | Clinic contact log; roles only, no personal details (E12-01) | Kweku | Living |
 | [ethics/irb-checklist.md](ethics/irb-checklist.md) | Ethics pathway checklist (TRD 12.3) | Kweku | Living |
 | [ethics/consent-template.md](ethics/consent-template.md) | Consent form for usability testers; draft pending Ashesi IRB review | Kweku | Living; IRB wording overrides |
 
@@ -64,6 +66,7 @@ Every document in `docs/`, who owns it and how it changes.
 |----------|-------------|-------|-------------|
 | [model-cards/TEMPLATE.md](model-cards/TEMPLATE.md) | Model card template (TRD 9.10) | Chelsea | Template |
 | [benchmarks/README.md](benchmarks/README.md) | Where device benchmark reports go | Nana Yaw | Living |
+| [usability/ux-plan/README.md](usability/ux-plan/README.md) | E8-01 UX plan: interview guide, notes and synthesis templates, user journeys, low-fi flows | Kweku | Living |
 | [usability/test-plan.md](usability/test-plan.md) | Usability test plan (TRD 13.4) | Kweku | Living |
 
 ## Sprints, operations and process

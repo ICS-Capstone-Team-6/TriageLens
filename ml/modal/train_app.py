@@ -123,15 +123,23 @@ def train_one(backbone: str = "mobilenetv3_large", seed: int = 1):
 
 
 @app.local_entrypoint()
-def bakeoff():
-    """ADR-15: both backbones, three seeds each, run in parallel; prints the comparison."""
+def bakeoff(backbones: str = ""):
+    """ADR-15: both backbones, three seeds each, run in parallel; prints the comparison.
+
+    backbones: comma-separated subset, e.g. --backbones efficientnet_lite0 to retrain only the
+    chosen backbone (ADR-18) on a new dataset version. Default: all of BACKBONES.
+    """
+    chosen = tuple(b for b in backbones.split(",") if b) or BACKBONES
+    unknown = set(chosen) - set(BACKBONES)
+    if unknown:
+        raise SystemExit(f"unknown backbone(s) {sorted(unknown)}, expected {BACKBONES}")
     commit, dirty = _git_state()
-    jobs = [(b, s, commit, dirty) for b in BACKBONES for s in SEEDS]
+    jobs = [(b, s, commit, dirty) for b in chosen for s in SEEDS]
     results = list(train_remote.starmap(jobs))
     print(f"\n{'backbone':20s} {'val AUROC per seed':28s} {'mean':>6s} {'sd':>6s} "
           f"{'fit gap':>8s} {'masked drop':>12s} {'shape corr':>11s}")
     summary = {}
-    for b in BACKBONES:
+    for b in chosen:
         rs = [r for r in results if r["backbone"] == b]
         aucs = [r["val"]["auroc"] for r in rs]
         drops = [r["shortcut_check"]["drop"] for r in rs]

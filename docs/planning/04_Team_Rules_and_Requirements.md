@@ -235,3 +235,4 @@ By signing, each member agrees to follow these rules and to raise concerns early
 | Date | Change | Agreed by |
 |------------|-----------------------------------------|-----------|
 | 15 Oct 2026 | First version | Draft |
+| 21 Oct 2026 | Shenzhen's 15% split (named `test` in the manifest) is a second held-out validation set, not an internal test set, so it matches TRD Appendix A (Shenzhen: train and validate). It stays locked. The name is kept in the files so the dataset version hash does not change. Committing file names, patient numbers, labels, splits and fingerprints is within the dataset's ReadMe terms (PR #78 review) | Chelsea; pending: team |

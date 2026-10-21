@@ -12,7 +12,9 @@ TRD 7.2 needs two thresholds per condition, chosen on validation data only. The 
 Evidence for the frozen run `efficientnet_lite0_seed1_20261021T114608Z` (proposed ADR-18):
 
 - At the 90%-sensitivity point set on Shenzhen validation, sensitivity on the external Montgomery set fell to 70.2%. That is below the 85% floor (TRD 3.4), and it is false reassurance (H1) caused by domain shift (H4).
-- The Shenzhen validation split is small, about 94 images. One missed TB case moves sensitivity by about 2 points, so any threshold carries a wide confidence interval.
+- The current point is probability 0.184, set for 90% sensitivity on Shenzhen v2 validation. There it gives sensitivity 0.918 (95% CI 0.808 to 0.968) and specificity 0.800 (0.662 to 0.891) (ADR-18 results).
+- The Shenzhen v2 validation split is small: 94 images, 49 with TB. One missed TB case moves sensitivity by about 2 points. A 95% target allows at most 2 missed cases out of 49, and any threshold carries a wide confidence interval.
+- The second Shenzhen split (93 images) is a held-out validation set, not an internal test set (ADR-18, Shenzhen v2 data card). It and Montgomery are spent for this run. They must not be used to set or check these thresholds.
 
 ## Options considered
 
@@ -24,7 +26,7 @@ Evidence for the frozen run `efficientnet_lite0_seed1_20261021T114608Z` (propose
 
 Option 2, for the M2 slice only:
 
-| Threshold | Rule, on the Shenzhen **validation** split only |
+| Threshold | Rule, on the Shenzhen v2 **validation** split only (94 images) |
 |-----------|--------------------------------------------------|
 | Screen-out (Low risk / Not sure) | Highest threshold with sensitivity of 95% or higher |
 | Refer (Not sure / Refer now) | Lowest threshold with specificity of 95% or higher |
@@ -37,6 +39,7 @@ Both are set on raw (uncalibrated) fp32 logits and versioned as `thresholds v0-u
 - More results will be Not sure. The monitoring page reports the zone mix so the team can see how many.
 - If the screen-out threshold comes out above the refer threshold, the zones overlap. Nothing ships until the team decides.
 - The confidence intervals are wide. Reports must show them, not a bare 95%.
+- **External sensitivity at the new screen-out point is unknown.** The Montgomery figures (sensitivity 0.702) were measured at the 90% point, and Montgomery cannot be scored again for this run. The report must say so and must not reuse 0.702 as the slice's figure.
 - E6-01 recalibrates (temperature scaling, ADR-8) and sets both thresholds again. These values do not carry over.
 - Hazard log: H1 and H4 mitigations reference this ADR.
 - Change-log entry in `docs/planning/04_Team_Rules_and_Requirements.md`.

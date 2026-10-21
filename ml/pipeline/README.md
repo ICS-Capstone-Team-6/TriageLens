@@ -63,3 +63,32 @@ The `dataset_version_hash` in `run_report.json` changes if any file, byte or spl
 Regression tests use synthetic images and readings only.
 
 - **Splits carry over between versions.** By default the pipeline keeps every patient group in the split it had in `--keep-splits-from` (version 1). A stricter rule then only removes records; nothing moves between splits, so a model trained on an earlier version never meets its own training images in a later test split. A group whose files were in two earlier splits stops the run. New patients are split by the usual seeded rule. Pass `--keep-splits-from ""` only to start a fresh split, and treat everything trained before it as invalid for the new test split.
+
+## Montgomery (locked external test)
+
+Montgomery is the external TB test set (ML-DATA-04): never used for training, tuning or thresholds, and scored once per frozen model. Download it into `ml/data/raw/montgomery/` (git-ignored) from the repo root:
+
+```sh
+pip install kagglehub==1.0.2
+python3 ml/pipeline/download_montgomery.py
+```
+
+The source is the Kaggle copy `raddar/tuberculosis-chest-xrays-montgomery`, a third-party re-upload of the NLM set. The script writes `SOURCE.json` (Kaggle version, date, SHA-256 of every file) for the data card, and compares what arrived with the NLM description: 138 images (80 normal, 58 TB) named `MCUCXR_####_L.png`, each with a clinical reading. It exits with code 2 and lists the differences if they do not match. If Kaggle asks for a login, run `python3 -c "import kagglehub; kagglehub.login()"` first.
+
+**Clinical readings come from NLM.** Kaggle version 1 (18 Oct 2026) has the 138 images, the right label counts and the original sizes (4020 by 4892, either way round), but no reading files: only `montgomery_metadata.csv`, a third-party transcription. Age (the 15-and-over rule) and the label check must rest on the official readings, so download them (about 140 small text files) and re-check:
+
+```sh
+wget -r -np -nH --cut-dirs=4 -R "index.html*" -P ml/data/raw/montgomery \
+  https://data.lhncbc.nlm.nih.gov/public/Tuberculosis-Chest-X-ray-Datasets/Montgomery-County-CXR-Set/MontgomerySet/ClinicalReadings/index.html
+python3 ml/pipeline/download_montgomery.py --check-only
+```
+
+The CSV is kept as a cross-check against the readings, not as a source of labels.
+
+Then build the manifest (about a minute):
+
+```sh
+python3 ml/pipeline/build_external.py
+```
+
+It writes `ml/manifests/montgomery_v1/` (committed: `manifest.csv`, `quarantine.csv`, `near_duplicates.csv`, `run_report.json`, `DATA_CARD.md`) and the private metadata to `ml/data/interim/montgomery_v1/`. It reuses the Shenzhen checks, with three differences explained in its docstring and the data card: no split (every record is `external`), a label check that accepts TB findings without the word TB, and patient groups from readings that name another image. It also quarantines any image that matches Shenzhen.

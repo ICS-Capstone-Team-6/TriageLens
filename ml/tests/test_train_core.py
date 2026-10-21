@@ -128,6 +128,18 @@ class TestMetrics(unittest.TestCase):
         self.assertEqual(len(honest["by_aspect_third"]), 3)
         self.assertEqual(sum(b["n"] for b in honest["by_aspect_third"]), 120)
 
+    def test_shape_check_handles_a_few_fixed_shapes(self):
+        # Montgomery has only portrait and landscape films; thirds left a group empty and
+        # crashed the first evaluation attempt (21 Oct 2026) before any result was shown
+        rng = np.random.default_rng(3)
+        aspect = np.r_[np.full(93, 0.8217), np.full(34, 1.2169)]
+        y = rng.integers(0, 2, len(aspect))
+        out = metrics.shape_check(y, y + rng.normal(0, 0.5, len(y)), aspect)
+        self.assertEqual([g["n"] for g in out["by_aspect_value"]], [93, 34])
+        one_class = metrics.shape_check(np.r_[np.zeros(5, int), np.ones(5, int)], np.arange(10.0),
+                                        np.r_[np.full(5, 0.8), np.full(5, 1.2)])
+        self.assertIsNone(one_class["by_aspect_value"][0]["auroc"])  # a group with no TB has no AUROC
+
     def test_bootstrap_ci_brackets_estimate(self):
         rng = np.random.default_rng(0)
         y = rng.integers(0, 2, 200)

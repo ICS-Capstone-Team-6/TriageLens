@@ -60,10 +60,12 @@ def _process(args):
         return ("ok", path.name, to_model_size(im, spec))
 
 
-def prepare(raw, manifest_path, out, workers=4):
+def prepare(raw, manifest_path, out, workers=4, img_subdir="CXR_png", splits=SPLITS):
+    """img_subdir and splits differ for an external set: Montgomery keeps its images in
+    images/images/ and has one split, "external" (ml/pipeline/build_external.py)."""
     spec = load_spec()
     manifest = pd.read_csv(manifest_path, dtype={"patient_id": str, "group_id": str})
-    img_dir = Path(raw) / "CXR_png"
+    img_dir = Path(raw) / img_subdir
     jobs = [(img_dir / f, s, spec) for f, s in zip(manifest["file"], manifest["sha256"])]
     with ProcessPoolExecutor(max_workers=workers) as pool:
         results = list(pool.map(_process, jobs, chunksize=8))
@@ -81,7 +83,7 @@ def prepare(raw, manifest_path, out, workers=4):
         "input_size": spec["input_size"],
         "splits": {},
     }
-    for split in SPLITS:
+    for split in splits:
         rows = manifest[manifest["split"] == split].sort_values("file")
         path = out / f"{split}.npz"
         np.savez_compressed(

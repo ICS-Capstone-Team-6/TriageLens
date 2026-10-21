@@ -1,0 +1,12 @@
+file,patient_id,label,stage,check,reason
+MCUCXR_0004_0.png,0004,0,policy,intended_population,below minimum age 15 (TRD 9.1)
+MCUCXR_0017_0.png,0017,0,policy,intended_population,below minimum age 15 (TRD 9.1)
+MCUCXR_0026_0.png,0026,0,policy,intended_population,below minimum age 15 (TRD 9.1)
+MCUCXR_0041_0.png,0041,0,policy,intended_population,below minimum age 15 (TRD 9.1)
+MCUCXR_0042_0.png,0042,0,policy,intended_population,below minimum age 15 (TRD 9.1)
+MCUCXR_0060_0.png,0060,0,policy,intended_population,below minimum age 15 (TRD 9.1)
+MCUCXR_0061_0.png,0061,0,policy,intended_population,below minimum age 15 (TRD 9.1)
+MCUCXR_0075_0.png,0075,0,policy,intended_population,below minimum age 15 (TRD 9.1)
+MCUCXR_0077_0.png,0077,0,policy,intended_population,below minimum age 15 (TRD 9.1)
+MCUCXR_0080_0.png,0080,0,policy,intended_population,below minimum age 15 (TRD 9.1)
+MCUCXR_0383_1.png,0383,1,policy,intended_population,below minimum age 15 (TRD 9.1)

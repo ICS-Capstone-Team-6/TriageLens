@@ -90,6 +90,7 @@ class TestEvaluate(unittest.TestCase):
                 self.assertFalse({"sex", "age", "finding"} & set(preds.columns))  # no personal data
             self.assertGreaterEqual(report["operating_point"]["validation"]["sensitivity"], 0.90)
             self.assertEqual(json.loads((root / "eval" / "eval_report.json").read_text())["run"], run_dir.name)
+            self.assertEqual([a["finished"] for a in report["attempts"]], [True])
             with self.assertRaises(ev.AlreadyEvaluated):
                 ev.evaluate(run_dir, sets, root / "eval", root / "data", log=lambda *_: None)
 

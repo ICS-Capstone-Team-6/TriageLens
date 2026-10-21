@@ -103,6 +103,13 @@ def evaluate(run_dir, sets, out_dir, train_data_dir, int8=True, log=print):
     if (out_dir / "eval_report.json").exists():
         raise AlreadyEvaluated(f"{out_dir} already holds an evaluation; the locked sets are scored once")
     out_dir.mkdir(parents=True, exist_ok=True)
+    # Every attempt is logged, including ones that crash before producing a result, so the
+    # record shows how many times the locked sets were touched (ML-DATA-04).
+    attempts_path = out_dir / "attempts.json"
+    attempts = json.loads(attempts_path.read_text()) if attempts_path.exists() else []
+    attempts.append({"started_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
+                     "finished": False})
+    attempts_path.write_text(json.dumps(attempts, indent=2))
     spec = load_spec()
     cfg = json.loads((run_dir / "config.json").read_text())
     model = TBNet(cfg["backbone"], pretrained=False)
@@ -160,5 +167,8 @@ def evaluate(run_dir, sets, out_dir, train_data_dir, int8=True, log=print):
             rows["prob_int8"] = _sigmoid(q_logit)
         pd.DataFrame(rows).to_csv(out_dir / f"predictions_{name}.csv", index=False)
         report["sets"][name] = entry
+    attempts[-1]["finished"] = True
+    attempts_path.write_text(json.dumps(attempts, indent=2))
+    report["attempts"] = attempts
     (out_dir / "eval_report.json").write_text(json.dumps(report, indent=2))
     return report

@@ -8,10 +8,10 @@ The hazard log is created in Sprint 1 (E12-02) and closed or accepted in Sprint 
 
 | ID | Hazard | Possible harm | Mitigation | Owner | Status | Evidence | Sprint to close |
 |----|--------|---------------|------------|-------|--------|----------|-----------------|
-| H1 | Missed TB or DR (false reassurance) | Delayed treatment, spread of infection | Sensitivity-first threshold; "does not rule out disease" wording; symptoms can raise the zone; clinician review; report sensitivity honestly | Kweku, Chelsea | Open | | |
+| H1 | Missed TB or DR (false reassurance) | Delayed treatment, spread of infection | Sensitivity-first threshold (slice: 95% or higher sensitivity, [ADR-20](../adr/0020-interim-slice-thresholds.md)); "does not rule out disease" wording; symptoms can raise the zone; clinician review; report sensitivity honestly | Kweku, Chelsea | Open | | |
 | H2 | Over-reliance on the tool (automation bias) | Worker skips clinical judgment | Reminder on every result; "Unsure" state; training note in the user guide; usability tests check understanding | Kweku | Open | | |
 | H3 | Wrong image type or poor image | Meaningless result | Modality gate and quality gate; no result on failure | Micheal | Open | | |
-| H4 | Domain shift (different machines, patients, film) | Lower accuracy than reported | External validation; phone-photo testing; clear limits; monitor "Unsure" and agreement rates; pilot only with approval | Chelsea | Open | | |
+| H4 | Domain shift (different machines, patients, film) | Lower accuracy than reported | External validation; phone-photo testing; clear limits; monitor "Unsure" and agreement rates (slice monitoring page, [ADR-19](../adr/0019-m2-thin-slice-pulled-forward.md)); pilot only with approval | Chelsea | Open | | |
 | H5 | Used on children or out-of-scope patients | Wrong results | Age gate (15 and over); wording; guide | Kweku | Open | | |
 | H6 | Data breach | Loss of privacy | Minimization, encryption, row-level security, audit log, incident plan | Nana Yaw | Open | | |
 | H7 | Faulty or tampered model update | Silent errors | Signed manifests, staged release, rollback, parity tests | Nana Yaw, Chelsea | Open | | |

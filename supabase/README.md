@@ -40,15 +40,15 @@ The client supplies stable UUIDs. `save_case` takes the complete mutable case pa
 
 ## Reproduce and verify
 
-Pinned CLI: `2.121.0`; local PostgreSQL major: `17`. Docker must be running.
+Pinned CLI: `2.121.0`; local PostgreSQL major: `17`. Docker must be running and the PostgreSQL `psql` client must be installed.
 
 ```sh
 supabase start
-supabase db query --local --file supabase/tests/authorization.sql
+bash supabase/test-local.sh
 supabase stop --no-backup
 ```
 
-CI runs these commands against an isolated local database, without cloud credentials. The test SQL sets `plpgsql.check_asserts=on`; any failed assertion or unexpected permission result fails the command. It covers anonymous denial, facility isolation, self-promotion denial, unassigned/disabled users, role restrictions, immutable results/audits, sign-in and case-access audit counts, and case/inference retry behavior.
+CI runs these commands against an isolated local database, without cloud credentials. The test runner uses `psql` with `ON_ERROR_STOP`, because the pinned CLI query command does not accept this multi-statement transaction. The test SQL sets `plpgsql.check_asserts=on`; any failed assertion or unexpected permission result fails the command. It covers anonymous denial, facility isolation, self-promotion denial, unassigned/disabled users, role restrictions, immutable results/audits, sign-in and case-access audit counts, and case/inference retry behavior.
 
 The cloud migration and the same 41 checks passed on 21 Oct 2026. Security advisors reported no findings. New unused-index performance notices are expected before a new project has workload; retain the foreign-key indexes ([Supabase advisory reference](https://supabase.com/docs/guides/database/database-linter?lint=0005_unused_index)).
 

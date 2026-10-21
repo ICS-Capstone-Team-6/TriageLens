@@ -1,5 +1,5 @@
 -- E9-01 integration checks. Fake users/data only; all writes roll back.
--- Run with: supabase db query --local --file supabase/tests/authorization.sql
+-- Run with: bash supabase/test-local.sh
 begin;
 set local plpgsql.check_asserts = on;
 do $$

@@ -124,10 +124,14 @@ jobs:
       - uses: supabase/setup-cli@v1
         with:
           version: 2.121.0
+      - name: Install PostgreSQL test client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends postgresql-client
       - name: Start isolated local Supabase and apply migrations
         run: supabase start
       - name: Verify access, immutability, audit and replay rules
-        run: supabase db query --local --file supabase/tests/authorization.sql
+        run: bash supabase/test-local.sh
       - name: Stop local Supabase
         if: always()
         run: supabase stop --no-backup

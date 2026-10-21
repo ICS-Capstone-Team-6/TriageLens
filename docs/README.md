@@ -48,6 +48,8 @@ Every document in `docs/`, who owns it and how it changes.
 | [adr/0010-opt-in-image-upload.md](adr/0010-opt-in-image-upload.md) | ADR-10. Image upload | Kweku | Living (supersede with a new ADR) |
 | [adr/0011-ecdsa-p256-signing.md](adr/0011-ecdsa-p256-signing.md) | ADR-11. Model signing | Kweku | Living (supersede with a new ADR) |
 | [adr/0012-react-typescript-vite.md](adr/0012-react-typescript-vite.md) | ADR-12. Web framework | Kweku | Living (supersede with a new ADR) |
+| [adr/0019-m2-thin-slice-pulled-forward.md](adr/0019-m2-thin-slice-pulled-forward.md) | ADR-19. M2 thin slice pulled forward (proposed) | Kweku | Living (supersede with a new ADR) |
+| [adr/0020-interim-slice-thresholds.md](adr/0020-interim-slice-thresholds.md) | ADR-20. Interim slice thresholds (proposed) | Kweku | Living (supersede with a new ADR) |
 
 ## Safety and ethics
 

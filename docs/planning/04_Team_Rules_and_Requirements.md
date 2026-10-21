@@ -235,3 +235,6 @@ By signing, each member agrees to follow these rules and to raise concerns early
 | Date | Change | Agreed by |
 |------------|-----------------------------------------|-----------|
 | 15 Oct 2026 | First version | Draft |
+| 21 Oct 2026 | M2 thin slice deployed in Sprint 0, ahead of G1, for the ICS 591 M2 deadline (23 Oct); Sprint 0 cap and swap rule not met this week ([ADR-19](../adr/0019-m2-thin-slice-pulled-forward.md)) | Pending: team |
+| 21 Oct 2026 | M2 slice thresholds: screen-out at 95% or higher sensitivity (TRD 7.2 says 90%) and refer at 95% or higher specificity, on raw validation logits, until E6-01 calibration ([ADR-20](../adr/0020-interim-slice-thresholds.md)) | Pending: team |
+| 21 Oct 2026 | Required pull-request approval removed from `main` branch protection; the four CI checks stay required (Team Rules 6 says one review minimum) | Kweku; pending: team |

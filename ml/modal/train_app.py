@@ -9,6 +9,7 @@ Run from the repo root, in this order:
     modal run ml/modal/train_app.py::export       # ONNX and static int8 for the latest bake-off (CPU)
     modal run ml/modal/train_app.py::quant_sweep  # compare int8 settings when the drop is too big
     modal run ml/modal/train_app.py::evaluate     # ONE-TIME score of the frozen model on the locked sets
+    modal run ml/modal/train_app.py::review       # heatmaps of the worst errors, for human tagging
 
 The training code is plain Python in ml/train/ (ADR-13). This file only moves it to a GPU.
 Raw images are read from the triagelens-data volume, runs are written to triagelens-runs.
@@ -149,6 +150,24 @@ def evaluate_remote(run_dir: str) -> dict:
                          f"{RUNS_DIR}/eval/{Path(run_dir).name}", PROCESSED)
     runs_volume.commit()
     return report
+
+
+@app.function(cpu=4, memory=8192, timeout=30 * 60,
+              volumes={DATA_DIR: data_volume, RUNS_DIR: runs_volume})
+def review_remote(run_dir: str, per_kind: int) -> list:
+    """Prosit 2 C2: heatmaps of the worst errors on validation and Montgomery. Describes the
+    errors only; uses the threshold the one-time evaluation took from validation."""
+    _train_code()
+    import error_review
+
+    runs_volume.reload()
+    name = Path(run_dir).name
+    report = json.loads(Path(f"{RUNS_DIR}/eval/{name}/eval_report.json").read_text())
+    rows = error_review.review(run_dir, {"shenzhen_val": (PROCESSED, "val"), "montgomery": (MONT_PROCESSED, "external")},
+                               report["operating_point"]["probability_threshold"], f"{RUNS_DIR}/review/{name}",
+                               per_kind=per_kind)
+    runs_volume.commit()
+    return rows
 
 
 def _git_state():
@@ -353,3 +372,22 @@ def evaluate(summary: str = "", backbone: str = "efficientnet_lite0"):
     print(f"\nSaved to {dest.relative_to(REPO)}. Then, for subgroups (personal data stays on this machine):")
     print("    modal volume get --force triagelens-runs /eval ml/runs/")
     print(f"    python3 ml/train/subgroups.py ml/runs/eval/{Path(run_dir).name}")
+
+
+@app.local_entrypoint()
+def review(summary: str = "", backbone: str = "efficientnet_lite0", per_kind: int = 5):
+    """Heatmaps of the worst errors of the frozen model, for two reviewers to tag (C2)."""
+    runs_dir = REPO / "ml" / "runs"
+    path = Path(summary) if summary else sorted(runs_dir.glob("bakeoff_summary_*.json"))[-1]
+    entry = json.loads(path.read_text())["summary"][backbone]
+    ranked = sorted(zip(entry["val_auroc"], entry["runs"]))
+    run_dir = ranked[len(ranked) // 2][1]
+    rows = review_remote.remote(run_dir, per_kind)
+    print(f"\n{'set':13s} {'error':12s} {'prob':>6s} {'border heat':>12s} {'landscape':>10s}")
+    for r in rows:
+        print(f"{r['set']:13s} {r['error']:12s} {r['prob_tb']:6.3f} {r['border_heat_share']:12.0%} "
+              f"{'yes' if r['landscape'] else '':>10s}")
+    name = Path(run_dir).name
+    print("\nImages stay private (git-ignored). Download, then tag review_sheet.csv (see HOW_TO_REVIEW.md):")
+    print("    modal volume get --force triagelens-runs /review ml/runs/")
+    print(f"    python3 ml/train/error_review.py agreement ml/runs/review/{name}/review_sheet.csv")

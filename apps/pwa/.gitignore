@@ -3,3 +3,4 @@ dist/
 public/ort/
 .env.local
 *.onnx
+.private/

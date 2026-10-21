@@ -22,7 +22,7 @@ class LockedSplitError(Exception):
     """Something asked for the test split outside a frozen-model evaluation."""
 
 
-LOCKED_SPLITS = ("test", "external")  # internal test and external test sets (ML-DATA-04)
+LOCKED_SPLITS = ("test", "external")  # Shenzhen held-out validation and external test sets (ML-DATA-04)
 
 
 def load_split(data_dir, split, allow_test=False):

@@ -46,6 +46,8 @@ Option 3.
 - **Format: full precision (fp32) ONNX** until int8 passes rule 2 in the browser runtime. 12.8 MB is within the 15 MB budget (NFR-SIZE-01).
 - **Frozen run: the median seed by validation AUROC**, `efficientnet_lite0_seed2_20261018T153928Z` (validation AUROC 0.918, 95% CI 0.855 to 0.965). This rule is fixed before any test or external score is seen. It does not pick the best seed (seed 3, 0.940), which would overstate the result, and it does not pick by int8 drop (seed 3 also has the smallest drop, 0.006), because full precision is what ships.
 
+  *Update, 21 Oct 2026:* this run was trained on Shenzhen v1. After the retrain on Shenzhen v2, the same rule picks `efficientnet_lite0_seed1_20261021T114608Z`, which is the frozen run (v2 follow-up, PR #84). The v1 run above is superseded and was never scored on a locked set.
+
 ## Consequences
 
 - ADR-5's revisit trigger (accuracy drop over 0.03) has fired. ADR-5 stays the goal; this ADR is the interim.

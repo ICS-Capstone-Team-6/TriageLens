@@ -20,6 +20,8 @@
   "age_under_15": "Under 15",
   "model_ready": "TB model ready on this phone",
   "model_ready_body": "Runs on the phone. The image is never uploaded.",
+  "model_demo": "Demo stand-in loaded, not the TB model",
+  "model_demo_body": "Results in demo mode are made up. Use it to try the screens only.",
   "model_loading": "Getting the TB model ready",
   "model_loading_body": "This happens once. Keep the app open.",
   "take_photo": "Take a photo of the film",

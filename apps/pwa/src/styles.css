@@ -172,3 +172,11 @@ td { padding: 10px 8px; }
   .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .wide { grid-column: auto; }
 }
+
+/* development-only demo bar (src/demo) */
+.demo-bar { background: var(--ink); color: #ffffff; padding: 10px 16px 12px; display: flex; flex-direction: column; gap: 8px; }
+.demo-title { font-size: 14px; font-weight: 600; line-height: 1.4; max-width: 480px; margin: 0 auto; width: 100%; }
+.demo-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; max-width: 480px; margin: 0 auto; width: 100%; }
+.demo-label { font-size: 13px; color: var(--panel-2); margin-right: 4px; }
+.demo-chip { min-height: 44px; padding: 0 12px; border-radius: 9999px; border: 0; background: rgba(255, 255, 255, 0.14); color: #ffffff; font-size: 13px; font-weight: 600; cursor: pointer; }
+.demo-chip.on { background: #ffffff; color: var(--ink); }

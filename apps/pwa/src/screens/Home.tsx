@@ -14,9 +14,10 @@ interface Props {
   onMonitor: () => void;
   onSignOut: (() => void) | null;
   backendNote: boolean;
+  demo?: boolean;
 }
 
-export function Home({ age, onAge, onFile, ready, modelReady, onMonitor, onSignOut, backendNote }: Props) {
+export function Home({ age, onAge, onFile, ready, modelReady, onMonitor, onSignOut, backendNote, demo = false }: Props) {
   const camera = useRef<HTMLInputElement>(null);
   const upload = useRef<HTMLInputElement>(null);
   const canStart = ready;
@@ -57,8 +58,8 @@ export function Home({ age, onAge, onFile, ready, modelReady, onMonitor, onSignO
         <div className="status">
           <Phone />
           <div>
-            <p className="status-title">{modelReady ? t('model_ready') : t('model_loading')}</p>
-            <p className="muted">{modelReady ? t('model_ready_body') : t('model_loading_body')}</p>
+            <p className="status-title">{demo ? t('model_demo') : modelReady ? t('model_ready') : t('model_loading')}</p>
+            <p className="muted">{demo ? t('model_demo_body') : modelReady ? t('model_ready_body') : t('model_loading_body')}</p>
           </div>
         </div>
         <div className="status">

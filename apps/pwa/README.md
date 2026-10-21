@@ -27,7 +27,10 @@ npx tsc --noEmit       # type-check
 npm run build          # production build into dist/
 ```
 
-Every screen can be opened in development with `?preview=signin|home|checking|retake|result-refer|result-unsure|result-low|under15`. Preview mode is not in production builds.
+Two development-only tools, both left out of production builds:
+
+- **Clickable demo:** `?demo` runs the real screens, age check and zone logic with a stand-in for the model. Pick the next outcome in the demo bar; every screen says the result is made up, nothing is saved, and the monitoring page (`?demo#/monitor`) shows the demo screenings.
+- **Single screens:** `?preview=signin|home|checking|retake|result-refer|result-unsure|result-low|under15` for the UI checkers.
 
 ## Configuration
 

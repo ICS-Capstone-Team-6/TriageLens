@@ -8,12 +8,12 @@ import { Mark } from '../ui/icons';
 
 const fmt = (v: number | null, d = 2) => (v == null ? '–' : v.toFixed(d));
 
-export function Monitor({ onBack }: { onBack: () => void }) {
-  const [rows, setRows] = useState<InferenceRow[] | null | 'loading'>('loading');
+export function Monitor({ onBack, rows: given }: { onBack: () => void; rows?: InferenceRow[] }) {
+  const [rows, setRows] = useState<InferenceRow[] | null | 'loading'>(given ?? 'loading');
   const [ref, setRef] = useState<Reference | null>(null);
 
   useEffect(() => {
-    void loadInferences(100).then(setRows);
+    if (!given) void loadInferences(100).then(setRows);
     fetch('/config/reference.json', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).then(setRef).catch(() => setRef(null));
   }, []);
 

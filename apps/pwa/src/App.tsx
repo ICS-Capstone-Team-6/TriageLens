@@ -6,10 +6,10 @@ import type { Screened } from './inference/messages';
 import { loadThresholds, type ThresholdsState } from './lib/config';
 import { PREPROCESS_VERSION } from './lib/preprocess';
 import type { RetakeReason } from './lib/quality';
-import { MODEL_RUN, saveScreening, type AgeBand } from './lib/records';
+import { MODEL_RUN, saveScreening, type AgeBand, type InferenceRow } from './lib/records';
 import { backendConfigured, supabase } from './lib/supabase';
 import { ageAfter, backendRequired, canScreen, modelMatches, type EndAction } from './lib/session';
-import { sigmoid, zoneFor } from './lib/triage';
+import { sigmoid, zoneFor, type Thresholds, type Zone } from './lib/triage';
 import { Monitor } from './screens/Monitor';
 import { Home } from './screens/Home';
 import { SignIn } from './screens/SignIn';
@@ -23,18 +23,28 @@ type View =
   | { name: 'result'; zone: 'refer_now' | 'unsure' | 'low_risk'; saved: boolean | null }
   | { name: 'error' };
 
+/** Development-only demo wiring, injected by main.tsx; production never passes it. */
+export interface DemoHooks {
+  client: { init(): Promise<Ready>; screen(file: Blob, onProgress: (step: 1 | 2) => void): Promise<Screened> };
+  thresholds: Thresholds;
+  sha: string;
+  record: (s: Screened, zone: Zone, probability: number | null, totalMs: number) => void;
+  rows: InferenceRow[];
+  banner: React.ReactNode;
+}
+
 const MODEL_URL = (import.meta.env.VITE_MODEL_URL as string | undefined) ?? '';
 const MODEL_SHA256 = (import.meta.env.VITE_MODEL_SHA256 as string | undefined) ?? '';
 
-export function App() {
+export function App({ demo }: { demo?: DemoHooks }) {
   const [route, setRoute] = useState(location.hash === '#/monitor' ? 'monitor' : 'app');
-  const [signedIn, setSignedIn] = useState<boolean | null>(backendConfigured ? null : false);
+  const [signedIn, setSignedIn] = useState<boolean | null>(backendConfigured && !demo ? null : false);
   const [signInError, setSignInError] = useState<string | null>(null);
   const [thresholds, setThresholds] = useState<ThresholdsState | null>(null);
   const [model, setModel] = useState<Ready | 'loading' | 'failed'>('loading');
   const [age, setAge] = useState<AgeBand | 'under15' | null>(null);
   const [view, setView] = useState<View>({ name: 'home' });
-  const client = useRef<InferenceClient | null>(null);
+  const client = useRef<Pick<DemoHooks['client'], 'screen'> | null>(null);
 
   useEffect(() => {
     const onHash = () => setRoute(location.hash === '#/monitor' ? 'monitor' : 'app');
@@ -43,10 +53,17 @@ export function App() {
   }, []);
 
   useEffect(() => {
+    if (demo) {
+      client.current = demo.client;
+      setThresholds({ ok: true, thresholds: demo.thresholds, runId: MODEL_RUN, modelSha256: demo.sha });
+      demo.client.init().then(setModel, () => setModel('failed'));
+      return;
+    }
     void loadThresholds(MODEL_RUN).then(setThresholds);
-    client.current = new InferenceClient();
+    const real = new InferenceClient();
+    client.current = real;
     if (!MODEL_URL) setModel('failed');
-    else client.current.init(MODEL_URL, MODEL_SHA256).then(setModel, () => setModel('failed'));
+    else real.init(MODEL_URL, MODEL_SHA256).then(setModel, () => setModel('failed'));
     if (supabase) {
       void supabase.auth.getSession().then(({ data }) => setSignedIn(Boolean(data.session)));
       const { data } = supabase.auth.onAuthStateChange((_e, session) => setSignedIn(Boolean(session)));
@@ -82,6 +99,10 @@ export function App() {
     const zone = zoneFor(probability ?? Number.NaN, thresholds.thresholds, r.quality.passed);
     const totalMs = performance.now() - started;
     const record = { ageBand: age, screened: r, zone, probability, thresholdsVersion: thresholds.thresholds.version, modelSha256: model.modelSha256, totalMs };
+    if (demo) {
+      demo.record(r, zone, probability, totalMs);
+      return setView(zone === 'retake' ? { name: 'retake', reason: r.quality.reason ?? 'blank' } : { name: 'result', zone, saved: null });
+    }
     if (zone === 'retake') {
       setView({ name: 'retake', reason: r.quality.reason ?? 'blank' });
       void saveScreening(record);
@@ -92,10 +113,15 @@ export function App() {
     setView((v) => (v.name === 'result' ? { ...v, saved } : v));
   }
 
+  const screenEl = renderScreen();
+  if (demo) return <>{demo.banner}{screenEl}</>;
+  return screenEl;
+
+  function renderScreen() {
   if (backendRequired(import.meta.env.PROD, backendConfigured)) return <Blocked title={t('not_ready_title')} body={t('backend_required')} />;
-  if (backendConfigured && signedIn === null) return null;
-  if (backendConfigured && !signedIn) return <SignIn onSignIn={signIn} error={signInError} />;
-  if (route === 'monitor') return <Monitor onBack={() => go('#/')} />;
+  if (!demo && backendConfigured && signedIn === null) return null;
+  if (!demo && backendConfigured && !signedIn) return <SignIn onSignIn={signIn} error={signInError} />;
+  if (route === 'monitor') return <Monitor onBack={() => go('#/')} rows={demo ? [...demo.rows] : undefined} />;
 
   if (age === 'under15') {
     return <Blocked title={t('under15_title')} body={t('under15_body')} action={t('under15_back')} onAction={() => setAge(null)} />;
@@ -125,7 +151,7 @@ export function App() {
         <Result
           zone={view.zone}
           saved={backendConfigured ? view.saved : null}
-          versions={{ model: MODEL_RUN, thresholds: thresholds?.ok ? thresholds.thresholds.version : '–', preprocess: PREPROCESS_VERSION }}
+          versions={{ model: demo ? 'demo-stand-in' : MODEL_RUN, thresholds: thresholds?.ok ? thresholds.thresholds.version : '–', preprocess: PREPROCESS_VERSION }}
           onDone={() => end('done')}
           onRetake={() => end('retake')}
         />
@@ -139,9 +165,11 @@ export function App() {
           ready={canScreen(typeof model === 'object', Boolean(thresholds?.ok), age)}
           modelReady={typeof model === 'object'}
           onMonitor={() => go('#/monitor')}
-          onSignOut={supabase ? () => void supabase!.auth.signOut() : null}
-          backendNote={!backendConfigured}
+          onSignOut={supabase && !demo ? () => void supabase!.auth.signOut() : null}
+          backendNote={!backendConfigured && !demo}
+          demo={Boolean(demo)}
         />
       );
   }
+}
 }

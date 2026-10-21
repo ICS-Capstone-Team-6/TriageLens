@@ -225,7 +225,7 @@ By signing, each member agrees to follow these rules and to raise concerns early
 
 | Name | Role | Signature | Date |
 |--------------|--------------------------------|----------------------|------------|
-| Kweku | Team lead and product owner | | |
+| Kweku | Team lead and product owner | Kweku-Abeiku Attah Anyen | 21 Oct 2026 |
 | Micheal | Project manager | Michael Sylvester | 21 Oct 2026 |
 | Chelsea | ML lead | | |
 | Nana Yaw | DevOps and QA lead | Nana Yaw Koranteng | 20 Oct 2026 |

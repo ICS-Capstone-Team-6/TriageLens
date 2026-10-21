@@ -55,6 +55,8 @@ Every document in `docs/`, who owns it and how it changes.
 |----------|-------------|-------|-------------|
 | [safety/intended-use.md](safety/intended-use.md) | Intended-use statement (TRD 3.3) and where it must appear | Kweku | Frozen text; change by ADR |
 | [safety/hazard-log.md](safety/hazard-log.md) | Hazards H1 to H12 with status and evidence (TRD 12.2) | Kweku | Living |
+| [ethics/ethics-pathway.md](ethics/ethics-pathway.md) | Review route, protocol outline, submission checklist, timing (E12-01) | Kweku | Living |
+| [ethics/clinic-contacts.md](ethics/clinic-contacts.md) | Clinic contact log; roles only, no personal details (E12-01) | Kweku | Living |
 | [ethics/irb-checklist.md](ethics/irb-checklist.md) | Ethics pathway checklist (TRD 12.3) | Kweku | Living |
 | [ethics/consent-template.md](ethics/consent-template.md) | Consent form for usability testers; draft pending Ashesi IRB review | Kweku | Living; IRB wording overrides |
 

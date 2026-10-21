@@ -64,3 +64,16 @@ Any one of:
 - An int8 EfficientNet-Lite0 passes rule 2 (drop at most 0.015 on every seed) measured in ONNX Runtime Web: switch to int8.
 - fp32 p95 inference on the reference phone is over 2.5 s (`E5-01`).
 - The Montgomery external AUROC falls below the TRD floor of 0.80: the backbone choice is reopened with the external result.
+
+## Follow-up: retrained on dataset v2 (21 Oct 2026)
+
+Dataset v2 (`0445b087fed038c4`) applies stricter label checks and keeps every remaining patient in its v1 split (`ml/manifests/shenzhen_v2/DATA_CARD.md`). EfficientNet-Lite0 was retrained on it with the same recipe and seeds; MobileNetV3-Large was not, because the reasons for this decision (int8 loss and float operations) are properties of the architecture, not of 17 removed records.
+
+| Seed | Validation AUROC (v2) |
+| --- | --- |
+| 1 | 0.922 |
+| 2 | 0.917 |
+| 3 | 0.927 |
+| Mean, sd | 0.922, 0.005 (v1: 0.924, 0.014) |
+
+By the rule above, the frozen run is now the median seed: `efficientnet_lite0_seed1_20261021T114608Z` (validation AUROC 0.922; fit gap +0.067 mean over seeds, border-mask drop 0.027, shape correlation -0.387). It is scored once on the Shenzhen v2 test split and the Montgomery external set by `modal run ml/modal/train_app.py::evaluate` (`ml/train/evaluate.py`), full precision and int8 side by side; the only operating point reported uses a threshold set on validation.

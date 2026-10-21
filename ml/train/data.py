@@ -22,9 +22,12 @@ class LockedSplitError(Exception):
     """Something asked for the test split outside a frozen-model evaluation."""
 
 
+LOCKED_SPLITS = ("test", "external")  # internal test and external test sets (ML-DATA-04)
+
+
 def load_split(data_dir, split, allow_test=False):
-    if split == "test" and not allow_test:
-        raise LockedSplitError("the test split is locked until a model is frozen (ML-DATA-04)")
+    if split in LOCKED_SPLITS and not allow_test:
+        raise LockedSplitError(f"the {split} split is locked until a model is frozen (ML-DATA-04)")
     with np.load(Path(data_dir) / f"{split}.npz") as z:
         return {k: z[k] for k in z.files}
 

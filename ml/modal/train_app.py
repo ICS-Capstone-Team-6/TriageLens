@@ -8,6 +8,7 @@ Run from the repo root, in this order:
     modal run ml/modal/train_app.py::train_one --backbone mobilenetv3_large --seed 1
     modal run ml/modal/train_app.py::export       # ONNX and static int8 for the latest bake-off (CPU)
     modal run ml/modal/train_app.py::quant_sweep  # compare int8 settings when the drop is too big
+    modal run ml/modal/train_app.py::evaluate     # ONE-TIME score of the frozen model on the locked sets
 
 The training code is plain Python in ml/train/ (ADR-13). This file only moves it to a GPU.
 Raw images are read from the triagelens-data volume, runs are written to triagelens-runs.
@@ -29,6 +30,11 @@ RAW = f"{DATA_DIR}/shenzhen/raw"  # where ml/modal/README.md uploads the raw set
 # One folder per preprocessing version, so arrays from an old spec are never mixed in.
 PROCESSED = f"{DATA_DIR}/shenzhen/processed_v2_cxr-pre-2"  # dataset v2 (0445b087fed038c4)
 MANIFEST = "/root/ml/manifests/shenzhen_v2/manifest.csv"
+# Locked external test set (ml/pipeline/build_external.py), uploaded with
+#   modal volume put triagelens-data ml/data/raw/montgomery /montgomery/raw
+MONT_RAW = f"{DATA_DIR}/montgomery/raw"
+MONT_PROCESSED = f"{DATA_DIR}/montgomery/processed_v1_cxr-pre-2"
+MONT_MANIFEST = "/root/ml/manifests/montgomery_v1/manifest.csv"
 GPU = "T4"  # same as app.py; enough for MobileNet-sized backbones
 BACKBONES = ("mobilenetv3_large", "efficientnet_lite0")
 SEEDS = (1, 2, 3)  # TRD 9.4: three seeds per configuration
@@ -122,6 +128,27 @@ def sweep_remote(run_dir: str) -> dict:
     out = export_onnx.sweep_run(run_dir, PROCESSED)
     runs_volume.commit()
     return out
+
+
+@app.function(cpu=4, memory=16384, timeout=60 * 60,
+              volumes={DATA_DIR: data_volume, RUNS_DIR: runs_volume})
+def evaluate_remote(run_dir: str) -> dict:
+    """Stories E2-02 and E11-01: score the frozen model once on the Shenzhen test split and
+    Montgomery (ML-DATA-04). Refuses if this run was already scored."""
+    _train_code()
+    sys.path.insert(0, "/root/ml/export")
+    import evaluate as ev
+    import prepare_data
+
+    if not Path(f"{MONT_PROCESSED}/external.npz").exists():
+        prepare_data.prepare(MONT_RAW, MONT_MANIFEST, MONT_PROCESSED, workers=4,
+                             img_subdir="images/images", splits=("external",))
+        data_volume.commit()
+    runs_volume.reload()
+    report = ev.evaluate(run_dir, {"shenzhen_test": (PROCESSED, "test"), "montgomery": (MONT_PROCESSED, "external")},
+                         f"{RUNS_DIR}/eval/{Path(run_dir).name}", PROCESSED)
+    runs_volume.commit()
+    return report
 
 
 def _git_state():
@@ -293,3 +320,36 @@ def quant_sweep(summary: str = ""):
     dest = runs_dir / f"quant_sweep_{stamp}.json"  # git-ignored
     dest.write_text(json.dumps(out, indent=2))
     print(f"\nSummary saved to {dest.relative_to(REPO)}")
+
+
+@app.local_entrypoint()
+def evaluate(summary: str = "", backbone: str = "efficientnet_lite0"):
+    """ONE-TIME evaluation of the frozen model (ADR-18: median seed by validation AUROC).
+
+    The locked sets are scored once per frozen model; a second call for the same run stops.
+    """
+    runs_dir = REPO / "ml" / "runs"
+    path = Path(summary) if summary else sorted(runs_dir.glob("bakeoff_summary_*.json"))[-1]
+    entry = json.loads(path.read_text())["summary"][backbone]
+    ranked = sorted(zip(entry["val_auroc"], entry["runs"]))
+    val_auc, run_dir = ranked[len(ranked) // 2]
+    print(f"Frozen model (median of {len(ranked)} seeds in {path.name}): {run_dir}, validation AUROC {val_auc:.3f}")
+    print("Scoring the Shenzhen test split and Montgomery ONCE (ML-DATA-04).")
+    r = evaluate_remote.remote(run_dir)
+
+    op = r["operating_point"]
+    print(f"\nThreshold from validation: probability {op['probability_threshold']:.3f} "
+          f"(validation sensitivity {op['validation']['sensitivity']:.3f}, specificity {op['validation']['specificity']:.3f})")
+    print(f"\n{'set':15s} {'n':>4s} {'TB':>4s} {'AUROC [95% CI]':>22s} {'sens':>6s} {'spec':>6s} "
+          f"{'int8 drop':>9s} {'masked':>7s} {'shape corr':>11s}")
+    for name, e in r["sets"].items():
+        f, a = e["fp32"], e["at_validation_threshold"]
+        corr = (e["shape_check"]["within_class_corr"]["normal"] + e["shape_check"]["within_class_corr"]["tb"]) / 2
+        print(f"{name:15s} {f['n']:4d} {f['n_tb']:4d} {f['auroc']:7.3f} [{f['ci95'][0]:.3f}, {f['ci95'][1]:.3f}] "
+              f"{a['sensitivity']:6.3f} {a['specificity']:6.3f} {e['int8']['drop']:+9.3f} "
+              f"{e['border_masked_auroc']:7.3f} {corr:+11.3f}")
+    dest = runs_dir / f"eval_{Path(run_dir).name}.json"  # git-ignored
+    dest.write_text(json.dumps(r, indent=2))
+    print(f"\nSaved to {dest.relative_to(REPO)}. Then, for subgroups (personal data stays on this machine):")
+    print("    modal volume get --force triagelens-runs /eval ml/runs/")
+    print(f"    python3 ml/train/subgroups.py ml/runs/eval/{Path(run_dir).name}")

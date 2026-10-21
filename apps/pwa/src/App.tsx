@@ -20,7 +20,7 @@ type View =
   | { name: 'home' }
   | { name: 'checking'; step: 0 | 1 | 2 }
   | { name: 'retake'; reason: RetakeReason }
-  | { name: 'result'; zone: 'refer_now' | 'unsure' | 'low_risk'; saved: boolean | null }
+  | { name: 'result'; zone: 'refer_now' | 'unsure' | 'low_risk'; saved: boolean | null; probability: number | null }
   | { name: 'error' };
 
 /** Development-only demo wiring, injected by main.tsx; production never passes it. */
@@ -101,14 +101,14 @@ export function App({ demo }: { demo?: DemoHooks }) {
     const record = { ageBand: age, screened: r, zone, probability, thresholdsVersion: thresholds.thresholds.version, modelSha256: model.modelSha256, totalMs };
     if (demo) {
       demo.record(r, zone, probability, totalMs);
-      return setView(zone === 'retake' ? { name: 'retake', reason: r.quality.reason ?? 'blank' } : { name: 'result', zone, saved: null });
+      return setView(zone === 'retake' ? { name: 'retake', reason: r.quality.reason ?? 'blank' } : { name: 'result', zone, saved: null, probability });
     }
     if (zone === 'retake') {
       setView({ name: 'retake', reason: r.quality.reason ?? 'blank' });
       void saveScreening(record);
       return;
     }
-    setView({ name: 'result', zone, saved: null });
+    setView({ name: 'result', zone, saved: null, probability });
     const saved = await saveScreening(record);
     setView((v) => (v.name === 'result' ? { ...v, saved } : v));
   }
@@ -152,6 +152,7 @@ export function App({ demo }: { demo?: DemoHooks }) {
           zone={view.zone}
           saved={backendConfigured ? view.saved : null}
           versions={{ model: demo ? 'demo-stand-in' : MODEL_RUN, thresholds: thresholds?.ok ? thresholds.thresholds.version : '–', preprocess: PREPROCESS_VERSION }}
+          devScore={import.meta.env.DEV && thresholds?.ok && view.probability != null ? { probability: view.probability, screenOut: thresholds.thresholds.screenOut, refer: thresholds.thresholds.refer } : undefined}
           onDone={() => end('done')}
           onRetake={() => end('retake')}
         />

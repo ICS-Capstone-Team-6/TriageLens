@@ -30,6 +30,7 @@ npm run build          # production build into dist/
 Two development-only tools, both left out of production builds:
 
 - **Clickable demo:** `?demo` runs the real screens, age check and zone logic with a stand-in for the model. Pick the next outcome in the demo bar; every screen says the result is made up, nothing is saved, and the monitoring page (`?demo#/monitor`) shows the demo screenings.
+- **Score line:** in development builds, each result shows the raw TB score and both thresholds, so the team can see why a zone was chosen. Production never renders it (raw scores stay off health-worker screens, TRD 7.3).
 - **Single screens:** `?preview=signin|home|checking|retake|result-refer|result-unsure|result-low|under15` for the UI checkers.
 
 ## Configuration

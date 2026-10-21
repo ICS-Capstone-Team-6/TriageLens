@@ -83,9 +83,11 @@ interface ResultProps {
   saved: boolean | null;
   onDone: () => void;
   onRetake: () => void;
+  /** Development builds only: the raw score, for the team (TRD 7.3 keeps it off real screens). */
+  devScore?: { probability: number; screenOut: number; refer: number };
 }
 
-export function Result({ zone, versions, saved, onDone, onRetake }: ResultProps) {
+export function Result({ zone, versions, saved, onDone, onRetake, devScore }: ResultProps) {
   const [referred, setReferred] = useState(false);
   return (
     <main className="screen">
@@ -102,6 +104,11 @@ export function Result({ zone, versions, saved, onDone, onRetake }: ResultProps)
         <div><dt>{t('condition_tb')}</dt><dd>{t(`zone_${zone}` as StringKey)}</dd></div>
         <div><dt className="muted">{t('condition_pneumonia')}</dt><dd className="off">{t('not_checked')}</dd></div>
       </dl>
+      {devScore && (
+        <p className="dev-score num">
+          {t('dev_score', { p: devScore.probability.toFixed(3), so: devScore.screenOut.toFixed(4), ref: devScore.refer.toFixed(3) })}
+        </p>
+      )}
       {referred && <p className="panel lead" role="status">{t('refer_confirm')}</p>}
       <div className="spacer" />
       <p className="lead strong center">{t('reminder')}</p>

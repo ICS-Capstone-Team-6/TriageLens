@@ -180,3 +180,6 @@ td { padding: 10px 8px; }
 .demo-label { font-size: 13px; color: var(--panel-2); margin-right: 4px; }
 .demo-chip { min-height: 44px; padding: 0 12px; border-radius: 9999px; border: 0; background: rgba(255, 255, 255, 0.14); color: #ffffff; font-size: 13px; font-weight: 600; cursor: pointer; }
 .demo-chip.on { background: #ffffff; color: var(--ink); }
+
+/* development-only score line on the result screen (src/screens/Flow.tsx) */
+.dev-score { background: var(--panel); border-radius: 16px; padding: 12px 16px; font-size: 14px; line-height: 1.45; color: var(--ink); }

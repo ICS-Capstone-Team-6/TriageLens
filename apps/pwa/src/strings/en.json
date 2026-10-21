@@ -74,6 +74,7 @@
   "saved": "Saved for the monitoring page.",
   "not_saved": "Not saved to the team backend. The result above is unchanged.",
   "versions": "Model {model} · thresholds {thresholds} · preprocessing {preprocess}",
+  "dev_score": "Development build only: TB score {p}. Low risk below {so}, Refer now at {ref} or above. Not shown in the real app.",
   "monitor_link": "Monitoring",
   "monitor_title": "Is the TB model still seeing what it was trained on?",
   "monitor_loading": "Loading records…",

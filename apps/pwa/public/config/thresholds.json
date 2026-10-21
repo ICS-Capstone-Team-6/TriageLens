@@ -1,14 +1,50 @@
 {
   "version": "v0-uncalibrated",
-  "status": "pending",
+  "status": "set",
   "run_id": "efficientnet_lite0_seed1_20261021T114608Z",
   "split": "shenzhen_v2/validation (94 images, 49 TB)",
   "rule": {
     "screen_out": "highest threshold with sensitivity >= 0.95 on validation, raw fp32 logits (ADR-20)",
     "refer": "lowest threshold with specificity >= 0.95 on validation, raw fp32 logits (ADR-20)"
   },
-  "screen_out_probability": null,
-  "refer_probability": null,
-  "model_sha256": null,
-  "note": "Chelsea fills in both values and the SHA-256 of the exact fp32 ONNX file they were set for (PR #84). Until status is 'set', the app shows no results; if the loaded model has a different hash, the app shows no results."
+  "screen_out_probability": 0.090453,
+  "refer_probability": 0.90177,
+  "model_sha256": "ef9c7dc7a8882703a4db24422c27b065d504358087216e86b8ff40a07584a289",
+  "validation": {
+    "screen_out": {
+      "threshold_probability": 0.090453,
+      "tp": 47,
+      "fn": 2,
+      "tn": 27,
+      "fp": 18,
+      "sensitivity": 0.959,
+      "sensitivity_ci95": [
+        0.863,
+        0.989
+      ],
+      "specificity": 0.6,
+      "specificity_ci95": [
+        0.455,
+        0.73
+      ]
+    },
+    "refer": {
+      "threshold_probability": 0.90177,
+      "tp": 23,
+      "fn": 26,
+      "tn": 43,
+      "fp": 2,
+      "sensitivity": 0.469,
+      "sensitivity_ci95": [
+        0.337,
+        0.606
+      ],
+      "specificity": 0.956,
+      "specificity_ci95": [
+        0.852,
+        0.988
+      ]
+    },
+    "not_sure_share": 0.426
+  }
 }

@@ -51,7 +51,7 @@ Option 3.
 ## Consequences
 
 - ADR-5's revisit trigger (accuracy drop over 0.03) has fired. ADR-5 stays the goal; this ADR is the interim.
-- The frozen model is scored once on the Shenzhen internal test split and once on the locked Montgomery set (ML-DATA-04), full precision and int8 side by side (ML-EVAL-03).
+- The frozen model is scored once on the Shenzhen held-out validation split (named `test` in the files; not an internal test set, see the Shenzhen v2 data card) and once on the locked Montgomery set (ML-DATA-04), full precision and int8 side by side (ML-EVAL-03).
 - TRD 10.6 and the TRD 9.10 manifest name an `.int8.onnx` file; the M2 manifest names the fp32 file instead.
 - Latency and memory risk (R3, NFR-PERF-01): fp32 is about 1.5 times slower than int8 on the build machine's CPU (about 22 ms vs 14 ms, one thread; indicative only). The phone benchmark (`E5-01`) decides whether fp32 meets p95 2.5 s.
 - Offline footprint: 12.8 MB of the 60 MB budget for this model, instead of 3.6 MB.
@@ -78,7 +78,7 @@ Dataset v2 (`0445b087fed038c4`) applies stricter label checks and keeps every re
 | 3 | 0.927 |
 | Mean, sd | 0.922, 0.005 (v1: 0.924, 0.014) |
 
-By the rule above, the frozen run is now the median seed: `efficientnet_lite0_seed1_20261021T114608Z` (validation AUROC 0.922; fit gap +0.067 mean over seeds, border-mask drop 0.027, shape correlation -0.387). It is scored once on the Shenzhen v2 test split and the Montgomery external set by `modal run ml/modal/train_app.py::evaluate` (`ml/train/evaluate.py`), full precision and int8 side by side; the only operating point reported uses a threshold set on validation.
+By the rule above, the frozen run is now the median seed: `efficientnet_lite0_seed1_20261021T114608Z` (validation AUROC 0.922; fit gap +0.067 mean over seeds, border-mask drop 0.027, shape correlation -0.387). It is scored once on the Shenzhen v2 held-out validation split and the Montgomery external set by `modal run ml/modal/train_app.py::evaluate` (`ml/train/evaluate.py`), full precision and int8 side by side; the only operating point reported uses a threshold set on validation.
 
 ## Results: the one-time evaluation (21 Oct 2026)
 
@@ -87,7 +87,7 @@ The frozen model was scored once on the locked sets (`modal run ml/modal/train_a
 | Set | Images (TB) | AUROC (95% CI) | Sensitivity (95% CI) | Specificity (95% CI) | int8 drop |
 | --- | --- | --- | --- | --- | --- |
 | Shenzhen validation | 94 (49) | 0.922 | 0.918 (0.808 to 0.968) | 0.800 (0.662 to 0.891) | |
-| Shenzhen test (v2) | 93 (47) | 0.978 (0.942 to 1.000) | 0.957 (0.858 to 0.988) | 0.891 (0.770 to 0.953) | 0.016 |
+| Shenzhen held-out validation (v2) | 93 (47) | 0.978 (0.942 to 1.000) | 0.957 (0.858 to 0.988) | 0.891 (0.770 to 0.953) | 0.016 |
 | Montgomery (external) | 127 (57) | 0.887 (0.830 to 0.938) | 0.702 (0.573 to 0.805) | 0.900 (0.808 to 0.951) | 0.029 |
 | Montgomery, active TB | 106 (36) | 0.908 | 0.722 (0.560 to 0.842) | 0.900 | |
 | Montgomery, inactive or healed TB | 91 (21) | 0.850 | 0.667 (0.454 to 0.828) | 0.900 | |
@@ -97,6 +97,16 @@ What this means for this decision:
 
 - The external AUROC (0.887) is above the TRD floor of 0.80, so the revisit trigger on external AUROC has not fired. Its interval includes the 0.90 target.
 - The threshold does not transfer between sites: at the Shenzhen-set threshold the model catches 70% of Montgomery TB, and 72% of active TB, against a 90% target. Per-site calibration is required before use at any site (TRD 9.6, story E6).
-- The int8 drop on the test sets (0.016, 0.029) confirms that full precision ships for now.
+- The int8 drop on the held-out sets (0.016, 0.029) confirms that full precision ships for now.
 - Landscape films score worse (0.80 against 0.92 for portrait) and cross the ADR-16 warning sign. Shenzhen has almost no landscape films. The heatmap review of the worst errors comes next.
-- Subgroups (`ml/train/subgroups.py`, run locally): on the Shenzhen test, specificity for women is 0.733 (11 of 15 normal women) against 0.968 for men (30 of 31); small groups, tracked in Section B7.
+- Subgroups (`ml/train/subgroups.py`, run locally): on the Shenzhen held-out set, specificity for women is 0.733 (11 of 15 normal women) against 0.968 for men (30 of 31); small groups, tracked in Section B7.
+
+### The locked sets are spent for this run
+
+The Shenzhen held-out split and Montgomery have now been scored for `efficientnet_lite0_seed1_20261021T114608Z`. Any change to the model, including recalibration in E6, makes a new candidate. No further external evaluation runs until G3 is planned (ML-DATA-04). `evaluate.py` enforces this per set: a set is claimed before it is read and its result is saved at once, so a retry reuses it and never scores it again (PR #84 review).
+
+The Shenzhen held-out figure (0.978 on 93 images) is a second validation result, not an internal test result (Shenzhen v2 data card, PR #78 review). Montgomery is the only test of generalisation here.
+
+### Known gap for G0
+
+At the validation threshold, Montgomery sensitivity is 0.702 (95% CI 0.573 to 0.805), below the 85% floor in TRD 3.4. The ranking transfers (AUROC 0.887); the threshold does not. Logged in the hazard log under H4 and H11. It closes only with per-site calibration (E6) scored on a new candidate.

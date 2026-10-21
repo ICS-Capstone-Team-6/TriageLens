@@ -34,7 +34,7 @@ Option 1. Preprocessing version `cxr-pre-2` (`ml/train/preprocess_spec.json`) re
 - TRD 9.3 "resize with padding" no longer applies to chest X-rays. The app must stretch the same way, or training and serving will differ.
 - Stretching removes the bars but not every trace of cropping: TB images may still show the body filling more of the frame. The shape check measures what is left rather than assuming the fix worked.
 - The rung 0 baseline will still score about 0.80. It measures the dataset, not the model, and is reported as a dataset artefact.
-- Arrays are rebuilt into a new folder per preprocessing version (`processed_v1_cxr-pre-2`), so old and new arrays are never mixed.
+- Arrays are rebuilt into a new folder per preprocessing version (`processed_v1_cxr-pre-2`, and `processed_v2_cxr-pre-2` for dataset v2), so old and new arrays are never mixed.
 - Change-log entry in `docs/planning/04_Team_Rules_and_Requirements.md`.
 
 ## Follow-up: bake-off 1 (18 Oct 2026)

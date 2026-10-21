@@ -9,7 +9,7 @@ Each logistic regression picks its regularisation by 5-fold cross-validation on 
 split only, then is scored once on validation. The test split is not read (ML-DATA-04).
 
 Usage:
-    python3 ml/train/baselines.py --data ml/data/processed/shenzhen_v1_320 --out ml/runs/baselines
+    python3 ml/train/baselines.py --data ml/data/processed/shenzhen_v2_320 --out ml/runs/baselines
 """
 
 import argparse
@@ -95,7 +95,7 @@ def run(data_dir, out_dir, backbones=("mobilenetv3_large", "efficientnet_lite0")
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Run the baseline ladder.")
-    ap.add_argument("--data", default="ml/data/processed/shenzhen_v1_320")
+    ap.add_argument("--data", default="ml/data/processed/shenzhen_v2_320")
     ap.add_argument("--out", default="ml/runs/baselines")
     a = ap.parse_args(argv)
     print(json.dumps(run(a.data, a.out), indent=2))

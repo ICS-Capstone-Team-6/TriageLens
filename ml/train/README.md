@@ -29,7 +29,7 @@ modal run ml/modal/train_app.py::baselines    # rungs 0 to 2
 modal run ml/modal/train_app.py::bakeoff      # 2 backbones x 3 seeds in parallel
 ```
 
-`prepare` stops with a hard fail if any raw file is missing or differs from `ml/manifests/shenzhen_v1/manifest.csv`.
+`prepare` stops with a hard fail if any raw file is missing or differs from `ml/manifests/shenzhen_v2/manifest.csv` (dataset v2, hash `0445b087fed038c4`; v2 keeps every v1 patient in its v1 split, see `ml/pipeline/README.md`). Bake-offs 1 and 2 ran on v1 (`702a4658c7447e13`).
 
 ## What each run records
 

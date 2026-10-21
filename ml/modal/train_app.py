@@ -25,8 +25,8 @@ DATA_DIR = "/data"
 RUNS_DIR = "/runs"
 RAW = f"{DATA_DIR}/shenzhen/raw"  # where ml/modal/README.md uploads the raw set
 # One folder per preprocessing version, so arrays from an old spec are never mixed in.
-PROCESSED = f"{DATA_DIR}/shenzhen/processed_v1_cxr-pre-2"
-MANIFEST = "/root/ml/manifests/shenzhen_v1/manifest.csv"
+PROCESSED = f"{DATA_DIR}/shenzhen/processed_v2_cxr-pre-2"  # dataset v2 (0445b087fed038c4)
+MANIFEST = "/root/ml/manifests/shenzhen_v2/manifest.csv"
 GPU = "T4"  # same as app.py; enough for MobileNet-sized backbones
 BACKBONES = ("mobilenetv3_large", "efficientnet_lite0")
 SEEDS = (1, 2, 3)  # TRD 9.4: three seeds per configuration

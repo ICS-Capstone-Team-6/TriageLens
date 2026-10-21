@@ -12,7 +12,7 @@ Each run writes to <runs>/<backbone>_seed<seed>_<time>/:
   val_predictions.csv, best.pt
 
 Usage:
-    python3 ml/train/train.py --data ml/data/processed/shenzhen_v1_320 --runs ml/runs \
+    python3 ml/train/train.py --data ml/data/processed/shenzhen_v2_320 --runs ml/runs \
         --backbone mobilenetv3_large --seed 1
 """
 
@@ -228,7 +228,7 @@ def run(cfg, data_dir, runs_dir, git_commit="unknown", git_dirty=None, log=print
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Train one TB model run.")
-    ap.add_argument("--data", default="ml/data/processed/shenzhen_v1_320")
+    ap.add_argument("--data", default="ml/data/processed/shenzhen_v2_320")
     ap.add_argument("--runs", default="ml/runs")
     ap.add_argument("--backbone", default="mobilenetv3_large")
     ap.add_argument("--seed", type=int, default=1)

@@ -155,12 +155,13 @@ class TestPrepare(unittest.TestCase):
                 prepare_data.prepare(root / "raw", manifest, root / "out", workers=1)
 
     def test_version_hash_matches_pipeline_formula(self):
-        # same formula as ml/pipeline/build_dataset.py, checked on the committed manifest
-        manifest = Path(__file__).resolve().parents[1] / "manifests" / "shenzhen_v1" / "manifest.csv"
-        if not manifest.exists():
-            self.skipTest("committed manifest not present")
-        m = pd.read_csv(manifest, dtype={"patient_id": str, "group_id": str})
-        self.assertEqual(prepare_data.dataset_version_hash(m), "702a4658c7447e13")
+        # same formula as ml/pipeline/build_dataset.py, checked on both committed manifests
+        for version, expected in (("shenzhen_v1", "702a4658c7447e13"), ("shenzhen_v2", "0445b087fed038c4")):
+            manifest = Path(__file__).resolve().parents[1] / "manifests" / version / "manifest.csv"
+            if not manifest.exists():
+                self.skipTest("committed manifest not present")
+            m = pd.read_csv(manifest, dtype={"patient_id": str, "group_id": str})
+            self.assertEqual(prepare_data.dataset_version_hash(m), expected, version)
 
 
 if __name__ == "__main__":

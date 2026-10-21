@@ -10,7 +10,7 @@ The test split is written but only loaded by evaluation of a frozen model (ML-DA
 
 Usage:
     python3 ml/train/prepare_data.py --raw ml/data/raw/shenzhen \
-        --manifest ml/manifests/shenzhen_v1/manifest.csv --out ml/data/processed/shenzhen_v1_320
+        --manifest ml/manifests/shenzhen_v2/manifest.csv --out ml/data/processed/shenzhen_v2_320
 """
 
 import argparse
@@ -104,8 +104,8 @@ def prepare(raw, manifest_path, out, workers=4):
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Build training arrays from the manifest.")
     ap.add_argument("--raw", default="ml/data/raw/shenzhen")
-    ap.add_argument("--manifest", default="ml/manifests/shenzhen_v1/manifest.csv")
-    ap.add_argument("--out", default="ml/data/processed/shenzhen_v1_320")
+    ap.add_argument("--manifest", default="ml/manifests/shenzhen_v2/manifest.csv")
+    ap.add_argument("--out", default="ml/data/processed/shenzhen_v2_320")
     ap.add_argument("--workers", type=int, default=4)
     a = ap.parse_args(argv)
     try:

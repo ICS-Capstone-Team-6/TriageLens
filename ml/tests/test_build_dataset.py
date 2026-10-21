@@ -185,6 +185,41 @@ class TestPipeline(unittest.TestCase):
         q = pd.read_csv(self.root / "out" / "quarantine.csv")
         self.assertIn("CHNCXR_0001_1.png", set(q.loc[q["check"] == "decodable", "file"]))
 
+    def test_stricter_rule_keeps_every_remaining_patient_in_its_split(self):
+        # Option 1 (21 Oct 2026): a new rule removes records, but nobody moves split,
+        # so a model trained on v1 never meets its own training images in v2's test split.
+        raw = self.root / "raw"
+        make_dataset(raw, n=60)
+        bd.run(raw, self.root / "v1", self.root / "p1")
+        v1 = pd.read_csv(self.root / "v1" / "manifest.csv")
+        for name in ("CHNCXR_0003_1", "CHNCXR_0011_1", "CHNCXR_0021_1"):
+            (raw / "ClinicalReadings" / f"{name}.txt").write_text("male 40yrs\npossible PTB?\n")
+        report = bd.run(raw, self.root / "v2", self.root / "p2", self.root / "v1" / "manifest.csv")
+        v2 = pd.read_csv(self.root / "v2" / "manifest.csv")
+        self.assertEqual(len(v2), len(v1) - 3)
+        both = v2.merge(v1[["file", "split"]], on="file", suffixes=("", "_v1"))
+        self.assertEqual(len(both), len(v2))
+        self.assertTrue((both["split"] == both["split_v1"]).all())
+        self.assertEqual(report["split_source"]["new"], 0)
+        self.assertEqual(report["split_source"]["carried"], len(v2))
+
+    def test_new_patients_are_split_and_old_ones_stay(self):
+        df = pd.DataFrame({"file": ["a.png", "b.png", "c.png", "d.png"], "group_id": ["1", "2", "3", "4"],
+                           "label": [0, 1, 0, 1]})
+        prior = self.root / "prior.csv"
+        pd.DataFrame({"file": ["a.png", "b.png"], "patient_id": ["1", "2"], "split": ["test", "val"]}).to_csv(prior, index=False)
+        splits, counts = bd.carry_splits(df, prior)
+        self.assertEqual((splits["1"], splits["2"]), ("test", "val"))
+        self.assertIn(splits["3"], {"train", "val", "test"})
+        self.assertEqual(counts, {"carried": 2, "new": 2})
+
+    def test_group_spanning_two_prior_splits_hard_fails(self):
+        df = pd.DataFrame({"file": ["a.png", "b.png"], "group_id": ["1", "1"], "label": [1, 1]})
+        prior = self.root / "prior.csv"
+        pd.DataFrame({"file": ["a.png", "b.png"], "patient_id": ["1", "2"], "split": ["train", "test"]}).to_csv(prior, index=False)
+        with self.assertRaises(bd.HardFail):
+            bd.carry_splits(df, prior)
+
     def test_missing_readings_hard_fail(self):
         make_dataset(self.root / "raw", readings=False)
         with self.assertRaises(bd.HardFail):

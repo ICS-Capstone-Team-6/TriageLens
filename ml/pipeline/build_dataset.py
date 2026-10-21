@@ -28,7 +28,7 @@ import numpy as np
 import pandas as pd
 from PIL import Image
 
-PIPELINE_VERSION = "0.1.1"
+PIPELINE_VERSION = "0.2.0"
 SEED = 591
 SPLIT = {"train": 0.70, "val": 0.15, "test": 0.15}
 MIN_SIDE = 512  # quality floor, not the model size: the model input is 320 px (TRD 10.6),
@@ -170,6 +170,32 @@ def assign_splits(groups, seed=SEED, fractions=SPLIT):
     return out
 
 
+def carry_splits(df, prior_manifest, seed=SEED):
+    """Keep every patient group in the split it had in an earlier version (TRD ML-DATA-04).
+
+    A stricter rule that removes records must not move the rest between splits: a model
+    trained on the earlier version would otherwise meet its own training images in the new
+    test split. Groups whose files were all in the prior manifest keep that split; groups
+    with no prior file (new data) are split by assign_splits. A group whose files sat in
+    two different prior splits is a hard fail. Returns ({group_id: split}, counts).
+    """
+    prior = pd.read_csv(prior_manifest, dtype={"patient_id": str})
+    prior_split = dict(zip(prior["file"], prior["split"]))
+    out, new_groups = {}, []
+    for gid, g in df.groupby("group_id"):
+        old = {prior_split[f] for f in g["file"] if f in prior_split}
+        if len(old) > 1:
+            raise HardFail(f"group {gid} was in several splits in {prior_manifest}: {sorted(old)}")
+        if old:
+            out[gid] = old.pop()
+        else:
+            new_groups.append(gid)
+    if new_groups:
+        groups = df[df["group_id"].isin(new_groups)].groupby("group_id")["label"].max().reset_index()
+        out.update(assign_splits(groups, seed=seed))
+    return out, {"carried": len(out) - len(new_groups), "new": len(new_groups)}
+
+
 def batch_checks(df):
     """Checks on the whole split. Any failure is a hard stop."""
     checks = []
@@ -194,7 +220,7 @@ def batch_checks(df):
 
 # ---------- pipeline ----------
 
-def run(raw, out, private):
+def run(raw, out, private, prior_manifest=None):
     img_dir, rd_dir = raw / "CXR_png", raw / "ClinicalReadings"
     quarantine = []
 
@@ -293,9 +319,15 @@ def run(raw, out, private):
         q(r, "policy", "age_unknown", "age not readable, cannot confirm intended population")
     df = df[~under & ~unknown].copy()
 
-    # Stage 5: patient-level split
-    groups = df.groupby("group_id")["label"].max().reset_index()
-    df["split"] = df["group_id"].map(assign_splits(groups))
+    # Stage 5: patient-level split. With a prior manifest, splits carry over (carry_splits).
+    split_source = {"prior_manifest": None, "carried": 0, "new": 0}
+    if prior_manifest:
+        splits, counts = carry_splits(df, prior_manifest)
+        split_source = {"prior_manifest": str(prior_manifest), **counts}
+    else:
+        splits = assign_splits(df.groupby("group_id")["label"].max().reset_index())
+        split_source["new"] = len(splits)
+    df["split"] = df["group_id"].map(splits)
 
     # Stage 6: batch checks
     checks = batch_checks(df)
@@ -344,6 +376,7 @@ def run(raw, out, private):
         "age_band_counts": age_bands.value_counts().sort_index().astype(int).to_dict(),
         "resolution_px": {"smallest_side_min": int(df[["width", "height"]].min(axis=1).min()),
                           "largest_side_max": int(df[["width", "height"]].max(axis=1).max())},
+        "split_source": split_source,
         "batch_checks": checks,
     }
     (out / "run_report.json").write_text(json.dumps(report, indent=2, default=str))
@@ -353,16 +386,19 @@ def run(raw, out, private):
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--raw", default="ml/data/raw/shenzhen")
-    ap.add_argument("--out", default="ml/manifests/shenzhen_v1")
-    ap.add_argument("--private", default="ml/data/interim/shenzhen_v1")
+    ap.add_argument("--out", default="ml/manifests/shenzhen_v2")
+    ap.add_argument("--private", default="ml/data/interim/shenzhen_v2")
+    ap.add_argument("--keep-splits-from", default="ml/manifests/shenzhen_v1/manifest.csv",
+                    help="earlier manifest whose splits are kept; empty string to split afresh")
     a = ap.parse_args(argv)
     try:
-        report = run(Path(a.raw), Path(a.out), Path(a.private))
+        report = run(Path(a.raw), Path(a.out), Path(a.private),
+                     Path(a.keep_splits_from) if a.keep_splits_from else None)
     except HardFail as e:
         print(f"HARD FAIL: {e}", file=sys.stderr)
         return 1
     keys = ["dataset_version_hash", "images_found", "records_kept", "records_quarantined",
-            "quarantine_by_check", "near_duplicate_pairs", "label_counts", "split_counts"]
+            "quarantine_by_check", "near_duplicate_pairs", "label_counts", "split_counts", "split_source"]
     print(json.dumps({k: report[k] for k in keys}, indent=2, default=str))
     return 0
 

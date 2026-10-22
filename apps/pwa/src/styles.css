@@ -12,7 +12,7 @@
   --data: #0075c9;
   --data-ref: #c9c7ee;
   --lilac: #b1a6f6;
-  --zone-refer: #ff5c5c;
+  --zone-refer: #ff9090; /* 7.40:1 against --ink; NFR-USAB-03 requires at least 7:1. */
   --zone-unsure: #ffc44d;
   --zone-low: #5ed39a;
   --radius-card: 24px;
@@ -74,7 +74,7 @@ button, input, select { font: inherit; color: inherit; }
 .btn-secondary { background: var(--panel); color: var(--ink); }
 .btn-dark { background: var(--ink); color: #ffffff; min-height: 60px; }
 .btn-round { width: 48px; height: 48px; min-height: 48px; padding: 0; background: var(--panel); }
-.link { background: none; border: 0; color: var(--data); font-size: 15px; font-weight: 600; min-height: 44px; padding: 0 4px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.link { background: none; border: 0; color: var(--data); font-size: 15px; font-weight: 600; min-height: 48px; padding: 0 4px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
 .stack { display: flex; flex-direction: column; gap: 12px; }
 .row2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 input.file { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
@@ -178,7 +178,7 @@ td { padding: 10px 8px; }
 .demo-title { font-size: 14px; font-weight: 600; line-height: 1.4; max-width: 480px; margin: 0 auto; width: 100%; }
 .demo-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; max-width: 480px; margin: 0 auto; width: 100%; }
 .demo-label { font-size: 13px; color: var(--panel-2); margin-right: 4px; }
-.demo-chip { min-height: 44px; padding: 0 12px; border-radius: 9999px; border: 0; background: rgba(255, 255, 255, 0.14); color: #ffffff; font-size: 13px; font-weight: 600; cursor: pointer; }
+.demo-chip { min-height: 48px; padding: 0 12px; border-radius: 9999px; border: 0; background: rgba(255, 255, 255, 0.14); color: #ffffff; font-size: 13px; font-weight: 600; cursor: pointer; }
 .demo-chip.on { background: #ffffff; color: var(--ink); }
 
 /* development-only score line on the result screen (src/screens/Flow.tsx) */

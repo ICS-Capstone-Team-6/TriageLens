@@ -16,6 +16,8 @@ export interface Thresholds {
 }
 
 export function sigmoid(logit: number): number {
+  // Invalid model output stays unknown; -Infinity must not become a low-risk zero.
+  if (!Number.isFinite(logit)) return Number.NaN;
   return 1 / (1 + Math.exp(-logit));
 }
 

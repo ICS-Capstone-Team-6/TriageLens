@@ -44,6 +44,14 @@ describe('zoneFor (TRD 7.2)', () => {
 });
 
 describe('helpers', () => {
+  it('non-finite model logits stay unknown and cannot give low risk', () => {
+    for (const logit of [Number.NaN, Number.NEGATIVE_INFINITY, Number.POSITIVE_INFINITY]) {
+      const probability = sigmoid(logit);
+      expect(Number.isNaN(probability)).toBe(true);
+      expect(zoneFor(probability, t, true)).toBe('unsure');
+    }
+  });
+
   it('sigmoid matches the logistic function', () => {
     expect(sigmoid(0)).toBeCloseTo(0.5, 12);
     expect(sigmoid(Math.log(0.184 / 0.816))).toBeCloseTo(0.184, 12);

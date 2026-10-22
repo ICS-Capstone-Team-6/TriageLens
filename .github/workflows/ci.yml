@@ -84,12 +84,25 @@ jobs:
       - run: echo "TODO(E0-02) run unit tests; triage rules, sync and quality gate need at least 70% coverage (NFR-MAINT-01)"
 
   build:
-    name: Build (TODO E8-02)
-    if: ${{ false }} # TODO(E8-02): enable when the PWA shell builds
+    name: PWA type-check, unit tests and build (E8-02)
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/pwa
     steps:
       - uses: actions/checkout@v7
-      - run: echo "TODO(E8-02) build the PWA"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/pwa/package-lock.json
+      - run: npm ci
+      - name: Type-check
+        run: npx tsc --noEmit
+      - name: Unit tests (triage zones, quality check, cxr-pre-2 parity with Pillow, monitoring maths)
+        run: npx vitest run
+      - name: Build
+        run: npm run build
 
   bundle-budget:
     name: Bundle budget, app shell at most 300 KB gzip (TODO E13-03)

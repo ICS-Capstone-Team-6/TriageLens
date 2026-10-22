@@ -225,10 +225,10 @@ By signing, each member agrees to follow these rules and to raise concerns early
 
 | Name | Role | Signature | Date |
 |--------------|--------------------------------|----------------------|------------|
-| Kweku | Team lead and product owner | | |
-| Micheal | Project manager | | |
+| Kweku | Team lead and product owner | Kweku-Abeiku Attah Anyen | 21 Oct 2026 |
+| Micheal | Project manager | Michael Sylvester | 21 Oct 2026 |
 | Chelsea | ML lead | | |
-| Nana Yaw | DevOps and QA lead | | |
+| Nana Yaw | DevOps and QA lead | Nana Yaw Koranteng | 20 Oct 2026 |
 
 # 15. Change Log
 
@@ -236,3 +236,6 @@ By signing, each member agrees to follow these rules and to raise concerns early
 |------------|-----------------------------------------|-----------|
 | 15 Oct 2026 | First version | Draft |
 | 21 Oct 2026 | Shenzhen's 15% split (named `test` in the manifest) is a second held-out validation set, not an internal test set, so it matches TRD Appendix A (Shenzhen: train and validate). It stays locked. The name is kept in the files so the dataset version hash does not change. Committing file names, patient numbers, labels, splits and fingerprints is within the dataset's ReadMe terms (PR #78 review) | Chelsea; pending: team |
+| 21 Oct 2026 | M2 thin slice deployed in Sprint 0, ahead of G1, for the ICS 591 M2 deadline (23 Oct); Sprint 0 cap and swap rule not met this week ([ADR-19](../adr/0019-m2-thin-slice-pulled-forward.md)) | Pending: team |
+| 21 Oct 2026 | M2 slice thresholds: screen-out at 95% or higher sensitivity (TRD 7.2 says 90%) and refer at 95% or higher specificity, on raw validation logits, until E6-01 calibration ([ADR-20](../adr/0020-interim-slice-thresholds.md)) | Pending: team |
+| 21 Oct 2026 | Required pull-request approval removed from `main` branch protection; the four CI checks stay required (Team Rules 6 says one review minimum) | Kweku; pending: team |

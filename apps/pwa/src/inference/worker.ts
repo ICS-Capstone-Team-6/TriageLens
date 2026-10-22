@@ -1,7 +1,8 @@
 /// <reference lib="webworker" />
 // Runs off the main thread (pwa-offline rule): decode, quality check, cxr-pre-2 and the model.
 // The model bytes are checked against a SHA-256 before use (signing comes with ADR-11).
-import * as ort from 'onnxruntime-web';
+// Keep the WASM loader separate: bundling its pthread bootstrap into this worker hangs production builds.
+import * as ort from 'onnxruntime-web/wasm';
 import { INPUT_SIZE, PREPROCESS_VERSION, preprocess, rgbaToGray } from '../lib/preprocess';
 import { checkQuality, colourfulness } from '../lib/quality';
 import { inputStats } from '../lib/stats';
@@ -23,7 +24,7 @@ async function sha256Hex(buf: ArrayBuffer): Promise<string> {
 
 async function init(modelUrl: string, modelSha256: string) {
   try {
-    ort.env.wasm.wasmPaths = '/ort/';
+    ort.env.wasm.wasmPaths = new URL('/ort/', self.location.href).href;
     threads = self.crossOriginIsolated ? Math.min(4, navigator.hardwareConcurrency || 1) : 1;
     ort.env.wasm.numThreads = threads;
     const r = await fetch(modelUrl);

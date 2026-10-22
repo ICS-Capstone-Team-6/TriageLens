@@ -12,7 +12,7 @@ function row(p: Partial<InferenceRow> & { prob?: number | null; ar?: number }): 
     latency_ms: p.latency_ms ?? 1000,
     outputs: { tb_probability: p.prob ?? 0.5, input_stats: { aspect_ratio: p.ar ?? 1, edge_energy: 0.05, mean_brightness: 120, width: 1000 } },
     quality_scores: { passed: p.zone !== 'retake', reason: p.zone === 'retake' ? 'too_dark' : null },
-    device_info: p.device_info ?? { preprocess: 'cxr-pre-2', app_build: 'abc' },
+    device_info: p.device_info ?? { preprocess: 'cxr-pre-2', app_build: 'abc', timings: { model_ms: p.latency_ms ?? 1000 } },
   };
 }
 
@@ -37,6 +37,20 @@ describe('summarize', () => {
     const rows = Array.from({ length: 20 }, (_, i) => row({ latency_ms: (i + 1) * 100 }));
     rows.push(row({ zone: 'retake', latency_ms: 99999 }));
     expect(summarize(rows, null).latencyP95).toBe(1900);
+  });
+
+  it('model p95 excludes decode and preprocessing time and ignores missing timers', () => {
+    const rows = [
+      row({ latency_ms: 9000, device_info: { preprocess: 'cxr-pre-2', timings: { model_ms: 300 } } }),
+      row({ latency_ms: 12000, device_info: { preprocess: 'cxr-pre-2', timings: { model_ms: 500 } } }),
+      row({ latency_ms: 99000, device_info: { preprocess: 'cxr-pre-2' } }),
+    ];
+    expect(summarize(rows, null).latencyP95).toBe(500);
+    expect(summarize([rows[2]], null).latencyP95).toBeNull();
+    const lines = toCsv([rows[0]]).trim().split('\n');
+    const values = Object.fromEntries(lines[0].split(',').map((key, i) => [key, lines[1].split(',')[i]]));
+    expect(values.latency_ms).toBe('9000');
+    expect(values.model_ms).toBe('300');
   });
 
   it('no reference: no PSI and no reference histogram, but medians', () => {

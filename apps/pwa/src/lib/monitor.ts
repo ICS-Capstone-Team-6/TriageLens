@@ -28,6 +28,12 @@ export interface Summary {
   versions: { model: string[]; thresholds: string[]; preprocess: string[]; build: string[] };
 }
 
+/** Model time excludes decoding, quality checks and preprocessing. Old rows without a timer stay unknown. */
+export function modelTimeMs(row: InferenceRow): number | null {
+  const ms = row.device_info.timings?.model_ms;
+  return typeof ms === 'number' && Number.isFinite(ms) && ms >= 0 ? ms : null;
+}
+
 /** Counts of `values` in the bins given by `edges` (length bins + 1); outside values go to the end bins. */
 export function binByEdges(values: number[], edges: number[]): number[] {
   const counts = new Array<number>(edges.length - 1).fill(0);
@@ -53,7 +59,7 @@ export function summarize(rows: InferenceRow[], ref: Reference | null): Summary 
   return {
     total: rows.length,
     qualityFailed: zones.retake,
-    latencyP95: percentile(scored.map((r) => r.latency_ms), 95),
+    latencyP95: percentile(scored.map(modelTimeMs).filter((ms): ms is number => ms !== null), 95),
     mismatches: rows.filter((r) => r.device_info.preprocess !== PREPROCESS_VERSION).length,
     last: rows.reduce<string | null>((a, r) => (a && a > r.created_at ? a : r.created_at), null),
     scoreHist: histogram(probs, 10),
@@ -74,14 +80,14 @@ export function summarize(rows: InferenceRow[], ref: Reference | null): Summary 
 }
 
 export function toCsv(rows: InferenceRow[]): string {
-  const head = ['created_at', 'zone', 'quality_passed', 'quality_reason', 'tb_probability', 'latency_ms', 'aspect_ratio', 'mean_brightness', 'edge_energy', 'width', 'height', 'model_version', 'thresholds_version', 'preprocess', 'app_build'];
+  const head = ['created_at', 'zone', 'quality_passed', 'quality_reason', 'tb_probability', 'latency_ms', 'model_ms', 'aspect_ratio', 'mean_brightness', 'edge_energy', 'width', 'height', 'model_version', 'thresholds_version', 'preprocess', 'app_build'];
   const cell = (v: unknown) => {
     const s = v == null ? '' : String(v);
     return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
   };
   const lines = rows.map((r) => {
     const s = r.outputs.input_stats ?? {};
-    return [r.created_at, r.zone, r.quality_scores.passed, r.quality_scores.reason, r.outputs.tb_probability, r.latency_ms, s.aspect_ratio, s.mean_brightness, s.edge_energy, s.width, s.height, r.model_version, r.thresholds_version, r.device_info.preprocess, r.device_info.app_build].map(cell).join(',');
+    return [r.created_at, r.zone, r.quality_scores.passed, r.quality_scores.reason, r.outputs.tb_probability, r.latency_ms, modelTimeMs(r), s.aspect_ratio, s.mean_brightness, s.edge_energy, s.width, s.height, r.model_version, r.thresholds_version, r.device_info.preprocess, r.device_info.app_build].map(cell).join(',');
   });
   return [head.join(','), ...lines].join('\n') + '\n';
 }

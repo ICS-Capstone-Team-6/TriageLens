@@ -1,7 +1,7 @@
 // Monitoring page (Prosit 2 C4). Signed-in team only; reads results through Nana Yaw's RPCs.
 // Numbers only: no images, names or patient IDs ever reach this page.
 import { useEffect, useMemo, useState } from 'react';
-import { summarize, toCsv, type DriftStat, type Reference } from '../lib/monitor';
+import { modelTimeMs, summarize, toCsv, type DriftStat, type Reference } from '../lib/monitor';
 import { loadInferences, type InferenceRow } from '../lib/records';
 import { t, type StringKey } from '../strings';
 import { Mark } from '../ui/icons';
@@ -145,7 +145,7 @@ export function Monitor({ onBack, rows: given }: { onBack: () => void; rows?: In
                           <td className="right">{fmt(st.aspect_ratio ?? null, 3)}</td>
                           <td className="right">{fmt(st.mean_brightness ?? null, 0)}</td>
                           <td className="right">{fmt(st.edge_energy ?? null, 3)}</td>
-                          <td className="right">{`${Math.round(r.latency_ms)} ms`}</td>
+                          <td className="right">{modelTimeMs(r) == null ? '–' : `${Math.round(modelTimeMs(r)!)} ms`}</td>
                         </tr>
                       );
                     })}

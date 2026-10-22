@@ -64,7 +64,7 @@ export interface InferenceRow {
   latency_ms: number;
   outputs: { tb_logit?: number | null; tb_probability?: number | null; input_stats?: Record<string, number> | null };
   quality_scores: { passed?: boolean; reason?: string | null };
-  device_info: { preprocess?: string; app_build?: string };
+  device_info: { preprocess?: string; app_build?: string; timings?: { model_ms?: number } };
 }
 
 /** Latest inferences for the signed-in member's clinic (at most `limit` cases). */

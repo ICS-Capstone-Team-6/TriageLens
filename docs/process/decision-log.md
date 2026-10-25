@@ -21,3 +21,11 @@ Owners: the TRD names an owner in the defaults for D3 (Kweku), D4 (Chelsea) and 
 |------|----------|------------|--------|
 | 16 Oct 2026 | Use the org project `ICS-Capstone-Team-6/projects/1` as the board | Kweku | [setup-report-04-github.md](setup-report-04-github.md) |
 | 16 Oct 2026 | MoSCoW priority in its own board field; org Priority issue field not used | Kweku | [setup-report-04-github.md](setup-report-04-github.md) |
+| 21 Oct 2026 | Required pull-request approval removed from `main` branch protection; the four CI checks, admin enforcement and conversation resolution stay on | Kweku | Team Rules change log (pending team agreement) |
+| 21 Oct 2026 | Build and deploy a thin vertical slice (TB on chest X-ray, on the phone, with monitoring) for the M2 demo on Fri 23 Oct; Nana Yaw deploys it | Kweku | [ADR-19](../adr/0019-m2-thin-slice-pulled-forward.md) |
+| 21 Oct 2026 | Slice ships the frozen run `efficientnet_lite0_seed1_20261021T114608Z` (fp32 ONNX, 12.8 MB) | Chelsea | Proposed ADR-18 (PR #83, #84) |
+| 21 Oct 2026 | Screen-out threshold at 95% or higher sensitivity on validation (stricter than the TRD's 90%) | Kweku | [ADR-20](../adr/0020-interim-slice-thresholds.md) |
+| 21 Oct 2026 | Refer threshold at 95% or higher specificity on validation | Kweku | [ADR-20](../adr/0020-interim-slice-thresholds.md) |
+| 21 Oct 2026 | Slice thresholds use raw (uncalibrated) logits; temperature scaling and new thresholds come in E6-01 | Kweku | [ADR-20](../adr/0020-interim-slice-thresholds.md) |
+| 21 Oct 2026 | Chelsea computes the slice thresholds; Kweku wires them into the slice | Kweku | [ADR-20](../adr/0020-interim-slice-thresholds.md) |
+| 21 Oct 2026 | Visual style: Impilo-style violet and cyan on a white background, Manrope font; result zones keep red, amber and green with icon and text (TRD 7.3) | Kweku | [M2 slice canvas](https://claude.ai/artifact/XLr6FSeb2ZJyjHxE8vSiJn) |

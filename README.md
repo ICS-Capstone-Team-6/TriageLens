@@ -1,5 +1,7 @@
 # TriageLens
 
+[![CI](https://github.com/ICS-Capstone-Team-6/TriageLens/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ICS-Capstone-Team-6/TriageLens/actions/workflows/ci.yml)
+
 AI-assisted triage for district clinics in Ghana and Africa. A trained health worker photographs a chest X-ray or captures a retinal image. The app checks image quality, runs AI models on the phone with no internet, and shows one of three results: **Refer now**, **Unsure: retake or refer**, or **Low risk**. The models screen for tuberculosis (TB) and pneumonia on chest X-rays, and for referable diabetic retinopathy (DR) on retinal images. It is built to run on a low-end Android phone and to sync to the cloud when a connection is available.
 
 This is a capstone project for the Building Intelligent Systems course.

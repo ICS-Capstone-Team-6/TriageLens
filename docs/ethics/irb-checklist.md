@@ -2,7 +2,7 @@
 
 Built from [TRD section 12.3](../planning/01_TRD.md), with data rules from TRD 11.4 and Team Rules 8 and 9. Owner: Kweku (safety and ethics lead). Story: E12-01 (Sprint 0).
 
-Tick an item only when the evidence is linked.
+Tick an item only when the evidence is linked. Route, protocol outline and submission steps: [ethics-pathway.md](ethics-pathway.md). Contacts: [clinic-contacts.md](clinic-contacts.md).
 
 ## Sprint 0: name the review route (TRD 12.3, step 1)
 

@@ -11,10 +11,14 @@ From the repo root, in your own fork:
 ```bash
 pip install -r ml/requirements.txt
 python3 ml/testenv/make_synthetic.py
-python3 ml/pipeline/build_dataset.py --raw ml/data/testenv/raw --out ml/data/testenv/out --private ml/data/testenv/private
+python3 ml/pipeline/build_dataset.py --raw ml/data/testenv/raw --out ml/data/testenv/out --private ml/data/testenv/private --keep-splits-from ""
 ```
 
+`--keep-splits-from ""` is required. Without it the pipeline (0.2.0 and later) keeps the splits of the real Shenzhen v1 manifest, which shares file names with the synthetic set, and the batch checks stop the run.
+
 The generator writes 400 records (seed 2026) to `ml/data/testenv/raw/`, which Git ignores. Run the pipeline once on the clean set and record the `dataset_version_hash` it prints. That is your baseline. PNG bytes can differ across machines, so compare against your own baseline.
+
+This branch runs pipeline 0.2.1, the version we use. A clean run on our machine kept 381 records and quarantined 19 (all under 15), hash `1dd066baf6b0a52f`.
 
 ## Attack it
 

@@ -9,7 +9,7 @@ textures, not X-rays: they test the data path, not the model.
 Usage (from the repo root):
     python3 ml/testenv/make_synthetic.py            # writes ml/data/testenv/raw/
     python3 ml/pipeline/build_dataset.py --raw ml/data/testenv/raw \
-        --out ml/data/testenv/out --private ml/data/testenv/private
+        --out ml/data/testenv/out --private ml/data/testenv/private --keep-splits-from ""
 """
 
 import argparse

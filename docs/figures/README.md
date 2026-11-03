@@ -7,6 +7,7 @@ Images that the planning documents and other docs link to.
 ## What goes here
 
 - `architecture.png` (TRD 10.1), `roadmap.png` (TRD 5.2, Sprint Plan 1)
+- `architecture-boundary.png` (Prosit 1 Section C1): the same architecture with the learned-component boundary drawn and the monitoring hook points [1] to [9]. Source: `architecture-boundary.dot`; render with `dot -Tpng -Gdpi=150 architecture-boundary.dot -o architecture-boundary.png`. `architecture.png` is part of the frozen baseline (TRD 10.1) and stays unchanged.
 - New diagrams in PNG or SVG, with a source file next to them if one exists
 
 ## What must not go here

@@ -1,0 +1,76 @@
+// TriageLens architecture with the learned-component boundary and monitoring hooks [1] to [9].
+// Matches the Prosit 1 Section C text (C1 boundary, C4 hook points). TRD 10.1 still links
+// architecture.png, which is part of the frozen baseline and is left unchanged.
+// Render: dot -Tpng -Gdpi=200 docs/figures/architecture-boundary.dot -o docs/figures/architecture-boundary.png
+digraph TriageLens {
+  graph [rankdir=TB, compound=true, newrank=true, fontname="Helvetica", fontsize=13, nodesep=0.35, ranksep=0.45, pad=0.3];
+  node  [shape=box, style="rounded,filled", fillcolor="#f5f8fb", color="#475569", fontname="Helvetica", fontsize=11, margin="0.15,0.07"];
+  edge  [color="#475569", fontname="Helvetica", fontsize=9, arrowsize=0.7];
+
+  subgraph cluster_phone {
+    label="Clinic phone: offline-first PWA (Android Chrome, 2 GB RAM class)"; labeljust=l;
+    style="rounded,filled"; fillcolor="#eaf6fd"; color="#1f6fb5";
+
+    cap   [label="[1] Capture (main thread)\ncamera or file upload, EXIF stripped\nage band + symptom checklist"];
+    qual  [label="[2] Quality checks (Web Worker)\nblur, glare, exposure, framing\nfail: retake reason, no zone"];
+    pre   [label="[3] Preprocess (versioned)\nsame steps as the Python training code"];
+
+    subgraph cluster_boundary {
+      label="LEARNED-COMPONENT BOUNDARY\n[4] Inference worker: ONNX Runtime Web (WASM), int8 models"; labeljust=c;
+      style="dashed,bold,filled"; fillcolor="#fde8e8"; color="#c0392b"; penwidth=2.5; fontcolor="#c0392b";
+      gate  [label="Gate model\nchest X-ray / retina / other / unusable", fillcolor="#bfe0f6"];
+      cxr   [label="cxr-tb-pneu\nTB + pneumonia logits", fillcolor="#bfe0f6"];
+      dr    [label="dr\n4 ordinal DR logits", fillcolor="#bfe0f6"];
+    }
+
+    tri   [label="[5] Triage engine (outside the boundary)\ntemperature + 2 thresholds (signed file)\nage band + symptoms from [1]: raise only\nage gate, worst zone across conditions"];
+    res   [label="Result screen\nzone + advice + heatmap\n\"Screening support only. A clinician decides.\""];
+    store [label="[6] Encrypted local store\nIndexedDB + sync outbox", shape=cylinder, style=filled, fillcolor="#fff9c4"];
+  }
+
+  subgraph cluster_cloud {
+    label="Cloud: used only when online (Supabase)"; labeljust=l;
+    style="rounded,filled"; fillcolor="#effcf3"; color="#2e7d4f";
+    auth   [label="[7] Auth and roles\nhealth worker, reviewer, admin"];
+    pg     [label="[7] Postgres + row-level security\ncases, inferences, reviews,\nconsents, audit log", shape=cylinder, style=filled, fillcolor="#fff9c4"];
+    stor   [label="[7] Private storage\nimages, opt-in only"];
+    review [label="[8] Clinician review view"];
+    admin  [label="[8] Admin dashboard\nvolumes, referral rate,\nreviewer agreement"];
+    reg    [label="[9] Model registry\nsigned manifest, model files,\nthresholds file", fillcolor="#c8f2d6"];
+  }
+
+  subgraph cluster_ml {
+    label="ML pipeline: team GPU machines (offline, never talks to a phone)"; labeljust=l;
+    style="rounded,filled"; fillcolor="#f8f3fd"; color="#6a3fc0";
+    data  [label="Versioned datasets\nsplit manifests, data cards"];
+    train [label="Train\nPyTorch, 3 seeds"];
+    calib [label="Calibrate on validation\ntemperatures + thresholds"];
+    exp   [label="Export, int8 quantize,\nparity tests, benchmarks"];
+    ext   [label="External validation\nonce per frozen model"];
+  }
+
+  // Phone flow
+  cap  -> qual [label=" image"];
+  qual -> pre  [label=" pixels"];
+  pre  -> gate [label=" float32 tensor (in)", color="#c0392b", fontcolor="#c0392b", penwidth=1.6];
+  gate -> cxr  [label=" chest X-ray"];
+  gate -> dr   [label=" retina"];
+  cxr  -> tri  [label=" logits + feature map (out)", color="#c0392b", fontcolor="#c0392b", penwidth=1.6];
+  dr   -> tri  [color="#c0392b", penwidth=1.6];
+  gate -> tri  [label=" not supported:\n no zone", style=dashed];
+  tri  -> res;
+  res  -> store;
+
+  // Cloud
+  store -> auth [label=" sync when online\n (idempotent upserts)", style=dashed, color="#c4561d", fontcolor="#c4561d"];
+  auth  -> pg;
+  pg    -> review;
+  stor  -> review;
+  pg    -> admin;
+  reg   -> gate [lhead=cluster_boundary, label=" load after signature\n + hash check", style=dashed, color="#2e7d4f", fontcolor="#2e7d4f"];
+
+  // ML pipeline
+  data  -> train -> calib -> exp;
+  exp   -> ext;
+  exp   -> reg [label=" sign + publish", color="#6a3fc0", fontcolor="#6a3fc0", penwidth=2];
+}

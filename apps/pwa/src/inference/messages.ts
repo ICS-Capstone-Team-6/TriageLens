@@ -7,7 +7,7 @@ export type WorkerRequest =
 
 export type ErrorCode = 'model_unreachable' | 'model_checksum' | 'model_load' | 'model_not_ready' | 'model_run' | 'decode';
 
-export interface Timings { decode_ms: number; preprocess_ms: number; model_ms: number }
+export interface Timings { decode_ms: number; quality_ms: number; preprocess_ms: number; model_ms: number }
 
 export interface Screened {
   type: 'screened';

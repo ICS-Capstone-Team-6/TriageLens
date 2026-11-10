@@ -9,7 +9,7 @@ The installable React + TypeScript + Vite progressive web app (TRD 10.2, 10.4, 1
 1. Sign in with a team account (Nana Yaw's Supabase backend, [`supabase/TEAM_HANDOFF.md`](../../supabase/TEAM_HANDOFF.md)).
 2. Choose the person's age band. Under 15 stops the flow (TRD 3.2). The age band is cleared after every screening.
 3. Photograph the film or upload the image.
-4. In a Web Worker: decode, quality v1 (too small, blank, too dark, colourful photo), `cxr-pre-2`, then the frozen TB model `efficientnet_lite0_seed1_20261021T114608Z` (fp32 ONNX) through ONNX Runtime Web.
+4. In a Web Worker: decode, quality v2 (size, blank, exposure, colour, glare, blur, framing; one retake reason on failure), `cxr-pre-2`, then the frozen TB model `efficientnet_lite0_seed1_20261021T114608Z` (fp32 ONNX) through ONNX Runtime Web.
 5. Zone from the versioned thresholds file ([ADR-20](../../docs/adr/0020-interim-slice-thresholds.md)): Refer now, Not sure or Low risk, with the exact TRD 7.2 wording, icon and the reminder "Screening support only. A clinician decides."
 6. Save through `save_case` and `append_inference`: versions, input statistics, score, zone, timings. Never the image.
 7. `#/monitor`: the monitoring page for the signed-in team.

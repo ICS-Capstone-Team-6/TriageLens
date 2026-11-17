@@ -12,6 +12,7 @@ Committed split manifests and data cards (ML-DATA-01, ML-DATA-02). The TRD repos
 
 - Images or any patient-level data beyond IDs and split assignments.
 
-## Status
+## Contents
 
-Empty on purpose. Code arrives through backlog stories; see `docs/planning/02_Product_Backlog.md`.
+- `shenzhen_v2/`: Shenzhen TB set, version 2 (`E1-03`), the current version. Start with `shenzhen_v2/DATA_CARD.md`.
+- `shenzhen_v1/`: Shenzhen TB set, version 1. Superseded by version 2; kept as the historical record.

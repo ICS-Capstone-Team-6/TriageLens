@@ -38,6 +38,8 @@ Both are set on raw (uncalibrated) fp32 logits and versioned as `thresholds v0-u
 - The screen-out rule is stricter than the TRD 7.2 figure of 90%. This is a deliberate, temporary move toward refer or retake (TRD 7.2), recorded as a change to a baseline requirement.
 - More results will be Not sure. The monitoring page reports the zone mix so the team can see how many.
 - If the screen-out threshold comes out above the refer threshold, the zones overlap. Nothing ships until the team decides.
+- **Ties.** A score exactly equal to the screen-out threshold is Not sure, not Low risk. TRD 7.2 says "at or below" is Low risk; the slice moves the tie toward refer, as TRD 7.2's own rule on uncertainty asks. The threshold is chosen so that sensitivity at "score at or above the threshold" is 95% or more, which matches this rule.
+- The thresholds file also records the SHA-256 of the exact model file. The app shows no results if the loaded model differs (H7).
 - The confidence intervals are wide. Reports must show them, not a bare 95%.
 - **External sensitivity at the new screen-out point is unknown.** The Montgomery figures (sensitivity 0.702) were measured at the 90% point, and Montgomery cannot be scored again for this run. The report must say so and must not reuse 0.702 as the slice's figure.
 - E6-01 recalibrates (temperature scaling, ADR-8) and sets both thresholds again. These values do not carry over.

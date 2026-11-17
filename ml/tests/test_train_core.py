@@ -40,6 +40,21 @@ def make_raw(root, n=30, seed=0):
 
 
 class TestPreprocess(unittest.TestCase):
+    def test_check_preprocessing_refuses_other_versions(self):
+        spec = {"version": "cxr-pre-2"}
+        with tempfile.TemporaryDirectory() as d:
+            good, old, missing = Path(d) / "good", Path(d) / "old", Path(d) / "missing"
+            for folder, version in ((good, "cxr-pre-2"), (old, "cxr-pre-1")):
+                folder.mkdir()
+                (folder / "prepare_report.json").write_text(f'{{"preprocess_spec": "{version}"}}')
+            self.assertEqual(preprocess.check_preprocessing({"preprocess_spec": "cxr-pre-2"}, [good], spec), "cxr-pre-2")
+            for cfg, dirs in (({"preprocess_spec": "cxr-pre-1"}, [good]),  # old checkpoint
+                              ({}, [good]),                                 # version not recorded
+                              ({"preprocess_spec": "cxr-pre-2"}, [old]),    # old prepared data
+                              ({"preprocess_spec": "cxr-pre-2"}, [missing])):
+                with self.subTest(cfg=cfg, dirs=dirs), self.assertRaises(ValueError):
+                    preprocess.check_preprocessing(cfg, dirs, spec)
+
     def test_spec_matches_model_interface(self):
         spec = preprocess.load_spec()
         self.assertEqual(spec["input_size"], 320)  # TRD 10.6

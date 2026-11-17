@@ -18,6 +18,26 @@ def load_spec(path=SPEC_PATH):
     return json.loads(Path(path).read_text())
 
 
+def check_preprocessing(cfg, data_dirs=(), spec=None):
+    """Refuse a checkpoint or prepared data made for another preprocessing version.
+
+    A model is exported, quantized and scored with the input contract it was trained on
+    (TRD 9.3). Callers run this before reading any data, so a mismatch never touches a
+    split. A missing version counts as a mismatch. Returns the version.
+    """
+    spec = spec or load_spec()
+    want = spec["version"]
+    got = cfg.get("preprocess_spec")
+    if got != want:
+        raise ValueError(f"checkpoint was trained with preprocessing {got!r}; this code is {want!r}")
+    for d in data_dirs:
+        report = Path(d) / "prepare_report.json"
+        got = json.loads(report.read_text()).get("preprocess_spec") if report.exists() else None
+        if got != want:
+            raise ValueError(f"prepared data in {d} uses preprocessing {got!r}; this code is {want!r}")
+    return want
+
+
 def to_model_size(img, spec=None):
     """Grayscale, then resize straight to input_size x input_size (ADR-16).
 

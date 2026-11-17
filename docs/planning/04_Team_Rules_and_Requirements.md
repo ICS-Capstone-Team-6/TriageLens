@@ -225,10 +225,10 @@ By signing, each member agrees to follow these rules and to raise concerns early
 
 | Name | Role | Signature | Date |
 |--------------|--------------------------------|----------------------|------------|
-| Kweku | Team lead and product owner | | |
-| Micheal | Project manager | | |
+| Kweku | Team lead and product owner | Kweku-Abeiku Attah Anyen | 21 Oct 2026 |
+| Micheal | Project manager | Michael Sylvester | 21 Oct 2026 |
 | Chelsea | ML lead | | |
-| Nana Yaw | DevOps and QA lead | | |
+| Nana Yaw | DevOps and QA lead | Nana Yaw Koranteng | 20 Oct 2026 |
 
 # 15. Change Log
 
@@ -242,3 +242,6 @@ By signing, each member agrees to follow these rules and to raise concerns early
 | 18 Oct 2026 | Static int8 calibration images come from the train split, not validation, so the bake-off int8 drop is measured on images not used for calibration; TRD 9.5 step 2 changed ([ADR-17](../adr/0017-int8-calibration-from-train.md)) | Pending: team |
 | 20 Oct 2026 | M2 backbone is EfficientNet-Lite0 (not the ADR-3 default MobileNetV3-Large); both failed the int8 drop rule, so the frozen model (median seed) ships at full precision, 12.8 MB, as TRD 9.5 step 4 allows; ADR-5 revisit trigger fired ([ADR-18](../adr/0018-efficientnet-lite0-full-precision.md)) | Pending: team |
 | 21 Oct 2026 | Shenzhen's 15% split (named `test` in the manifest) is a second held-out validation set, not an internal test set, so it matches TRD Appendix A (Shenzhen: train and validate). It stays locked. The name is kept in the files so the dataset version hash does not change. Committing file names, patient numbers, labels, splits and fingerprints is within the dataset's ReadMe terms (PR #78 review) | Chelsea; pending: team |
+| 21 Oct 2026 | M2 thin slice deployed in Sprint 0, ahead of G1, for the ICS 591 M2 deadline (23 Oct); Sprint 0 cap and swap rule not met this week ([ADR-19](../adr/0019-m2-thin-slice-pulled-forward.md)) | Pending: team |
+| 21 Oct 2026 | M2 slice thresholds: screen-out at 95% or higher sensitivity (TRD 7.2 says 90%) and refer at 95% or higher specificity, on raw validation logits, until E6-01 calibration ([ADR-20](../adr/0020-interim-slice-thresholds.md)) | Pending: team |
+| 21 Oct 2026 | Required pull-request approval removed from `main` branch protection; the four CI checks stay required (Team Rules 6 says one review minimum) | Kweku; pending: team |

@@ -1,0 +1,25 @@
+{
+  "pillow": "11.3.0",
+  "size": 320,
+  "spec": "cxr-pre-2",
+  "cases": [
+    {
+      "name": "down",
+      "width": 641,
+      "height": 557,
+      "rgb": false
+    },
+    {
+      "name": "tall",
+      "width": 301,
+      "height": 797,
+      "rgb": false
+    },
+    {
+      "name": "up",
+      "width": 211,
+      "height": 157,
+      "rgb": true
+    }
+  ]
+}

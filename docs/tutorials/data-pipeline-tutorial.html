@@ -1,0 +1,1372 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Data Pipeline Tutorial</title>
+<style>
+:root {
+  --bg: #fbfaf7; --surface: #ffffff; --surface-2: #f2f0ea; --text: #1d1d1b; --muted: #5d5b55;
+  --border: #dedbd2; --accent: #1f5f8b; --accent-soft: #e3eef6; --ok: #1d6b3a; --ok-soft: #e2f2e7;
+  --bad: #a3302a; --bad-soft: #f8e4e2; --warn: #8a5a00; --warn-soft: #fbf0d9;
+  --train: #2f6db3; --val: #b7791f; --test: #7a3fa0; --code-bg: #f4f2ec;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #161615; --surface: #1f1f1d; --surface-2: #2a2a27; --text: #ecebe6; --muted: #a9a79f;
+    --border: #3a3935; --accent: #7fb6dd; --accent-soft: #1e3242; --ok: #7ccf98; --ok-soft: #1c3324;
+    --bad: #f0928b; --bad-soft: #3d2120; --warn: #e8c070; --warn-soft: #3a2f17;
+    --train: #6fa3e0; --val: #e0aa55; --test: #b98ad6; --code-bg: #232321;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #161615; --surface: #1f1f1d; --surface-2: #2a2a27; --text: #ecebe6; --muted: #a9a79f;
+  --border: #3a3935; --accent: #7fb6dd; --accent-soft: #1e3242; --ok: #7ccf98; --ok-soft: #1c3324;
+  --bad: #f0928b; --bad-soft: #3d2120; --warn: #e8c070; --warn-soft: #3a2f17;
+  --train: #6fa3e0; --val: #e0aa55; --test: #b98ad6; --code-bg: #232321;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 17px/1.6 var(--sans); }
+a { color: var(--accent); }
+.topbar { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 12px;
+  padding: 10px 16px; background: var(--surface); border-bottom: 1px solid var(--border); }
+.topbar strong { font-size: 15px; }
+.topbar button { font: inherit; font-size: 14px; padding: 6px 12px; border: 1px solid var(--border);
+  background: var(--surface-2); color: var(--text); border-radius: 6px; cursor: pointer; }
+.layout { display: grid; grid-template-columns: 1fr; }
+nav.toc { display: none; background: var(--surface); border-bottom: 1px solid var(--border); padding: 8px 16px 16px; }
+nav.toc.open { display: block; }
+nav.toc ol { list-style: none; margin: 0; padding: 0; }
+nav.toc li { margin: 2px 0; }
+nav.toc li li { padding-left: 14px; }
+nav.toc a { display: block; padding: 4px 8px; border-radius: 4px; text-decoration: none; color: var(--text); font-size: 15px; }
+nav.toc a:hover, nav.toc a.active { background: var(--accent-soft); color: var(--accent); }
+main { padding: 8px 16px 80px; min-width: 0; }
+.prose { max-width: 760px; margin: 0 auto; }
+@media (min-width: 980px) {
+  .topbar #tocbtn { display: none; }
+  .layout { grid-template-columns: 280px 1fr; }
+  nav.toc { display: block; position: sticky; top: 49px; height: calc(100vh - 49px); overflow-y: auto;
+    border-bottom: 0; border-right: 1px solid var(--border); padding: 16px 12px; }
+  main { padding: 16px 32px 120px; }
+}
+h1 { font-size: 30px; line-height: 1.2; margin: 24px 0 8px; }
+h2 { font-size: 25px; line-height: 1.25; margin: 56px 0 12px; padding-top: 12px; border-top: 2px solid var(--border); }
+h3 { font-size: 19px; margin: 28px 0 8px; }
+h4 { font-size: 16px; margin: 20px 0 6px; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+section { scroll-margin-top: 60px; }
+p, li { max-width: 72ch; }
+.lede { color: var(--muted); font-size: 18px; }
+code, kbd { font-family: var(--mono); font-size: .88em; background: var(--code-bg); padding: 1px 4px; border-radius: 4px; overflow-wrap: anywhere; }
+.prose { overflow-wrap: break-word; }
+figure.code { margin: 16px 0; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--code-bg); }
+figure.code figcaption { font: 13px var(--mono); padding: 6px 12px; background: var(--surface-2); border-bottom: 1px solid var(--border);
+  display: flex; flex-wrap: wrap; gap: 4px 12px; }
+figure.code .lines { color: var(--muted); }
+figure.code pre { margin: 0; padding: 10px 0; overflow-x: auto; font: 13.5px/1.55 var(--mono); }
+figure.code code { background: none; padding: 0; font-size: inherit; display: block; white-space: pre; }
+.elide { color: var(--muted); font-style: italic; font-family: var(--sans); font-size: 12.5px; }
+.ln { display: inline-block; width: 3.6em; padding-right: 1em; text-align: right; color: var(--muted); user-select: none; }
+.walk { padding-left: 0; list-style: none; }
+.walk li { margin: 6px 0; padding-left: 4.4em; text-indent: -4.4em; }
+.walk b.l { display: inline-block; width: 4.2em; text-indent: 0; font: 600 13px var(--mono); color: var(--accent); }
+.formula { margin: 14px 0; padding: 12px 16px; background: var(--surface); border: 1px solid var(--border);
+  border-left: 4px solid var(--accent); border-radius: 6px; font-family: var(--mono); font-size: 15px; overflow-x: auto; }
+.box { margin: 16px 0; padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); }
+.box > :first-child { margin-top: 0; } .box > :last-child { margin-bottom: 0; }
+.box .tag { display: inline-block; font: 700 12px var(--sans); letter-spacing: .05em; text-transform: uppercase; margin-bottom: 4px; }
+.box.bg { background: var(--surface-2); } .box.bg .tag { color: var(--muted); }
+.box.gap { background: var(--warn-soft); border-color: transparent; } .box.gap .tag { color: var(--warn); }
+.box.hist { background: var(--accent-soft); border-color: transparent; } .box.hist .tag { color: var(--accent); }
+table { border-collapse: collapse; width: 100%; margin: 12px 0; font-size: 15px; }
+.tablewrap { overflow-x: auto; }
+th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+th { background: var(--surface-2); font-weight: 600; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.flow { list-style: none; padding: 0; display: grid; gap: 8px; counter-reset: st; }
+.flow li { counter-increment: st; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px 10px 48px; position: relative; max-width: none; }
+.flow li::before { content: counter(st); position: absolute; left: 12px; top: 10px; width: 24px; height: 24px; border-radius: 50%;
+  background: var(--accent); color: var(--surface); font: 700 13px/24px var(--sans); text-align: center; }
+.flow .out { display: block; font-size: 14px; color: var(--muted); }
+dfn.t { font-style: normal; border-bottom: 1.5px dotted var(--accent); cursor: help; }
+#tip { position: absolute; z-index: 50; max-width: min(340px, calc(100vw - 32px)); padding: 10px 12px; background: var(--text); color: var(--bg);
+  font-size: 14px; line-height: 1.45; border-radius: 6px; box-shadow: 0 4px 16px rgba(0,0,0,.2); display: none; }
+#tip b { display: block; margin-bottom: 2px; }
+details.ans { margin: 8px 0 16px; }
+details.ans summary { cursor: pointer; display: inline-block; font-size: 14px; font-weight: 600; color: var(--accent);
+  padding: 4px 10px; border: 1px solid var(--accent); border-radius: 6px; list-style: none; }
+details.ans summary::-webkit-details-marker { display: none; }
+details.ans[open] summary { background: var(--accent-soft); }
+details.ans .a { margin-top: 8px; padding: 10px 14px; border-left: 3px solid var(--accent); background: var(--surface); }
+.q { font-weight: 600; margin-bottom: 4px; }
+.q .kind { font: 700 11px var(--sans); text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin-right: 6px; }
+.widget { margin: 20px 0; padding: 14px 16px; border: 2px solid var(--accent); border-radius: 10px; background: var(--surface); }
+.widget h4 { margin-top: 0; color: var(--accent); }
+.widget .disclaimer { font-size: 13.5px; color: var(--muted); border-top: 1px solid var(--border); margin-top: 12px; padding-top: 8px; }
+.widget button, .widget select, .widget input[type=text], .widget textarea { font: inherit; font-size: 15px; padding: 6px 10px; border: 1px solid var(--border);
+  border-radius: 6px; background: var(--surface-2); color: var(--text); }
+.widget button { cursor: pointer; margin: 2px 4px 2px 0; }
+.widget button:hover { border-color: var(--accent); }
+.widget button:disabled { opacity: .45; cursor: default; }
+.widget textarea, .widget input[type=text] { width: 100%; }
+.widget input[type=range] { width: 100%; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 8px 0; }
+.chip { display: inline-block; min-width: 2.4em; padding: 2px 6px; margin: 2px; border-radius: 4px; font: 600 12.5px var(--mono); color: #fff; text-align: center; }
+.chip.train { background: var(--train); } .chip.val { background: var(--val); } .chip.test { background: var(--test); }
+.chip.gone { background: transparent; color: var(--muted); border: 1px dashed var(--muted); text-decoration: line-through; }
+.chip.moved { outline: 3px solid var(--bad); outline-offset: 1px; }
+.legend { font-size: 13px; color: var(--muted); }
+.verdict { padding: 8px 12px; border-radius: 6px; font-weight: 600; margin-top: 8px; }
+.verdict.ok { background: var(--ok-soft); color: var(--ok); } .verdict.bad { background: var(--bad-soft); color: var(--bad); }
+.mono { font-family: var(--mono); font-size: 13.5px; word-break: break-all; }
+.grid { display: inline-grid; gap: 3px; margin: 4px 12px 4px 0; vertical-align: top; }
+.grid button.cell { width: 38px; height: 38px; margin: 0; padding: 0; border-radius: 4px; font: 600 11px var(--mono); border: 1px solid var(--border); }
+.bits span { display: inline-block; width: 1.3em; text-align: center; font-family: var(--mono); border-radius: 3px; }
+.bits span.diff { background: var(--bad-soft); color: var(--bad); font-weight: 700; }
+.uf table { font-size: 14px; }
+.uf td.root { font-weight: 700; color: var(--accent); }
+.small { font-size: 14px; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="topbar"><button id="tocbtn" aria-expanded="false" aria-controls="toc">Contents</button><strong>TriageLens data pipeline: a concept tutorial</strong></div>
+<div class="layout">
+<nav class="toc" id="toc" aria-label="Contents">
+<ol>
+<li><a href="#read">1. How to read this tutorial</a></li>
+<li><a href="#problem">2. The problem and the approach</a></li>
+<li><a href="#concepts">3. Core concepts</a>
+  <ol>
+  <li><a href="#leakage">3.1 Data leakage and patient-level splits</a></li>
+  <li><a href="#strat">3.2 Stratification and prevalence</a></li>
+  <li><a href="#carry">3.3 Keeping splits across versions</a></li>
+  <li><a href="#records">3.4 Record checks and intended population</a></li>
+  <li><a href="#labels">3.5 Label noise and a conservative gate</a></li>
+  <li><a href="#sha">3.6 Cryptographic hashing</a></li>
+  <li><a href="#dhash">3.7 Perceptual hashing and Hamming distance</a></li>
+  <li><a href="#uf">3.8 Union-find and chaining</a></li>
+  <li><a href="#repro">3.9 Reproducibility and provenance</a></li>
+  <li><a href="#synth">3.10 Synthetic data and adversarial testing</a></li>
+  </ol>
+</li>
+<li><a href="#departs">4. Where the code departs from the theory</a></li>
+<li><a href="#verify">5. How to verify it</a></li>
+<li><a href="#glossary">6. Glossary</a></li>
+</ol>
+</nav>
+<main>
+<div class="prose">
+
+<h1>How the TriageLens data pipeline works, and why</h1>
+<p class="lede">A tutorial on <code>ml/pipeline/build_dataset.py</code> and <code>ml/testenv/make_synthetic.py</code> (story <code>E1-03</code>), built around the ideas the code depends on.</p>
+
+<!-- ============================================================ 1 -->
+<section id="read">
+<h2>1. How to read this tutorial</h2>
+<p>You can already follow what the code does. What this tutorial adds is <em>why</em> it does it. So each concept section starts with the idea and ends with the code:</p>
+<ol>
+<li><b>The idea</b> in plain terms.</li>
+<li><b>The rule or formula</b> behind it.</li>
+<li><b>A worked example</b> with real numbers from the project.</li>
+<li><b>The code</b>: only the essential lines, copied exactly from the source file, with the file path and real line numbers. A dim <code>...</code> row marks lines left out. The same tutorial with complete functions is <a href="data-pipeline-tutorial-full-code.html">data-pipeline-tutorial-full-code.html</a>.</li>
+<li><b>Line by line</b>: what each part does and how it ties back to the rule.</li>
+<li><b>Check yourself</b>: two questions. One always asks you to predict what the code does when an input changes. Answers are hidden until you open them.</li>
+</ol>
+<p>Words with a dotted underline, like <dfn class="t" data-g="manifest">manifest</dfn>, show a definition when you hover over or tap them. All of them are also in the <a href="#glossary">glossary</a>.</p>
+
+<h3>Labels you will see</h3>
+<div class="box bg"><span class="tag">General background</span><p>Knowledge that is standard in the field but is not written in the project's files.</p></div>
+<div class="box gap"><span class="tag">Gap</span><p>A decision you told me you accepted without knowing why. The tutorial explains the reason given in the files, if there is one.</p></div>
+<div class="box hist"><span class="tag">Documented history</span><p>A failure and its fix, as recorded in the READMEs, the data card and the commits. You said you do not remember these, so they come only from the files.</p></div>
+<p>Interactive widgets have a blue border. Each one says whether it re-implements project logic in JavaScript or is only an illustration. <b>None of them runs the project's Python code.</b></p>
+
+<h3>Where the numbers come from</h3>
+<p>Numbers come from the committed run reports (<code>ml/manifests/shenzhen_v1/</code> and <code>shenzhen_v2/</code>), the data card, the READMEs, or a re-run on 10 Nov 2026 that is named as such. If something was never measured, the text says "not measured."</p>
+
+<h3>Gaps you named</h3>
+<ul>
+<li>Keeping v1's splits in v2 (<code>carry_splits</code>) was suggested to you. See <a href="#carry">3.3</a>.</li>
+<li>The 512 px resolution floor was accepted. See <a href="#records">3.4</a>.</li>
+<li>Why the label check is conservative is not known. See <a href="#labels">3.5</a>.</li>
+<li>You did no testing beyond the unit tests, and you do not remember the failures. See <a href="#verify">5</a>.</li>
+</ul>
+<p>Choices you made on purpose: seed 591 (any fixed number works; see <a href="#repro">3.9</a>), the 70/15/15 split chosen for the dataset size, and using the 15% "test" split as a second held-out validation set, so that the real test can be done on data from a different distribution.</p>
+</section>
+
+<!-- ============================================================ 2 -->
+<section id="problem">
+<h2>2. The problem and the approach</h2>
+<h3>The problem</h3>
+<p>The ML side of TriageLens trains a model to flag possible TB on chest X-rays. Before any training, you need data whose labels you trust, split in a way that gives an honest score. The Shenzhen set from the US National Library of Medicine has 662 PNG X-rays. The label is in the file name (<code>CHNCXR_0001_0.png</code>: 0 means normal, 1 means abnormal lung). Each image also has a short text reading with sex, age and the finding.</p>
+<p>If you feed this straight into training, several things can go wrong without anyone noticing:</p>
+<ul>
+<li>Some labels do not mean what you need. Label 1 means "abnormal lung," not "TB."</li>
+<li>Some patients are children, who are outside the intended use (TRD 9.1).</li>
+<li>Copies of the same image can end up in both training and test, so the test score is too high.</li>
+<li>The dataset can change between runs, so two results that look comparable are not.</li>
+</ul>
+
+<h3>The approach: a pipeline of checks</h3>
+<p>The pipeline runs stages in a fixed order. Each stage removes the records that fail its checks and writes them to a quarantine file with a reason.</p>
+<ol class="flow">
+<li><b>Ingest.</b> File name schema, image decodes, smallest side at least 512 px, reading present for at least 95% of images.<span class="out">Bad record: quarantine. Fewer than 95% of readings present: hard fail.</span></li>
+<li><b>Label.</b> The file label must agree with the written reading.<span class="out">Disagreement or doubt: quarantine for human review.</span></li>
+<li><b>Dedup.</b> Copies with different labels, exact copies, then near-identical images and shared patient IDs are grouped.<span class="out">Clashing or exact copies: quarantine. Near copies: kept, but grouped together.</span></li>
+<li><b>Policy.</b> Age 15 or over, age readable.<span class="out">Fails: quarantine.</span></li>
+<li><b>Split.</b> Whole groups go to train, validation or test, keeping v1's split where one exists.</li>
+<li><b>Batch checks.</b> No leakage across splits, balanced TB rate, enough records.<span class="out">Any failure: hard fail. No manifest is written.</span></li>
+<li><b>Outputs.</b> Committed: manifest, quarantine list, near-duplicate pairs, run report. Private (git-ignored): sex, age and reading text.</li>
+</ol>
+
+<h3>Two kinds of failure</h3>
+<p>The design separates two kinds of problem. A <dfn class="t" data-g="quarantine">quarantine</dfn> handles one bad record: it is set aside with a reason, and the run goes on. A <dfn class="t" data-g="hardfail">hard fail</dfn> handles a problem with the whole dataset: if 10% of readings are missing, or one split has the wrong TB rate, no single record is to blame and the output cannot be trusted. So the run stops and writes nothing. The rule "no record is dropped silently" means every removed record is listed in <code>quarantine.csv</code>.</p>
+<figure class="code"><figcaption><span class="path">ml/pipeline/build_dataset.py</span> <span class="lines">lines 47 to 48</span></figcaption><pre><code><span class="ln">47</span>class HardFail(Exception):
+<span class="ln">48</span>    &quot;&quot;&quot;A check that stops the whole run. No manifest is written.&quot;&quot;&quot;</code></pre></figure>
+<figure class="code"><figcaption><span class="path">ml/pipeline/build_dataset.py</span> <span class="lines">lines 274 to 276</span></figcaption><pre><code><span class="ln">274</span>    def q(rec, stage, check, reason):
+<span class="ln">275</span>        quarantine.append({&quot;file&quot;: rec.get(&quot;file&quot;), &quot;patient_id&quot;: rec.get(&quot;patient_id&quot;),
+<span class="ln">276</span>                           &quot;label&quot;: rec.get(&quot;label&quot;), &quot;stage&quot;: stage, &quot;check&quot;: check, &quot;reason&quot;: reason})</code></pre></figure>
+<figure class="code"><figcaption><span class="path">ml/pipeline/build_dataset.py</span> <span class="lines">lines 385, 387 to 389</span></figcaption><pre><code><span class="ln">385</span>    checks = batch_checks(df)
+<span class="ln">...</span><span class="elide">lines left out</span>
+<span class="ln">387</span>    if not all(c[&quot;passed&quot;] for c in checks):
+<span class="ln">388</span>        (out / &quot;batch_checks_failed.json&quot;).write_text(json.dumps(checks, indent=2))
+<span class="ln">389</span>        raise HardFail(&quot;batch checks failed, see batch_checks_failed.json&quot;)</code></pre></figure>
+<ul class="walk">
+<li><b class="l">47-48</b>A custom exception type. Raising it anywhere unwinds the whole run. <code>main()</code> catches it, prints <code>HARD FAIL</code>, and returns exit code 1.</li>
+<li><b class="l">274-276</b><code>q()</code> adds one row to the quarantine list: file, patient ID, label, the stage, the check name and a reason. Each stage calls it and then filters the record out of the DataFrame.</li>
+<li><b class="l">385</b>Batch checks run only after every record-level stage is done, on the final split.</li>
+<li><b class="l">387-389</b>If any check failed, the pipeline writes only <code>batch_checks_failed.json</code> (so you can see why) and raises <code>HardFail</code> before any manifest is written.</li>
+</ul>
+
+<h3>Real result, version 2</h3>
+<div class="tablewrap"><table>
+<tr><th>Item</th><th class="num">Count</th></tr>
+<tr><td>Images found</td><td class="num">662</td></tr>
+<tr><td>Kept</td><td class="num">618 (316 TB, 302 normal)</td></tr>
+<tr><td>Quarantined: under 15</td><td class="num">25</td></tr>
+<tr><td>Quarantined: label disagrees with reading</td><td class="num">18</td></tr>
+<tr><td>Quarantined: age not readable</td><td class="num">1</td></tr>
+<tr><td>Train / validation / held-out (<code>test</code>)</td><td class="num">431 / 94 / 93</td></tr>
+</table></div>
+<p class="small">Source: <code>ml/manifests/shenzhen_v2/run_report.json</code>.</p>
+</section>
+
+<section id="concepts">
+<h2>3. Core concepts</h2>
+<p>Ten concepts, roughly in the order the pipeline uses them. Splitting comes first because it is the reason most of the other checks exist.</p>
+</section>
+
+<!-- ============================================================ 3.1 -->
+<section id="leakage">
+<h3 style="font-size:23px">3.1 Data leakage and patient-level splits</h3>
+<h4>The idea</h4>
+<p>A model is scored on data it did not learn from. So the data is cut into <dfn class="t" data-g="split">splits</dfn>: a training set to learn from, a <dfn class="t" data-g="validation">validation set</dfn> for tuning and choosing thresholds, and a <dfn class="t" data-g="heldout">held-out set</dfn> used rarely, for the final score. The score means something only if nothing from the held-out set reached training.</p>
+<p><dfn class="t" data-g="leakage">Data leakage</dfn> is when it does. With X-rays, the usual cause is the same person appearing in two splits. Two X-rays of one person share things that have nothing to do with TB: body shape, rib pattern, implants, how the person stood. A model can learn to recognise the person, then "recognise" them again in the test set. The test score goes up, but the model has not got better at spotting TB. In a clinic, that model would do worse than its score promised.</p>
+<div class="box bg"><span class="tag">General background</span><p>Patient-level splitting is standard practice in medical imaging ML for exactly this reason. The project makes it a rule: "Splits are made by patient, never by image" (TRD ML-DATA-02).</p></div>
+
+<h4>The rule</h4>
+<p>Assign splits to <b>groups</b> of records (one patient, plus any near-identical images), never to single images. Afterwards, check that every patient ID and every group sits in exactly one split.</p>
+<p>How often does an image-level split leak? Say each image is put in train, validation or test at random with chances 0.70, 0.15 and 0.15. A patient with <i>k</i> images stays leak-free only if all <i>k</i> land in the same split:</p>
+<div class="formula">P(leak | k images) = 1 &minus; (0.70<sup>k</sup> + 0.15<sup>k</sup> + 0.15<sup>k</sup>)</div>
+<p>For <i>k</i> = 2: 1 &minus; (0.49 + 0.0225 + 0.0225) = <b>0.465</b>. Nearly half of all two-image patients would leak. For <i>k</i> = 3 it is 0.650. <span class="small">(General probability, assuming each image is assigned independently.)</span></p>
+
+<h4>Worked example</h4>
+<p>In v2, the 618 kept records form 618 groups, split 431 / 94 / 93. The batch check counts, for each <code>patient_id</code>, how many distinct splits it appears in. The maximum is 1, so <code>no_patient_across_splits</code> passed.</p>
+<p>Note: in Shenzhen, the "patient ID" is the provider's image sequence number (data card), and every kept record is its own group. So on this dataset the grouping does not merge anything. The code is still built for data where one person has several images. See <a href="#departs">section 4</a>.</p>
+
+<h4>The code</h4>
+<figure class="code"><figcaption><span class="path">ml/pipeline/build_dataset.py</span> <span class="lines">lines 376 to 380, 382</span></figcaption><pre><code><span class="ln">376</span>    if prior_manifest:
+<span class="ln">377</span>        splits, counts = carry_splits(df, prior_manifest)
+<span class="ln">378</span>        split_source = {&quot;prior_manifest&quot;: str(prior_manifest), **counts}
+<span class="ln">379</span>    else:
+<span class="ln">380</span>        splits = assign_splits(df.groupby(&quot;group_id&quot;)[&quot;label&quot;].max().reset_index())
+<span class="ln">...</span><span class="elide">lines left out</span>
+<span class="ln">382</span>    df[&quot;split&quot;] = df[&quot;group_id&quot;].map(splits)</code></pre></figure>
+<figure class="code"><figcaption><span class="path">ml/pipeline/build_dataset.py</span> <span class="lines">lines 253 to 256</span></figcaption><pre><code><span class="ln">253</span>    add(&quot;no_patient_across_splits&quot;, df.groupby(&quot;patient_id&quot;)[&quot;split&quot;].nunique().max() == 1,
+<span class="ln">254</span>        &quot;each patient identity sits in one split, independently of image grouping&quot;)
+<span class="ln">255</span>    add(&quot;no_patient_group_across_splits&quot;, df.groupby(&quot;group_id&quot;)[&quot;split&quot;].nunique().max() == 1,
+<span class="ln">256</span>        &quot;each patient or near-duplicate group sits in one split&quot;)</code></pre></figure>
+<h4>Line by line</h4>
+<ul class="walk">
+<li><b class="l">376-378</b>With a prior manifest, splits carry over from it (see <a href="#carry">3.3</a>).</li>
+<li><b class="l">380</b>Otherwise, collapse the records to one row per <code>group_id</code>, with the group's highest label, and split those rows. The unit being split is the group, not the image. That is the rule.</li>
+<li><b class="l">382</b>Every record gets its group's split. Records in one group therefore cannot be in different splits.</li>
+<li><b class="l">253-254</b>For each patient ID, count the distinct splits. If the maximum is 1, no patient is in two splits.</li>
+<li><b class="l">255-256</b>The same check on <code>group_id</code>.</li>
+</ul>
+
+<div class="widget" id="w-leak">
+<h4>Try it: split by image versus split by patient</h4>
+<p class="small">Six made-up patients (A to F) with 12 images. Each chip is one image, coloured by its split. A row with more than one colour is a leaked patient.</p>
+<div class="row"><button data-mode="image">Split by image</button><button data-mode="patient">Split by patient</button></div>
+<div id="leak-out"></div>
+<p class="legend"><span class="chip train">train</span><span class="chip val">val</span><span class="chip test">test</span></p>
+<div id="leak-verdict"></div>
+<p class="disclaimer">This widget is an illustration with made-up records and a random shuffle. It does not run the project's code.</p>
+</div>
+
+<h4>Check yourself</h4>
+<p class="q"><span class="kind">Concept</span>The batch checks include both <code>no_patient_across_splits</code> and <code>no_patient_group_across_splits</code>. If groups already contain whole patients, why check patients separately?</p>
+<details class="ans"><summary>Show answer</summary><div class="a">So the check does not depend on the grouping code. The group check only confirms that splits were assigned per group. If a bug in the grouping put one patient into two groups, the group check would still pass. The patient check reads the raw patient IDs, so it would catch that. The test <code>test_batch_checks_detect_patient_leakage_independently</code> builds exactly this case: patient "a" is in groups "x" and "y", in train and test. The patient check fails.</div></details>
+<p class="q"><span class="kind">Predict</span>The raw folder holds <code>CHNCXR_0100_0.png</code> and <code>CHNCXR_0100_1.png</code>: same patient number, different labels, readings that match each label, and images that are not near-identical. What happens to them?</p>
+<details class="ans"><summary>Show answer</summary><div class="a">Both are kept, in the same group and the same split. <code>parse_name</code> gives patient "0100" for both. The duplicate-label check does not flag them because they are not near-identical (a later X-ray of the same person may differ). <code>near_duplicate_groups</code> unions records that share a patient ID, so they get one <code>group_id</code>. For splitting, the group's label is the maximum, 1. The test <code>test_same_patient_stays_in_one_split_end_to_end</code> covers this case.</div></details>
+</section>
+
+<!-- ============================================================ 3.2 -->
+<section id="strat">
+<h3 style="font-size:23px">3.2 Stratification and prevalence</h3>
+<h4>The idea</h4>
+<p><dfn class="t" data-g="prevalence">Prevalence</dfn> is the share of records that have the condition. Here, that is the TB rate. A purely random split of a small dataset can, by chance, give a validation set with noticeably fewer TB cases than the rest. Then the thresholds you tune on it, and the scores you report, describe a different mix of patients.</p>
+<p><dfn class="t" data-g="strat">Stratified sampling</dfn> fixes this. Split each label separately with the same fractions, then combine. Each split then mirrors the overall TB rate almost exactly.</p>
+
+<h4>The rule</h4>
+<p>For each label &#8467; with <i>n</i><sub>&#8467;</sub> groups:</p>
+<div class="formula">n_train = round(0.70 &times; n)<br>n_val&nbsp;&nbsp; = round(0.15 &times; n)<br>n_test&nbsp; = n &minus; n_train &minus; n_val</div>
+<p>Then check each split <i>s</i> against the overall rate <i>p</i>:</p>
+<div class="formula">| p_s &minus; p | &le; 0.05</div>
+<p>Which groups land where comes from a shuffle driven by a fixed <dfn class="t" data-g="seed">seed</dfn> (591). The same input always gives the same split.</p>
+
+<h4>Worked example</h4>
+<p>Version 1 was split fresh by this code, so its numbers can be checked by hand. It had 333 TB groups and 302 normal groups.</p>
+<div class="tablewrap"><table>
+<tr><th>Label</th><th class="num">n</th><th class="num">train = round(0.70n)</th><th class="num">val = round(0.15n)</th><th class="num">test = rest</th></tr>
+<tr><td>1 (TB)</td><td class="num">333</td><td class="num">round(233.1) = 233</td><td class="num">round(49.95) = 50</td><td class="num">50</td></tr>
+<tr><td>0 (normal)</td><td class="num">302</td><td class="num">round(211.4) = 211</td><td class="num">round(45.3) = 45</td><td class="num">46</td></tr>
+</table></div>
+<p>The v1 run report says train 233 / 211, val 50 / 45, test 50 / 46. That is an exact match.</p>
+<p>The batch check on v2 (overall 316 / 618 = 0.511):</p>
+<div class="tablewrap"><table>
+<tr><th>Split</th><th class="num">TB / total</th><th class="num">Rate</th><th class="num">Gap</th><th>Passed</th></tr>
+<tr><td>train</td><td class="num">220 / 431</td><td class="num">0.510</td><td class="num">0.001</td><td>yes</td></tr>
+<tr><td>val</td><td class="num">49 / 94</td><td class="num">0.521</td><td class="num">0.010</td><td>yes</td></tr>
+<tr><td>held-out</td><td class="num">47 / 93</td><td class="num">0.505</td><td class="num">0.006</td><td>yes</td></tr>
+</table></div>
+
+<h4>The code</h4>
+<figure class="code"><figcaption><span class="path">ml/pipeline/build_dataset.py</span> <span class="lines">lines 203, 205 to 216</span></figcaption><pre><code><span class="ln">203</span>    rng = np.random.default_rng(seed)
+<span class="ln">...</span><span class="elide">lines left out</span>
+<span class="ln">205</span>    for _, g in groups.sort_values(&quot;group_id&quot;).groupby(&quot;label&quot;):
+<span class="ln">206</span>        gids = g[&quot;group_id&quot;].to_numpy().copy()
+<span class="ln">207</span>        rng.shuffle(gids)
+<span class="ln">208</span>        n = len(gids)
+<span class="ln">209</span>        n_tr = round(n * fractions[&quot;train&quot;])
+<span class="ln">210</span>        n_va = round(n * fractions[&quot;val&quot;])
+<span class="ln">211</span>        for gid in gids[:n_tr]:
+<span class="ln">212</span>            out[gid] = &quot;train&quot;
+<span class="ln">213</span>        for gid in gids[n_tr:n_tr + n_va]:
+<span class="ln">214</span>            out[gid] = &quot;val&quot;
+<span class="ln">215</span>        for gid in gids[n_tr + n_va:]:
+<span class="ln">216</span>            out[gid] = &quot;test&quot;</code></pre></figure>
+<figure class="code"><figcaption><span class="path">ml/pipeline/build_dataset.py</span> <span class="lines">lines 259 to 263</span></figcaption><pre><code><span class="ln">259</span>    overall = df[&quot;label&quot;].mean()
+<span class="ln">260</span>    for s in SPLIT:
+<span class="ln">261</span>        rate = df.loc[df[&quot;split&quot;] == s, &quot;label&quot;].mean()
+<span class="ln">262</span>        add(f&quot;tb_rate_{s}&quot;, abs(rate - overall) &lt;= MAX_PREVALENCE_GAP,
+<span class="ln">263</span>            f&quot;{rate:.3f} vs overall {overall:.3f}&quot;)</code></pre></figure>
+<h4>Line by line</h4>
+<ul class="walk">
+<li><b class="l">203</b>One random generator, seeded once. Every shuffle below draws from it in turn.</li>
+<li><b class="l">205</b>Sort by <code>group_id</code> first, so the order of the input rows cannot change the result. Then <code>groupby("label")</code> handles label 0, then label 1. This is the stratification: each label is split on its own.</li>
+<li><b class="l">206-207</b>Copy the group IDs for this label and shuffle them in place.</li>
+<li><b class="l">208-210</b>The formula: train and validation sizes by rounding. Python's <code>round</code> rounds an exact half to the even number.</li>
+<li><b class="l">211-216</b>Slice the shuffled list: first <i>n</i>_train to train, the next <i>n</i>_val to validation, the rest to test. The test split takes whatever rounding left over, so the counts always add up to <i>n</i>.</li>
+<li><b class="l">259</b>Overall TB rate. The mean of 0/1 labels is the share of 1s.</li>
+<li><b class="l">260-263</b>One check per split: the gap must be at most 0.05.</li>
+</ul>
+<p>One detail matters later: the generator is shared. Label 1's shuffle starts from wherever label 0's shuffle left the generator. Label 0 goes first, so changing the number of TB groups does not change the normal records' splits. Changing the number of normal groups changes both.</p>
+
+<div class="widget" id="w-prev">
+<h4>Try it: the prevalence check</h4>
+<div class="row"><label for="prev-split">Split</label><select id="prev-split">
+<option value="431,220">train (431 records)</option><option value="94,49">val (94 records)</option><option value="93,47" selected>held-out (93 records)</option></select></div>
+<label for="prev-n">TB records in this split: <b id="prev-k"></b></label>
+<input type="range" id="prev-n" min="0" max="93">
+<div id="prev-out" class="mono"></div>
+<div id="prev-verdict"></div>
+<p class="disclaimer">This widget re-implements the rule in JavaScript to illustrate it. The project's code is the source of truth. It keeps the overall rate fixed at 0.511 for simplicity. In the real data, moving TB records out of one split changes the overall rate a little.</p>
+</div>
+
+<h4>Check yourself</h4>
+<p class="q"><span class="kind">Concept</span>Line 380 splits on <code>groupby("group_id")["label"].max()</code>. Why the maximum?</p>
+<details class="ans"><summary>Show answer</summary><div class="a">A group can hold several records. To be stratified, the group needs a single label. The maximum means "TB if any record in the group is TB." This only decides which pile the group is shuffled in; each record keeps its own label in the manifest. In Shenzhen every group has one record, so the maximum is just that record's label.</div></details>
+<p class="q"><span class="kind">Predict</span>Suppose v2 had been split fresh (<code>--keep-splits-from ""</code>) with its 316 TB and 302 normal groups. How many TB records would be in validation, and how many in test?</p>
+<details class="ans"><summary>Show answer</summary><div class="a">Validation: round(316 &times; 0.15) = round(47.4) = <b>47</b>. Train: round(221.2) = 221. Test: 316 &minus; 221 &minus; 47 = <b>48</b>. Normals: 211 / 45 / 46. The real v2 has 49 TB records in validation because its splits were carried over from v1 rather than recomputed (next section). The counts are fixed by the formula. Which records go where depends on the seeded shuffle.</div></details>
+</section>
+
+<!-- ============================================================ 3.3 -->
+<section id="carry">
+<h3 style="font-size:23px">3.3 Keeping splits across versions</h3>
+<div class="box gap"><span class="tag">Gap</span><p>You said this was suggested and you accepted it. The data card records that the team agreed it on 21 Oct 2026. Here is why it matters.</p></div>
+<h4>The idea</h4>
+<p>Datasets get new versions. v2 added stricter label checks, which removed 17 records. The obvious thing to do is re-run the split on the new, smaller list. But a shuffle of a different-length list gives a different order, so many records would land in a different split.</p>
+<p>Now picture a model trained on v1 and scored on v2's test split. Some of v2's test images were v1 <i>training</i> images. Each version is leak-free on its own, but taken together they leak. That is leakage across versions.</p>
+<p>The fix: every group keeps the split it had before. Removing records then only shrinks splits; nothing moves. Only groups that are completely new get a fresh split.</p>
+
+<h4>The rule</h4>
+<p>For each group G, collect the prior splits of its files that appear in the old manifest:</p>
+<div class="formula">S = { prior_split(f) : f &isin; G, f in old manifest }<br>|S| = 1 &rarr; keep that split<br>|S| = 0 &rarr; new group: split with assign_splits<br>|S| &gt; 1 &rarr; hard fail</div>
+
+<h4>Worked example</h4>
+<div class="tablewrap"><table>
+<tr><th></th><th class="num">train</th><th class="num">val</th><th class="num">held-out</th><th class="num">total</th></tr>
+<tr><td>v1 (233+211, 50+45, 50+46)</td><td class="num">444</td><td class="num">95</td><td class="num">96</td><td class="num">635</td></tr>
+<tr><td>removed by stricter rule (all TB)</td><td class="num">&minus;13</td><td class="num">&minus;1</td><td class="num">&minus;3</td><td class="num">&minus;17</td></tr>
+<tr><td>v2</td><td class="num">431</td><td class="num">94</td><td class="num">93</td><td class="num">618</td></tr>
+</table></div>
+<p>The v2 report shows <code>"carried": 618, "new": 0</code>. No record changed split.</p>
+<p>What re-splitting would have done, measured on the synthetic set on 10 Nov 2026: one TB reading was made ambiguous, so that record was quarantined, and the set was split fresh. <b>92 of the 199 remaining TB records changed split</b>, 21 of them from train to test and 24 from test to train. No normal record moved, because label 0 is shuffled first (see <a href="#strat">3.2</a>).</p>
+
+<h4>The code</h4>
+<figure class="code"><figcaption><span class="path">ml/pipeline/build_dataset.py</span> <span class="lines">lines 230, 232 to 242</span></figcaption><pre><code><span class="ln">230</span>    prior_split = dict(zip(prior[&quot;file&quot;], prior[&quot;split&quot;]))
+<span class="ln">...</span><span class="elide">lines left out</span>
+<span class="ln">232</span>    for gid, g in df.groupby(&quot;group_id&quot;):
+<span class="ln">233</span>        old = {prior_split[f] for f in g[&quot;file&quot;] if f in prior_split}
+<span class="ln">234</span>        if len(old) &gt; 1:
+<span class="ln">235</span>            raise HardFail(f&quot;group {gid} was in several splits in {prior_manifest}: {sorted(old)}&quot;)
+<span class="ln">236</span>        if old:
+<span class="ln">237</span>            out[gid] = old.pop()
+<span class="ln">238</span>        else:
+<span class="ln">239</span>            new_groups.append(gid)
+<span class="ln">240</span>    if new_groups:
+<span class="ln">241</span>        groups = df[df[&quot;group_id&quot;].isin(new_groups)].groupby(&quot;group_id&quot;)[&quot;label&quot;].max().reset_index()
+<span class="ln">242</span>        out.update(assign_splits(groups, seed=seed))</code></pre></figure>
+<h4>Line by line</h4>
+<ul class="walk">
+<li><b class="l">230</b>A map from file name to its split in the old manifest. File names hold the patient number and label, so they are stable keys.</li>
+<li><b class="l">232</b>Go through the new groups, one at a time.</li>
+<li><b class="l">233</b>The set <i>S</i>: the old splits of this group's files, skipping files that are new.</li>
+<li><b class="l">234-235</b>|S| &gt; 1: the group's files were in two splits before. Either v1 leaked, or new grouping links records that v1 kept apart. Any choice would move a record, so the run stops.</li>
+<li><b class="l">236-237</b>|S| = 1: keep that split.</li>
+<li><b class="l">238-239</b>|S| = 0: remember the group as new.</li>
+<li><b class="l">240-242</b>Split only the new groups, with the same stratified, seeded <code>assign_splits</code>. The function then returns the splits and the counts, which are numbers of groups, not records.</li>
+</ul>
+
+<div class="widget" id="w-carry">
+<h4>Try it: v1 to v2, two ways</h4>
+<div class="row"><button id="carry-prev">Back</button><button id="carry-next">Next step</button><span id="carry-step" class="small"></span></div>
+<div id="carry-out"></div>
+<p class="legend"><span class="chip train">train</span><span class="chip val">val</span><span class="chip test">test</span><span class="chip gone">removed</span><span class="chip train moved">moved</span></p>
+<p class="disclaimer">This widget is an illustration with 10 made-up files. The "re-split" assignment is written by hand to show the effect. It is not computed by the project's code.</p>
+</div>
+
+<h4>Check yourself</h4>
+<p class="q"><span class="kind">Concept</span>Why does a group whose files sat in two prior splits stop the run, instead of the code just picking one split?</p>
+<details class="ans"><summary>Show answer</summary><div class="a">Any choice moves at least one record into a split it was not in before, and that is the leak this function exists to prevent. It also means something is already wrong: either v1 leaked, or new near-duplicate links join records that v1 split apart. A person has to decide. See <code>test_group_spanning_two_prior_splits_hard_fails</code>.</div></details>
+<p class="q"><span class="kind">Predict</span>You add <code>CHNCXR_0700_0.png</code>, whose dHash is within 12 bits of <code>CHNCXR_0001_0.png</code> (train in v1), with a normal reading for a 40-year-old. You rebuild with the default settings. Which split does 0700 get, and what is its <code>group_id</code>?</p>
+<details class="ans"><summary>Show answer</summary><div class="a">Split: <b>train</b>. Union-find puts 0700 in the same group as 0001. In <code>carry_splits</code>, that group's set <i>S</i> is {train}, so the whole group stays in train. <code>new</code> stays 0, and <code>near_duplicate_pairs</code> becomes 1. The <code>group_id</code> is <b>"0700"</b>, not "0001". Line 194 runs <code>parent[find(i)] = find(j)</code> with 0001 as <i>i</i> (it sorts first), so the later record becomes the root, and the group ID is the root's patient ID. The dataset version hash changes because a new file was added.</div></details>
+</section>
+
+<!-- ============================================================ 3.4 -->
+<section id="records">
+<h3 style="font-size:23px">3.4 Record checks and intended population</h3>
+<h4>The idea</h4>
+<p><dfn class="t" data-g="intended">Intended use</dfn> says who a tool is for. For TriageLens chest X-rays, that means people aged 15 and over (TRD 9.1, 3.2). Training data from outside that group teaches the model about patients it will never be used on, and validation scores then describe the wrong population. So the pipeline removes records under 15. It also removes records whose age it cannot read, because it cannot confirm they belong.</p>
+<p>That second rule takes the cautious side. When the code is unsure, it excludes the record instead of guessing. The project's result screens follow the same spirit ("uncertainty moves toward refer or retake").</p>
+<p>To read ages, the code has to parse messy free text. The real readings include <code>femal</code> (a typo), <code>male45yrs</code> (no space), <code>61yr</code> (singular) and stray tabs. A <dfn class="t" data-g="regex">regular expression</dfn> that is too strict would quarantine good records. One that is too loose would read the wrong number.</p>
+<div class="box gap"><span class="tag">Gap: the 512 px floor</span><p>You accepted this. The only reason in the files is the code comment on line 36: the model input is 320 px (TRD 10.6), and 512 "leaves room to crop to the lungs before resizing." On real data this check never fired. The smallest side of any kept Shenzhen image is 2009 px (v2 report).</p></div>
+
+<h4>The rule</h4>
+<div class="formula">sex = first match of (female | femal | male) in the header<br>age = number followed by yr / yrs / year / years / y<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;or 0 if the number is followed by months / days<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;or unknown otherwise<br>keep only if age is known and age &ge; 15</div>
+
+<h4>Worked example</h4>
+<p>Raw reading: <code>male45yrs&nbsp;&nbsp;\t\r\nnormal</code></p>
+<ol>
+<li>Remove <code>\r</code>, split on newlines, strip each line, drop empty ones: <code>["male45yrs", "normal"]</code>.</li>
+<li>Header, lower-cased: <code>male45yrs</code>. The sex pattern matches <code>male</code>. There is no word boundary between <code>e</code> and <code>4</code>, which is why the pattern does not use <code>\b</code>.</li>
+<li>The age pattern matches <code>45yrs</code>: age 45.</li>
+<li>Finding: <code>normal</code>.</li>
+</ol>
+<p>In v2 this stage quarantined 25 records under 15 and 1 whose reading gave a number with no unit.</p>
+
+<h4>The code</h4>
+<figure class="code"><figcaption><span class="path">ml/pipeline/build_dataset.py</span> <span class="lines">lines 84, 87 to 91</span></figcaption><pre><code><span class="ln">84</span>    m = re.search(r&quot;(female|femal|male)&quot;, head)
+<span class="ln">...</span><span class="elide">lines left out</span>
+<span class="ln">87</span>    m = re.search(r&quot;(\d+)\s*(yrs?|years?|y)\b&quot;, head)
+<span class="ln">88</span>    if m:
+<span class="ln">89</span>        age = int(m.group(1))
+<span class="ln">90</span>    elif re.search(r&quot;\d+\s*(months?|mos?|days?)&quot;, head):
+<span class="ln">91</span>        age = 0</code></pre></figure>
+<figure class="code"><figcaption><span class="path">ml/pipeline/build_dataset.py</span> <span class="lines">lines 324 to 326</span></figcaption><pre><code><span class="ln">324</span>        if min(rec[&quot;width&quot;], rec[&quot;height&quot;]) &lt; MIN_SIDE:
+<span class="ln">325</span>            q(rec, &quot;ingest&quot;, &quot;min_resolution&quot;, f&quot;smallest side below the {MIN_SIDE} px quality floor&quot;)
+<span class="ln">326</span>            continue</code></pre></figure>
+<figure class="code"><figcaption><span class="path">ml/pipeline/build_dataset.py</span> <span class="lines">lines 366, 369, 372</span></figcaption><pre><code><span class="ln">366</span>    under = df[&quot;age&quot;].notna() &amp; (df[&quot;age&quot;] &lt; MIN_AGE)
+<span class="ln">...</span><span class="elide">lines left out</span>
+<span class="ln">369</span>    unknown = df[&quot;age&quot;].isna()
+<span class="ln">...</span><span class="elide">lines left out</span>
+<span class="ln">372</span>    df = df[~under &amp; ~unknown].copy()</code></pre></figure>
+<h4>Line by line</h4>
+<ul class="walk">
+<li><b class="l">84</b><code>re.search</code> finds the first position where any choice matches. At each position it tries <code>female</code> first, so "female" is never read as "male".</li>
+<li><b class="l">87-89</b>Digits, optional spaces, then a year unit. The <code>\b</code> after the unit stops a word such as <code>yellow</code> from counting as <code>y</code>.</li>
+<li><b class="l">90-91</b>Months or days means the patient is under a year old. Age 0 records that the patient is known to be under 15, which is different from an unknown age.</li>
+<li><b class="l">324-326</b>The resolution floor: if the smaller of width and height is under 512, quarantine the record.</li>
+<li><b class="l">366</b>Known age under 15: quarantined as <code>intended_population</code>.</li>
+<li><b class="l">369</b>No age: quarantined as <code>age_unknown</code>. Both reasons appear in <code>quarantine.csv</code>, so a reviewer can tell them apart.</li>
+<li><b class="l">372</b>Keep only records that are neither.</li>
+</ul>
+
+<h4>Check yourself</h4>
+<p class="q"><span class="kind">Concept</span>Both age 0 and an unknown age lead to quarantine. Why does <code>parse_reading</code> return 0 for "8months" instead of <code>None</code>?</p>
+<details class="ans"><summary>Show answer</summary><div class="a">Because they mean different things, and the quarantine reason should say which. "8months" is a known age that is under 15, so it is <code>intended_population</code>. A header with no unit is an age we cannot read, so it is <code>age_unknown</code>. With <code>None</code> for both, the report could not tell "outside intended use" from "could not check."</div></details>
+<p class="q"><span class="kind">Predict</span>Three readings have the headers <code>Female 40</code>, <code>male 8months</code> and <code>male 45 yrs</code>. What age does each get, and what happens to each record?</p>
+<details class="ans"><summary>Show answer</summary><div class="a"><code>Female 40</code>: no unit after 40, and no month or day word, so age is <code>None</code>: quarantined as <code>age_unknown</code>. <code>male 8months</code>: age 0: quarantined as <code>intended_population</code>. <code>male 45 yrs</code>: <code>\s*</code> allows the space, so age is 45 and the record is kept, if it passes the other checks.</div></details>
+</section>
+
+<!-- ============================================================ 3.5 -->
+<section id="labels">
+<h3 style="font-size:23px">3.5 Label noise and a conservative gate</h3>
+<h4>The idea</h4>
+<p><dfn class="t" data-g="labelnoise">Label noise</dfn> means some training labels are wrong. In Shenzhen there is a specific trap: label 1 means "abnormal lung," not "TB" (data card). A TB model trained on those labels would partly learn "anything abnormal," pneumonia included. So the pipeline uses the written reading to confirm each label before keeping the record.</p>
+<p>Think of the label check as a filter that decides "is this a confirmed TB record?" Like any filter, it trades two kinds of error:</p>
+<ul>
+<li><dfn class="t" data-g="precision">Precision</dfn>: of the records it keeps as TB, how many really are TB.</li>
+<li><dfn class="t" data-g="recall">Recall</dfn>: of the real TB records, how many it keeps.</li>
+</ul>
+<p>A <b>conservative</b> gate puts precision first. Anything doubtful goes to a person for review, even if that loses some true TB records. Losing a good record costs a little data. Keeping a wrong label teaches the model something false, and you cannot see the damage later.</p>
+<div class="box gap"><span class="tag">Gap: why conservative</span><p>You did not know. The files give this reason: the word list is "a validation gate, not a clinical text classifier." Negation, uncertainty or mixed findings "require a human decision" (docstring, lines 113 to 121). No one on the team can read clinical text as a radiologist would, so the code does not try. It sends doubt to review.</p></div>
+
+<h4>The rule</h4>
+<div class="formula">label 0: keep only if the whole finding is a plain "normal"<br>label 1: review if it contains any doubt word or "?"<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; else keep only if it names TB as a whole word</div>
+<p>Three regex ideas make this work:</p>
+<ul>
+<li><dfn class="t" data-g="wordboundary">Word boundary</dfn> <code>\b</code>: the point between a word character (letter, digit, underscore) and a non-word character, or the start or end of the text. The TB pattern is <code>\bp?tb\b</code>: an optional "p", then "tb", as a whole word. It matches "tb" and "ptb" but not "stb" or "atb".</li>
+<li><b>Full match</b>: the pattern must cover the whole string. "normal; right pneumonia" fails for label 0 even though it starts with "normal".</li>
+<li><b>A doubt word list</b>: "no", "not", "possible", "suspect...", "rule out", "?", and also "normal" itself, since "normal" in a TB reading means a mixed finding.</li>
+</ul>
+
+<h4>Worked example</h4>
+<p><code>bilateral PTB</code>, label 1: no doubt word. <code>\bp?tb\b</code> matches "ptb". <b>Kept.</b></p>
+<p><code>right STB, NATB</code>, label 1: no doubt word. In "stb", the letters "tb" follow "s". Both are word characters, so there is no boundary before "t", and <code>p?</code> cannot take an "s". No match. <b>Quarantined: "label 1: reading does not name TB."</b></p>
+<p>That second case is real. In v2, 18 TB-labelled records were quarantined: 16 use <code>STB</code> (probably secondary TB, not confirmed), 1 has a question mark, and 1 reads pneumonia. If the 16 STB readings are TB, the gate kept 316 of 332 probable TB records, a recall of about 95%. That figure is derived from the data card counts and assumes STB means TB.</p>
+<div class="box hist"><span class="tag">Documented history</span><p>The STB gap was found in the PR #78 review, once pipeline 0.2.1 wrote the matched word into each quarantine reason. Fixing it changes the dataset, so it waits for v3 (pipeline README, data card).</p></div>
+
+<h4>The code</h4>
+<figure class="code"><figcaption><span class="path">ml/pipeline/build_dataset.py</span> <span class="lines">lines 98 to 99, 103, 106 to 109</span></figcaption><pre><code><span class="ln">98</span>    f = (finding or &quot;&quot;).lower().strip(&quot; .&quot;)
+<span class="ln">99</span>    return bool(re.fullmatch(r&quot;normale?(?:\s+(?:chest|lungs?|cxr|x-ray))?&quot;, f))
+<span class="ln">...</span><span class="elide">lines left out</span>
+<span class="ln">103</span>    return bool(re.search(r&quot;\b(?:p?tb|tuberculosis|tuberculous|tubercular)\b&quot;, (finding or &quot;&quot;).lower()))
+<span class="ln">...</span><span class="elide">lines left out</span>
+<span class="ln">106</span>AMBIGUOUS_RE = re.compile(
+<span class="ln">107</span>    r&quot;\b(?:no|not|without|negative|normal|normale|possible|possibly|probable|&quot;
+<span class="ln">108</span>    r&quot;probably|suspect\w*|uncertain|unlikely|cannot|can&#x27;t|exclude\w*|&quot;
+<span class="ln">109</span>    r&quot;rule[ds]?\s+out|question\w*)\b|\?&quot;)</code></pre></figure>
+<figure class="code"><figcaption><span class="path">ml/pipeline/build_dataset.py</span> <span class="lines">lines 122 to 123, 126 to 131</span></figcaption><pre><code><span class="ln">122</span>    if label == 0:
+<span class="ln">123</span>        return None if reading_says_normal(finding) else &quot;label 0: reading is not plainly normal&quot;
+<span class="ln">...</span><span class="elide">lines left out</span>
+<span class="ln">126</span>    m = AMBIGUOUS_RE.search((finding or &quot;&quot;).lower())
+<span class="ln">127</span>    if m:
+<span class="ln">128</span>        return f&quot;label 1: reading contains &#x27;{m.group(0)}&#x27;&quot;
+<span class="ln">129</span>    if not reading_mentions_tb(finding):
+<span class="ln">130</span>        return &quot;label 1: reading does not name TB&quot;
+<span class="ln">131</span>    return None</code></pre></figure>
+<h4>Line by line</h4>
+<ul class="walk">
+<li><b class="l">98</b>Lower-case, then strip spaces and full stops from both ends, so "Normal." becomes "normal".</li>
+<li><b class="l">99</b>Full match: "normal" or "normale" (a typo in the source), optionally followed by chest, lung(s), cxr or x-ray. Nothing else is allowed.</li>
+<li><b class="l">103</b>Whole-word TB terms: <code>tb</code>, <code>ptb</code>, <code>tuberculosis</code>, <code>tuberculous</code>, <code>tubercular</code>. "tuberculin" does not match: it is a different word, so the <code>\b</code> after "tubercul..." fails.</li>
+<li><b class="l">106-109</b>The doubt list. <code>suspect\w*</code> matches any word that starts with "suspect", such as "suspected". It does not match "suspicious". <code>rule[ds]?\s+out</code> matches "rule out", "ruled out" and "rules out". The final <code>|\?</code> matches a question mark anywhere.</li>
+<li><b class="l">122-123</b>Label 0 passes only with a plain normal finding.</li>
+<li><b class="l">126-128</b>Label 1: the first doubt word found goes into the reason, so a reviewer sees which word sent the record to review.</li>
+<li><b class="l">129-130</b>No doubt word, but no TB term either: quarantined.</li>
+<li><b class="l">131</b><code>None</code> means confirmed. The caller treats any string as a reason to quarantine (lines 348 to 352).</li>
+</ul>
+
+<div class="widget" id="w-label">
+<h4>Try it: the label gate</h4>
+<div class="row"><label for="lab-l">File label</label><select id="lab-l"><option value="1">1 (abnormal lung)</option><option value="0">0 (normal)</option></select></div>
+<label for="lab-f">Finding (the reading after the first line)</label>
+<input type="text" id="lab-f" value="bilateral PTB" autocomplete="off" spellcheck="false">
+<div class="row small">Examples:
+<button data-ex="1|bilateral PTB">bilateral PTB</button><button data-ex="1|right STB, NATB">right STB, NATB</button>
+<button data-ex="1|possible PTB">possible PTB</button><button data-ex="1|Normal left lung; right upper lobe PTB">mixed</button>
+<button data-ex="1|tuberculin test">tuberculin test</button><button data-ex="0|Normal.">Normal.</button><button data-ex="0|normal; right pneumonia">normal; pneumonia</button></div>
+<div id="lab-out"></div>
+<p class="disclaimer">This widget re-implements the rule in JavaScript to illustrate it. The project's code is the source of truth. The JavaScript was checked against <code>label_check</code> on 29 readings on 10 Nov 2026, and every verdict matched.</p>
+</div>
+
+<h4>Check yourself</h4>
+<p class="q"><span class="kind">Concept</span>"Normal left lung; right upper lobe PTB" plainly names PTB. Why does the gate send it, labelled 1, to review?</p>
+<details class="ans"><summary>Show answer</summary><div class="a">"normal" is on the doubt list, and the search finds it first. The reason is "label 1: reading contains 'normal'". The gate does not read sentence structure, so it cannot tell that "normal" applies to the other lung. A mixed finding is a case for a person to decide. The docstring says so: qualifiers go to review "even when a qualifier might refer to a different finding in the sentence."</div></details>
+<p class="q"><span class="kind">Predict</span>What does <code>label_check</code> return for (1, <code>"PTB, no cavity"</code>) and for (0, <code>"Normal."</code>)?</p>
+<details class="ans"><summary>Show answer</summary><div class="a">(1, "PTB, no cavity"): <code>"label 1: reading contains 'no'"</code>. The record is quarantined, even though a reader would call it TB. That is the cost of a conservative gate. (0, "Normal."): <code>None</code>. Line 98 strips the full stop, and "normal" fully matches line 99, so the record is kept.</div></details>
+</section>
+
+<!-- ============================================================ 3.6 -->
+<section id="sha">
+<h3 style="font-size:23px">3.6 Cryptographic hashing: exact copies, cache keys, version hash</h3>
+<h4>The idea</h4>
+<p>A <dfn class="t" data-g="hash">hash function</dfn> turns input of any length into a fixed-size number, the digest. A <dfn class="t" data-g="crypto">cryptographic hash</dfn> such as <dfn class="t" data-g="sha256">SHA-256</dfn> adds strong guarantees:</p>
+<ul>
+<li>The same bytes always give the same 256-bit digest.</li>
+<li>Changing even one bit of input flips about half of the output bits. This is the <dfn class="t" data-g="avalanche">avalanche effect</dfn>.</li>
+<li>Finding two different inputs with the same digest (a <dfn class="t" data-g="collision">collision</dfn>) is not possible in practice.</li>
+</ul>
+<div class="box bg"><span class="tag">General background</span><p>These properties are standard for SHA-256. Together they make the digest work as a fingerprint of the exact bytes.</p></div>
+<p>The pipeline uses that fingerprint three ways:</p>
+<ol>
+<li><b>Exact duplicates.</b> Two files with the same SHA-256 are the same bytes. Keep the first and quarantine the rest.</li>
+<li><b>Cache keys.</b> Decoding about 660 large X-rays takes minutes, so results are cached. The cache key includes the SHA-256 of the file's current bytes. A key built from file size and modified time can stay the same while the bytes change. A content key cannot. The key also includes the hash size and the Pillow version, because decoding and resizing depend on the code too.</li>
+<li><b>Dataset version hash.</b> One fingerprint for the whole dataset. Change any file, any byte or any split, and it changes. The label is part of the file name, so a label change changes it too.</li>
+</ol>
+<p>What SHA-256 cannot do: an image saved again with different PNG compression has the same pixels but different bytes, so its SHA-256 differs completely. Catching that needs the perceptual hash in <a href="#dhash">3.7</a>.</p>
+
+<h4>The rule</h4>
+<div class="formula">version = first 16 hex characters of<br>&nbsp;&nbsp;SHA-256( join("\n", file + ":" + sha256 + ":" + split) )<br>over the kept records, sorted by file name</div>
+<p>16 hex characters are 64 bits. That is far more than enough to tell versions apart.</p>
+
+<h4>Worked example</h4>
+<ul>
+<li>v1: <code>702a4658c7447e13</code>. v2: <code>0445b087fed038c4</code>. They differ because 17 records were removed.</li>
+<li>Pipeline 0.2.0 and 0.2.1 gave the same v2 hash. Only the quarantine reasons and the report changed. The records, bytes and splits did not (data card).</li>
+<li>The synthetic set's clean run gave <code>1dd066baf6b0a52f</code> in the README. A re-run on 10 Nov 2026 on this machine gave the same hash.</li>
+</ul>
+
+<h4>The code</h4>
+<figure class="code"><figcaption><span class="path">ml/pipeline/build_dataset.py</span> <span class="lines">lines 55 to 58</span></figcaption><pre><code><span class="ln">55</span>    with open(path, &quot;rb&quot;) as f:
+<span class="ln">56</span>        for block in iter(lambda: f.read(1 &lt;&lt; 20), b&quot;&quot;):
+<span class="ln">57</span>            h.update(block)
+<span class="ln">58</span>    return h.hexdigest()</code></pre></figure>
+<figure class="code"><figcaption><span class="path">ml/pipeline/build_dataset.py</span> <span class="lines">lines 303 to 304</span></figcaption><pre><code><span class="ln">303</span>        content_sha = sha256_file(p)
+<span class="ln">304</span>        key = f&quot;{p.name}:{content_sha}:h{HASH_SIZE}:pil{PIL.__version__}&quot;</code></pre></figure>
+<figure class="code"><figcaption><span class="path">ml/pipeline/build_dataset.py</span> <span class="lines">lines 359 to 362</span></figcaption><pre><code><span class="ln">359</span>    dup = df.duplicated(&quot;sha256&quot;, keep=&quot;first&quot;)
+<span class="ln">360</span>    for _, r in df[dup].iterrows():
+<span class="ln">361</span>        q(r, &quot;dedup&quot;, &quot;exact_duplicate&quot;, &quot;byte-identical to an earlier file&quot;)
+<span class="ln">362</span>    df = df[~dup].copy()</code></pre></figure>
+<figure class="code"><figcaption><span class="path">ml/pipeline/build_dataset.py</span> <span class="lines">lines 405</span></figcaption><pre><code><span class="ln">405</span>    version = hashlib.sha256(&quot;\n&quot;.join(df[&quot;file&quot;] + &quot;:&quot; + df[&quot;sha256&quot;] + &quot;:&quot; + df[&quot;split&quot;]).encode()).hexdigest()[:16]</code></pre></figure>
+<h4>Line by line</h4>
+<ul class="walk">
+<li><b class="l">56</b>Read 1 MiB at a time (<code>1 &lt;&lt; 20</code> bytes). <code>iter(f, b"")</code> keeps calling the read until it returns empty bytes, which means end of file. A 6 MB X-ray is never held in memory all at once.</li>
+<li><b class="l">58</b>The digest as 64 hex characters.</li>
+<li><b class="l">303</b>Hash the current bytes on every run, even when a cached result exists.</li>
+<li><b class="l">304</b>The cache key: file name, content hash, hash size and Pillow version. Change any of them and the old entry is never found.</li>
+<li><b class="l">359</b>Mark every row whose <code>sha256</code> already appeared earlier. The first copy stays.</li>
+<li><b class="l">360-362</b>Quarantine the later copies as <code>exact_duplicate</code>, then drop them.</li>
+<li><b class="l">405</b>The version formula, in one line. The rows are already sorted by file (line 393), so the order is fixed.</li>
+</ul>
+
+<div class="widget" id="w-sha">
+<h4>Try it: the avalanche effect</h4>
+<label for="sha-a">Original text</label>
+<input type="text" id="sha-a" value="CHNCXR_0001_0.png:e464a8:train" spellcheck="false">
+<label for="sha-b">Changed text (try changing one character, for example train to test)</label>
+<input type="text" id="sha-b" value="CHNCXR_0001_0.png:e464a8:trail" spellcheck="false">
+<div id="sha-out" class="mono"></div>
+<p class="disclaimer">This widget computes standard SHA-256 in JavaScript (checked against Python's <code>hashlib</code> on 10 Nov 2026). The pipeline hashes file bytes with <code>hashlib</code>. The project's code is the source of truth.</p>
+</div>
+
+<h4>Check yourself</h4>
+<p class="q"><span class="kind">Concept</span>Why does the ingest cache hash every file's bytes on every run, instead of trusting a file whose size and modified time have not changed?</p>
+<details class="ans"><summary>Show answer</summary><div class="a">Size and time can stay the same while the bytes change. <code>test_cache_rechecks_corruption_with_unchanged_size_and_mtime</code> overwrites the first 8 bytes of a PNG, keeps the size, and restores the old modified time. A cache keyed on size and time would reuse "decodes fine" and keep a corrupt file. The content hash differs, so the file is decoded again, fails, and is quarantined as <code>decodable</code>. Hashing costs one read per file, which is much cheaper than decoding. The exact time saved was not measured.</div></details>
+<p class="q"><span class="kind">Predict</span>You add <code>CHNCXR_0800_0.png</code>, which is <code>CHNCXR_0004_0.png</code> saved again with different PNG compression: same pixels, different bytes, same label, a matching reading. What happens?</p>
+<details class="ans"><summary>Show answer</summary><div class="a">The exact-duplicate check misses it, because the SHA-256 values differ. The dHash is computed from pixels, so it is identical: Hamming distance 0. <code>near_duplicate_groups</code> records the pair and puts both files in one group, and so in one split. Both stay in the manifest. <code>near_duplicate_pairs</code> goes up by 1, and the version hash changes because a file was added.</div></details>
+</section>
+
+<!-- ============================================================ 3.7 -->
+<section id="dhash">
+<h3 style="font-size:23px">3.7 Perceptual hashing and Hamming distance</h3>
+<h4>The idea</h4>
+<p>A <dfn class="t" data-g="phash">perceptual hash</dfn> is a fingerprint of what an image <i>looks like</i>, so images that look alike get hashes that are alike. It is the opposite of SHA-256, where nearby inputs give unrelated outputs.</p>
+<p>The <dfn class="t" data-g="dhash">difference hash (dHash)</dfn> works like this:</p>
+<ol>
+<li>Convert to <dfn class="t" data-g="grayscale">grayscale</dfn> and shrink the image to 17 &times; 16 pixels using <dfn class="t" data-g="lanczos">Lanczos resampling</dfn>.</li>
+<li>In each row, compare each pixel with its right-hand neighbour. Write 1 if the neighbour is brighter, 0 if not. 16 rows &times; 16 comparisons = 256 bits.</li>
+</ol>
+<p>The bits record the <i>direction</i> of brightness changes, not the brightness itself. So the hash survives resizing (it shrinks everything anyway), recompression and an even brightness shift (both neighbours change by the same amount).</p>
+<p>To compare two hashes, count the bits that differ. That count is the <dfn class="t" data-g="hamming">Hamming distance</dfn>. 0 means identical hashes. For two unrelated random 256-bit strings, the expected distance is 128.</p>
+<div class="box bg"><span class="tag">General background</span><p>The 128 comes from basic probability: each bit differs with chance one half, so 256 bits give a binomial with mean 128 and standard deviation 8.</p></div>
+
+<h4>The rule</h4>
+<div class="formula">bit(r, c) = 1 if g[r][c+1] &gt; g[r][c] else 0,&nbsp; r = 0..15, c = 0..15<br>d(a, b) = popcount(a XOR b)<br>near-duplicate if d &le; 12</div>
+<p>The threshold has to sit above the distances that real copies produce (a resized copy) and below the closest pair of truly different X-rays. It was chosen from the data.</p>
+
+<h4>Worked example</h4>
+<p>By hand, one row of five pixels: <code>[10, 30, 30, 20, 50]</code></p>
+<ul>
+<li>30 &gt; 10 &rarr; 1</li>
+<li>30 &gt; 30 &rarr; 0 (equal is not brighter)</li>
+<li>20 &gt; 30 &rarr; 0</li>
+<li>50 &gt; 20 &rarr; 1</li>
+</ul>
+<p>Row bits: <code>1001</code>.</p>
+<p>On real data, the committed dHashes of <code>CHNCXR_0001_0</code> and <code>CHNCXR_0002_0</code> differ in 54 bits (computed from the v1 manifest on 10 Nov 2026). Across all 201,295 pairs of v1's 635 images, the closest pair is 21 bits apart and the median is 72. The README gives a median of 73, probably measured over a slightly different set of images. No pair is within 12 bits, so the threshold sits well below every real pair. A median of 72, far below 128, shows that chest X-rays look much more alike than random images do.</p>
+<div class="box hist"><span class="tag">Documented history</span><p>The first version used a 64-bit (8 &times; 8) dHash with a threshold of 4 bits. At 8 &times; 8, chest X-rays all look alike: two lungs, a spine and ribs in the same places. Small distances linked 416 of 662 X-rays into one group (see chaining in <a href="#uf">3.8</a>). That giant group went into one split, the TB-rate batch check failed, and the run stopped. The fix was the 256-bit hash (pipeline README).</p></div>
+
+<h4>The code</h4>
+<figure class="code"><figcaption><span class="path">ml/pipeline/build_dataset.py</span> <span class="lines">lines 39 to 40</span></figcaption><pre><code><span class="ln">39</span>HASH_SIZE = 16  # 16x16 dHash = 256 bits; 8x8 was too coarse for chest X-rays (see README)
+<span class="ln">40</span>NEAR_DUP_BITS = 12  # Hamming distance of 12 or less out of 256 bits; chosen from the data</code></pre></figure>
+<figure class="code"><figcaption><span class="path">ml/pipeline/build_dataset.py</span> <span class="lines">lines 63 to 66, 70</span></figcaption><pre><code><span class="ln">63</span>    g = img.convert(&quot;L&quot;).resize((size + 1, size), Image.LANCZOS)
+<span class="ln">64</span>    a = np.asarray(g, dtype=np.int16)
+<span class="ln">65</span>    bits = (a[:, 1:] &gt; a[:, :-1]).flatten()
+<span class="ln">66</span>    return int(&quot;&quot;.join(&quot;1&quot; if b else &quot;0&quot; for b in bits), 2)
+<span class="ln">...</span><span class="elide">lines left out</span>
+<span class="ln">70</span>    return bin(a ^ b).count(&quot;1&quot;)</code></pre></figure>
+<figure class="code"><figcaption><span class="path">ml/pipeline/build_dataset.py</span> <span class="lines">lines 149 to 152</span></figcaption><pre><code><span class="ln">149</span>    for i in range(len(rows)):
+<span class="ln">150</span>        for j in range(i + 1, len(rows)):
+<span class="ln">151</span>            if rows[i].label != rows[j].label and hamming(rows[i].dhash, rows[j].dhash) &lt;= max_bits:
+<span class="ln">152</span>                bad.update((rows[i].Index, rows[j].Index))</code></pre></figure>
+<h4>Line by line</h4>
+<ul class="walk">
+<li><b class="l">39-40</b>A 16 &times; 16 grid, so 256 bits, and the threshold of 12.</li>
+<li><b class="l">63</b>Grayscale (<code>"L"</code>), then resize to width 17 and height 16. Seventeen columns give 16 neighbour pairs per row.</li>
+<li><b class="l">64</b>Turn the image into a numpy array of integers.</li>
+<li><b class="l">65</b><code>a[:, 1:]</code> is every column except the first, <code>a[:, :-1]</code> every column except the last. Comparing them checks every pixel against its right-hand neighbour in one step. That is the formula. <code>flatten()</code> reads the 16 &times; 16 result row by row.</li>
+<li><b class="l">66</b>Join the bits into a binary string and read it as one 256-bit Python integer.</li>
+<li><b class="l">70</b>XOR leaves a 1 wherever the bits differ. Counting the 1s gives the Hamming distance.</li>
+<li><b class="l">149-152</b>Where the distance is used against labels: any two records within 12 bits whose labels differ are both flagged. Exact copies have distance 0, so they are covered too. This runs before duplicates are merged, so keeping "the first copy" can never hide a clash.</li>
+</ul>
+
+<div class="widget" id="w-dhash">
+<h4>Try it: dHash on a 4 &times; 5 grid</h4>
+<p class="small">Tap a cell to change its brightness. Each grid gives 4 rows &times; 4 comparisons = 16 bits.</p>
+<div><div><b>A</b></div><div class="grid" id="gridA"></div></div>
+<div><div><b>B</b></div><div class="grid" id="gridB"></div></div>
+<div class="row"><button id="db-copy">B = A</button><button id="db-bright">Brighten B by 15</button><button id="db-rand">Random B</button></div>
+<div id="db-out"></div>
+<p class="disclaimer">This widget re-implements the rule in JavaScript to illustrate it. The project's code is the source of truth. The project first shrinks the image to 17 &times; 16 with Lanczos resampling and makes 256 bits. This widget skips the resize and uses a 4 &times; 5 grid.</p>
+</div>
+
+<h4>Check yourself</h4>
+<p class="q"><span class="kind">Concept</span>The pipeline has both an exact-duplicate check (SHA-256) and near-duplicate grouping (dHash). What does each catch that the other misses, and why are exact copies removed while near copies are kept?</p>
+<details class="ans"><summary>Show answer</summary><div class="a">SHA-256 catches only byte-identical files. dHash also catches the same picture with different bytes: resized, recompressed, slightly brighter. An exact copy adds no information, so it is removed (the first is kept). A near copy might be a different scan of the same person and might carry real information, so it is kept. It is grouped with its match so the two cannot leak across splits.</div></details>
+<p class="q"><span class="kind">Predict</span>You make an X-ray 10 grey levels brighter everywhere, with no pixel reaching 255. About how far is the new dHash from the old one? What changes if many pixels hit 255?</p>
+<details class="ans"><summary>Show answer</summary><div class="a">About 0 bits. Every neighbour pair rises by the same amount, so each "is the right one brighter?" answer stays the same. Rounding in the resize might flip a near-tie, which was not measured. If pixels clip at 255, neighbours that used to differ can become equal. Then "brighter" becomes false and bits flip. Press "Brighten B by 15" five times in the widget: 180 and 240 both clip to 255, they become equal, and a bit flips.</div></details>
+</section>
+
+<!-- ============================================================ 3.8 -->
+<section id="uf">
+<h3 style="font-size:23px">3.8 Union-find and transitive chaining</h3>
+<h4>The idea</h4>
+<p>The pipeline has a list of links: "these two records share a patient ID" and "these two images are within 12 bits." It needs groups such that any two linked records share a group. In graph terms, records are nodes, links are edges, and the groups are the <dfn class="t" data-g="component">connected components</dfn>.</p>
+<p>Grouping is <dfn class="t" data-g="transitive">transitive</dfn>. If A links to B and B links to C, then A, B and C form one group, even when A and C look nothing alike. That is correct for leakage, since A must not be in train while C is in test if B connects them. But it is also a risk. With a loose threshold, links chain across the dataset and form one giant group. That is what happened with the 64-bit hash.</p>
+<p><dfn class="t" data-g="unionfind">Union-find</dfn> (also called a disjoint-set structure) builds these groups efficiently. Each record points to a parent. A record that points to itself is a root, and the root names the group.</p>
+<ul>
+<li><b>find(i)</b>: follow parents until you reach the root.</li>
+<li><b>union(i, j)</b>: point the root of i at the root of j, so the two groups become one.</li>
+<li><dfn class="t" data-g="pathhalving">Path halving</dfn>: while walking up in find, point each node at its grandparent. Trees stay shallow, so later finds are fast.</li>
+</ul>
+<div class="box bg"><span class="tag">General background</span><p>Union-find is a standard data structure. With path compression and union by rank, each operation is close to constant time. This code uses path halving only, which is plenty for a few hundred records.</p></div>
+
+<h4>The rule</h4>
+<div class="formula">edges E = { (i, j) : patient_i = patient_j &nbsp;or&nbsp; d(hash_i, hash_j) &le; 12 }<br>groups = connected components of (records, E)<br>group_id(i) = patient_id of find(i)</div>
+
+<h4>Worked example</h4>
+<p>From <code>test_patient_identity_links_near_duplicate_components</code>: patients <code>[a, a, b, c]</code> with hashes <code>[0, 2<sup>256</sup>&minus;1, 1, 2<sup>256</sup>&minus;2]</code>.</p>
+<ul>
+<li>Records 0 and 1 share patient a: union.</li>
+<li>Records 0 and 2: hashes 0 and 1 differ in 1 bit: union.</li>
+<li>Records 1 and 3: all ones and all ones except the last bit differ in 1 bit: union.</li>
+<li>Records 2 and 3 differ in all 256 bits, but they still end up in one group, through patient a.</li>
+</ul>
+<p>Result: one group. On real Shenzhen data, there were 0 near-duplicate pairs and no shared patient IDs, so every record was its own group.</p>
+
+<h4>The code</h4>
+<figure class="code"><figcaption><span class="path">ml/pipeline/build_dataset.py</span> <span class="lines">lines 173 to 176, 182 to 184, 189 to 192, 194 to 195</span></figcaption><pre><code><span class="ln">173</span>    def find(i):
+<span class="ln">174</span>        while parent[i] != i:
+<span class="ln">175</span>            parent[i] = parent[parent[i]]
+<span class="ln">176</span>            i = parent[i]
+<span class="ln">...</span><span class="elide">lines left out</span>
+<span class="ln">182</span>    for i, patient in enumerate(ids):
+<span class="ln">183</span>        if patient in first_patient:
+<span class="ln">184</span>            parent[find(i)] = find(first_patient[patient])
+<span class="ln">...</span><span class="elide">lines left out</span>
+<span class="ln">189</span>    for i in range(len(ids)):
+<span class="ln">190</span>        for j in range(i + 1, len(ids)):
+<span class="ln">191</span>            d = hamming(hashes[i], hashes[j])
+<span class="ln">192</span>            if d &lt;= max_bits:
+<span class="ln">...</span><span class="elide">lines left out</span>
+<span class="ln">194</span>                parent[find(i)] = find(j)
+<span class="ln">195</span>    return [ids[find(i)] for i in range(len(ids))], pairs</code></pre></figure>
+<h4>Line by line</h4>
+<ul class="walk">
+<li><b class="l">173-176</b><code>find</code> with path halving. Each record starts as its own parent (line 171, not shown). Line 175 points <i>i</i> at its grandparent, then line 176 jumps there.</li>
+<li><b class="l">182-184</b>First pass: link every record to the first record seen with the same patient ID. Doing patients first means image links can join whole patients together but can never split a patient apart.</li>
+<li><b class="l">189-191</b>Second pass: every pair of records, with the Hamming distance from <a href="#dhash">3.7</a>. That is n(n&minus;1)/2 pairs: 190,653 for v2's 618 records.</li>
+<li><b class="l">192-194</b>Within the threshold: record the pair for <code>near_duplicates.csv</code> and union the two groups. Line 194 sets <i>i</i>'s root to point at <i>j</i>'s root.</li>
+<li><b class="l">195</b>Each record's group ID is the patient ID of its root, plus the list of pairs.</li>
+</ul>
+
+<div class="widget uf" id="w-uf">
+<h4>Try it: union-find, step by step</h4>
+<p class="small">Six made-up records. Records 0 and 1 share patient p1. Hamming distances: 1-2 is 8 bits, 2-3 is 20, 3-4 is 25, 4-5 is 30. Every other pair is 70 or more. Move the threshold to see chaining.</p>
+<label for="uf-t">Threshold: <b id="uf-tv"></b> bits</label>
+<input type="range" id="uf-t" min="4" max="40" value="12">
+<div class="row"><button id="uf-prev">Back</button><button id="uf-next">Next step</button><span id="uf-step" class="small"></span></div>
+<div id="uf-msg"></div>
+<div class="tablewrap" id="uf-table"></div>
+<p class="disclaimer">This widget re-implements the rule in JavaScript to illustrate it. The project's code is the source of truth. The JavaScript gave the same groups as <code>near_duplicate_groups</code> on the worked example above (checked 10 Nov 2026).</p>
+</div>
+
+<h4>Check yourself</h4>
+<p class="q"><span class="kind">Concept</span>Why does a loose threshold produce one giant group instead of many medium ones? Use the widget at 30 bits to explain.</p>
+<details class="ans"><summary>Show answer</summary><div class="a">Because grouping is transitive. At 30 bits, the links 1-2, 2-3, 3-4 and 4-5 all count, and the patient link joins 0 and 1. So all six records chain into one group, though records 0 and 5 are more than 70 bits apart. A dataset where most images sit near some other image, like X-rays at 8 &times; 8, chains the same way. That is how 416 of 662 ended up in one group.</div></details>
+<p class="q"><span class="kind">Predict</span>Patients <code>[a, b, c]</code> with hashes <code>[0, 0b111, 2<sup>256</sup>&minus;1]</code>. How many groups and how many recorded pairs?</p>
+<details class="ans"><summary>Show answer</summary><div class="a">Two groups and one pair. 0 and 0b111 differ in 3 bits, so they are linked. 0b111 and all ones differ in 253 bits, and 0 and all ones in 256, so neither is linked. <code>groups[0] == groups[1] != groups[2]</code>, and <code>len(pairs) == 1</code>. This is <code>test_near_duplicate_groups</code>.</div></details>
+</section>
+
+<!-- ============================================================ 3.9 -->
+<section id="repro">
+<h3 style="font-size:23px">3.9 Reproducibility and provenance</h3>
+<h4>The idea</h4>
+<p>Two months from now, someone will ask, "which data was this model trained on, and what code built it?" <dfn class="t" data-g="repro">Reproducibility</dfn> means you can rebuild the exact same dataset. <dfn class="t" data-g="provenance">Provenance</dfn> means you can say where it came from.</p>
+<p>"Random" splitting is still reproducible, because the code uses a <dfn class="t" data-g="prng">pseudo-random number generator</dfn>. It produces a sequence that looks random but is fully decided by its seed. Seed 591 always gives the same shuffle. The value 591 itself does not matter; what matters is that it is fixed and written down.</p>
+<p>The run report records everything that could change the output:</p>
+<ul>
+<li>the seed and the pipeline version;</li>
+<li>Python, numpy, pandas and Pillow versions (a new Pillow can decode or resize slightly differently, which can change dHashes);</li>
+<li>the git commit of the code, marked <dfn class="t" data-g="dirty"><code>+dirty</code></dfn> if the pipeline folder had uncommitted edits;</li>
+<li>the dataset version hash from <a href="#sha">3.6</a>, which Team Rules 7 says to log with every training run.</li>
+</ul>
+<div class="box bg"><span class="tag">General background</span><p>numpy's <code>default_rng</code> uses the PCG64 generator. A given seed gives the same stream on any machine running the same numpy version.</p></div>
+
+<h4>The rule</h4>
+<div class="formula">same raw bytes + same code + same library versions + same seed<br>&rArr; same manifest and same dataset_version_hash</div>
+
+<h4>Worked example</h4>
+<p>The v2 run report: pipeline 0.2.1, seed 591, Python 3.10.12, numpy 2.2.6, pandas 2.3.3, Pillow 12.3.0, commit <code>b21a47f...</code> with no <code>+dirty</code>, hash <code>0445b087fed038c4</code>. The synthetic README warns that PNG bytes can differ across machines, so each tester compares against their own baseline. On 10 Nov 2026 this machine reproduced the README's synthetic hash exactly.</p>
+
+<h4>The code</h4>
+<figure class="code"><figcaption><span class="path">ml/pipeline/build_dataset.py</span> <span class="lines">lines 160 to 163, 166</span></figcaption><pre><code><span class="ln">160</span>        sha = subprocess.run([&quot;git&quot;, &quot;rev-parse&quot;, &quot;HEAD&quot;], cwd=here, capture_output=True,
+<span class="ln">161</span>                             text=True, check=True).stdout.strip()
+<span class="ln">162</span>        dirty = subprocess.run([&quot;git&quot;, &quot;status&quot;, &quot;--porcelain&quot;, &quot;--&quot;, &quot;.&quot;], cwd=here,
+<span class="ln">163</span>                               capture_output=True, text=True, check=True).stdout.strip()
+<span class="ln">...</span><span class="elide">lines left out</span>
+<span class="ln">166</span>    return sha + (&quot;+dirty&quot; if dirty else &quot;&quot;)</code></pre></figure>
+<figure class="code"><figcaption><span class="path">ml/pipeline/build_dataset.py</span> <span class="lines">lines 410 to 412, 418</span></figcaption><pre><code><span class="ln">410</span>        &quot;dataset_version_hash&quot;: version,
+<span class="ln">411</span>        &quot;pipeline_version&quot;: PIPELINE_VERSION,
+<span class="ln">412</span>        &quot;seed&quot;: SEED,
+<span class="ln">...</span><span class="elide">lines left out</span>
+<span class="ln">418</span>        &quot;code_commit&quot;: code_commit(),</code></pre></figure>
+<h4>Line by line</h4>
+<ul class="walk">
+<li><b class="l">160-161</b>Ask git for the current commit.</li>
+<li><b class="l">162-163</b><code>git status --porcelain -- .</code> run inside <code>ml/pipeline/</code> lists uncommitted changes in that folder only. Any output means the code that ran is not exactly the commit.</li>
+<li><b class="l">166</b>The commit, plus <code>+dirty</code> if needed.</li>
+<li><b class="l">410-418</b>The provenance fields at the top of <code>run_report.json</code>: what data, which version, which seed, when, and with what software and code.</li>
+</ul>
+
+<h4>Check yourself</h4>
+<p class="q"><span class="kind">Concept</span>Why does the dirty check look only at <code>ml/pipeline/</code> and not the whole repository?</p>
+<details class="ans"><summary>Show answer</summary><div class="a">Only that folder's code shapes the outputs. The pipeline imports only the standard library, numpy, pandas and Pillow, and the library versions are recorded separately. If any unsaved change anywhere counted (a doc edit, say), almost every run would be marked dirty and the flag would stop meaning anything.</div></details>
+<p class="q"><span class="kind">Predict</span>You change <code>SEED</code> from 591 to 592 and rebuild v2 with the default settings (carrying splits from v1). Does <code>dataset_version_hash</code> change? What if you also pass <code>--keep-splits-from ""</code>?</p>
+<details class="ans"><summary>Show answer</summary><div class="a">With the defaults: <b>no</b>. All 618 groups are carried from v1, and the seed is used only for new groups, of which there are none. The hash covers file, sha256 and split, and none of them change. Only the report's <code>seed</code> field differs. With <code>--keep-splits-from ""</code>, every group is re-shuffled with the new seed, so splits change and the hash almost certainly changes.</div></details>
+</section>
+
+<!-- ============================================================ 3.10 -->
+<section id="synth">
+<h3 style="font-size:23px">3.10 Synthetic data and adversarial testing</h3>
+<h4>The idea</h4>
+<p>The Shenzhen terms say "please do not share the dataset outside of your research group" (data card). But the course asks a paired team to attack your data path (ICS 591 Prosit 2, Section D). The answer is <dfn class="t" data-g="synthetic">synthetic data</dfn>: fake records with the same <i>structure</i> as the real ones (folders, file names, reading formats, including the messy ones) but none of the <i>content</i>. The images are random textures, not X-rays. They test the data path, not the model.</p>
+<p><dfn class="t" data-g="adversarial">Adversarial testing</dfn> means someone tries on purpose to break the system: flip a label, corrupt a file, plant a duplicate, edit a reading. They then check whether the outputs catch it. The method is: run once on clean data and record the hash (your baseline), attack, run again, and compare the manifest, the quarantine list and the report.</p>
+<p>The generator decides each record with <dfn class="t" data-g="bernoulli">Bernoulli trials</dfn>: a weighted coin flip. TB with probability 0.52, child with probability 0.04.</p>
+
+<h4>The rule</h4>
+<div class="formula">for i = 1..400:&nbsp; label ~ Bernoulli(0.52)<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;age ~ uniform 3..14 with probability 0.04, else uniform 15..80<br>expected TB = 400 &times; 0.52 = 208<br>expected children = 400 &times; 0.04 = 16,&nbsp; standard deviation = &radic;(400 &times; 0.04 &times; 0.96) &asymp; 3.9</div>
+
+<h4>Worked example</h4>
+<p>Seed 2026, counted on 10 Nov 2026: 209 TB-labelled files (expected 208) and 19 children (expected 16, within one standard deviation). The clean run kept 381 and quarantined 19, all under 15, matching the README. Hash <code>1dd066baf6b0a52f</code>. Near-duplicate pairs: 0, since independent random textures are far apart.</p>
+<div class="box hist"><span class="tag">Documented history</span><p>The synthetic files share names with the real v1 manifest. Pipeline 0.2.0 and later carry splits from that manifest by default, which made the synthetic run fail its batch checks. The fix is to run with <code>--keep-splits-from ""</code> (testenv README, commit <code>3dcd816</code>).</p></div>
+
+<h4>The code</h4>
+<figure class="code"><figcaption><span class="path">ml/testenv/make_synthetic.py</span> <span class="lines">lines 47, 52, 57 to 61</span></figcaption><pre><code><span class="ln">47</span>    finding = TB_FINDINGS[rng.integers(len(TB_FINDINGS))] if label else &quot;normal&quot;
+<span class="ln">...</span><span class="elide">lines left out</span>
+<span class="ln">52</span>    rng = np.random.default_rng(seed)
+<span class="ln">...</span><span class="elide">lines left out</span>
+<span class="ln">57</span>        label = int(rng.random() &lt; TB_RATE)
+<span class="ln">58</span>        age = int(rng.integers(3, 15)) if rng.random() &lt; CHILD_RATE else int(rng.integers(15, 81))
+<span class="ln">59</span>        name = f&quot;CHNCXR_{i:04d}_{label}&quot;
+<span class="ln">60</span>        texture(rng).save(img_dir / f&quot;{name}.png&quot;)
+<span class="ln">61</span>        (rd_dir / f&quot;{name}.txt&quot;).write_text(reading(rng, label, age))</code></pre></figure>
+<figure class="code"><figcaption><span class="path">ml/tests/test_testenv.py</span> <span class="lines">lines 55 to 61</span></figcaption><pre><code><span class="ln">55</span>        src = next((raw / &quot;CXR_png&quot;).glob(&quot;*_0.png&quot;))
+<span class="ln">56</span>        stem = src.stem[:-2]
+<span class="ln">57</span>        src.rename(raw / &quot;CXR_png&quot; / f&quot;{stem}_1.png&quot;)
+<span class="ln">58</span>        (raw / &quot;ClinicalReadings&quot; / f&quot;{stem}_0.txt&quot;).rename(raw / &quot;ClinicalReadings&quot; / f&quot;{stem}_1.txt&quot;)
+<span class="ln">59</span>        bd.run(raw, self.root / &quot;out&quot;, self.root / &quot;private&quot;)
+<span class="ln">60</span>        q = pd.read_csv(self.root / &quot;out&quot; / &quot;quarantine.csv&quot;)
+<span class="ln">61</span>        self.assertIn(f&quot;{stem}_1.png&quot;, set(q.loc[q[&quot;check&quot;] == &quot;label_vs_reading&quot;, &quot;file&quot;]))</code></pre></figure>
+<h4>Line by line</h4>
+<ul class="walk">
+<li><b class="l">47</b>TB records get a TB finding drawn from the real phrasings. Normal records get "normal".</li>
+<li><b class="l">52</b>One seeded generator for the whole run, so the same seed gives the same files.</li>
+<li><b class="l">57</b>The TB Bernoulli trial.</li>
+<li><b class="l">58</b>The child trial, then the age.</li>
+<li><b class="l">59-61</b>The file name carries the label, exactly like the real set. Then the texture image and the reading are written.</li>
+<li><b class="l">55-61 (test)</b>The worked attack: rename a normal image and its reading to label 1 without changing the text. The reading still says "normal", so <code>label_check</code> quarantines it as <code>label_vs_reading</code>.</li>
+</ul>
+
+<h4>Check yourself</h4>
+<p class="q"><span class="kind">Concept</span>Why do random textures work as a test bed when they look nothing like X-rays?</p>
+<details class="ans"><summary>Show answer</summary><div class="a">Nothing in the pipeline looks at <i>what</i> an image shows. It checks names, decoding, size, hashes, readings, ages and splits. The textures exercise all of those. They would be useless for testing the model. Note one limit: because they are never near-identical, a clean synthetic run never exercises the near-duplicate path. The unit tests cover it instead.</div></details>
+<p class="q"><span class="kind">Predict</span>In the clean synthetic set, you change one TB reading to <code>possible PTB</code> and re-run with <code>--keep-splits-from ""</code>. What happens to that record, and to everyone else's splits?</p>
+<details class="ans"><summary>Show answer</summary><div class="a">That record is quarantined: "label 1: reading contains 'possible'". 380 are kept. Because the split is fresh, the TB shuffle now runs on 199 groups instead of 200 and gives a different order. Measured on 10 Nov 2026 (editing <code>CHNCXR_0001_1</code>): <b>92 TB records changed split and no normal record did</b>. Label 0 is shuffled first with an unchanged list. The hash became <code>dd3c5772411ac699</code>. This is exactly why the real pipeline carries splits over (<a href="#carry">3.3</a>).</div></details>
+</section>
+
+<!-- ============================================================ 4 -->
+<section id="departs">
+<h2>4. Where the code departs from the theory</h2>
+<p>Shortcuts the code takes, places where its behaviour differs from the textbook version, and places where a simpler method could have worked.</p>
+
+<h3>4.1 "Patient-level" is really image-level on Shenzhen</h3>
+<p>The theory groups by person. Shenzhen's <code>patient_id</code> is the provider's image sequence number (data card), and every kept record is its own group: 635 groups for 635 records in v1, and 618 for 618 in v2. If one person appears under two numbers with two different X-rays, neither the IDs nor the dHash can tell. The code can only group what the IDs and hashes reveal. The design is right; this dataset just cannot use all of it.</p>
+
+<h3>4.2 All-pairs comparison is quadratic</h3>
+<p>Both <code>duplicate_label_conflicts</code> and <code>near_duplicate_groups</code> compare every pair: 190,653 pairs each for v2's 618 records. That is fine at this size. For the 20,000-image retinal subset the TRD mentions (ML-DATA-06), it would be about 200 million pairs per pass. The run time was not measured.</p>
+<div class="box bg"><span class="tag">General background</span><p>Standard fixes include a BK-tree, or splitting each 256-bit hash into 13 chunks. Two hashes within 12 bits must match exactly on at least one chunk (pigeonhole principle), so only records sharing a chunk need comparing.</p></div>
+
+<h3>4.3 A word list, not a negation detector</h3>
+<p>Clinical NLP has dedicated methods for spotting negation and uncertainty, such as NegEx (general background). The pipeline uses a short regex list instead. It is simpler and easy to audit, which suits a validation gate. The cost is real: it missed <code>STB</code> and dropped 16 probable TB records.</p>
+
+<h3>4.4 The 5-point gap is a fixed rule, not a statistical test</h3>
+<p>Because the split is stratified, the gaps are tiny (largest 0.010 in v2). Without stratification, a 93-record split would have a TB rate with standard deviation &radic;(0.511 &times; 0.489 / 93) &asymp; 0.052. It would miss the 5-point limit about a third of the time by chance alone (normal approximation, general statistics). So in practice the check catches bugs, like the giant chained group, rather than sampling noise.</p>
+
+<h3>4.5 Small details</h3>
+<ul>
+<li><b>Rounding.</b> Python's <code>round</code> rounds an exact half to the even number. No exact half came up in v1's sizes, and the test split takes the remainder, so totals are always right. With very few groups for a label, the test split could be empty. Its TB rate would then be NaN, and the batch check would fail.</li>
+<li><b>Age 0 as a code.</b> Months and days become age 0, a number standing for "under one year." It works because 0 is under 15, but one field now holds two meanings.</li>
+<li><b>Group label is the maximum.</b> Stratification counts groups, not records, so a split's record-level TB rate can drift if groups are large. There was no effect on Shenzhen, where every group has one record.</li>
+<li><b>An untested claim.</b> The <code>dhash</code> docstring says it survives "small intensity changes." The tests check resizing only.</li>
+<li><b>Median 72 vs 73.</b> The README gives 73 as the median dHash distance. Recomputing over v1's 635 committed hashes gives 72. This is not a code issue, probably just a different set of images.</li>
+</ul>
+
+<h3>4.6 Where a library would have worked</h3>
+<p>General background, not used in this project: scikit-learn's <code>StratifiedGroupKFold</code> or <code>GroupShuffleSplit</code> do grouped, stratified splitting, and the <code>imagehash</code> package has a ready-made dHash. Neither carries splits over from an earlier version, so <code>carry_splits</code> would still be custom code. The pipeline needs only numpy, pandas and Pillow (<code>ml/requirements.txt</code>).</p>
+</section>
+
+<!-- ============================================================ 5 -->
+<section id="verify">
+<h2>5. How to verify it</h2>
+<h3>Run the tests</h3>
+<figure class="code"><figcaption><span class="path">from the repo root</span></figcaption><pre><code>python3 -m unittest discover -s ml/tests -v</code></pre></figure>
+<p>Result on 10 Nov 2026: <b>31 tests, all passed</b> (30.8 s). All tests use synthetic images only. The pipeline tests lower <code>MIN_RECORDS</code> to 10 and <code>MAX_PREVALENCE_GAP</code> to 0.25, because tiny test splits cannot hold a 5-point gap.</p>
+
+<h3>What each test checks</h3>
+<div class="tablewrap"><table>
+<tr><th>Concept</th><th>Tests in <code>ml/tests/</code></th></tr>
+<tr><td><a href="#leakage">3.1</a> Leakage</td><td><code>test_batch_checks_detect_patient_leakage_independently</code>, <code>test_same_patient_stays_in_one_split_end_to_end</code>, <code>test_end_to_end_quarantines_and_never_leaks</code></td></tr>
+<tr><td><a href="#strat">3.2</a> Stratification</td><td><code>test_assign_splits_deterministic_and_complete</code>, <code>test_batch_check_fails_on_a_biased_split</code> (at the real 0.05 gap)</td></tr>
+<tr><td><a href="#carry">3.3</a> Carry-over</td><td><code>test_stricter_rule_keeps_every_remaining_patient_in_its_split</code>, <code>test_new_patients_are_split_and_old_ones_stay</code>, <code>test_new_near_duplicate_joins_its_carried_group</code>, <code>test_group_spanning_two_prior_splits_hard_fails</code></td></tr>
+<tr><td><a href="#records">3.4</a> Record checks</td><td><code>test_parse_name</code>, <code>test_parse_reading</code>, <code>test_parse_reading_real_world_formats</code>, <code>test_other_quarantine_paths</code>, <code>test_missing_readings_hard_fail</code>, <code>test_too_few_records_hard_fail</code></td></tr>
+<tr><td><a href="#labels">3.5</a> Label gate</td><td><code>test_label_conflicts</code>, <code>test_abnormal_but_not_tb_conflicts</code>, <code>test_negated_uncertain_and_mixed_readings_go_to_review</code>, <code>test_quarantine_reason_names_the_matched_term</code></td></tr>
+<tr><td><a href="#sha">3.6</a> SHA-256</td><td><code>test_cache_rechecks_corruption_with_unchanged_size_and_mtime</code>, <code>test_same_input_same_version_hash</code></td></tr>
+<tr><td><a href="#dhash">3.7</a> dHash</td><td><code>test_dhash_survives_resize</code>, <code>test_copies_with_different_labels_are_all_quarantined</code></td></tr>
+<tr><td><a href="#uf">3.8</a> Union-find</td><td><code>test_near_duplicate_groups</code>, <code>test_patient_identity_links_near_duplicate_components</code>, <code>test_near_duplicate_across_patient_ids_shares_a_split</code></td></tr>
+<tr><td><a href="#repro">3.9</a> Provenance</td><td><code>test_report_records_code_and_pillow_versions</code>, <code>test_same_input_same_version_hash</code></td></tr>
+<tr><td><a href="#synth">3.10</a> Synthetic set</td><td><code>test_every_reading_parses</code>, <code>test_pipeline_accepts_clean_synthetic_set</code>, <code>test_same_seed_same_files</code>, <code>test_flipped_label_is_caught</code></td></tr>
+</table></div>
+
+<h3>Pipeline runs</h3>
+<div class="tablewrap"><table>
+<tr><th>Run</th><th>Result</th><th>Source</th></tr>
+<tr><td>Real Shenzhen v2</td><td>618 kept, 44 quarantined, all 7 batch checks passed, hash <code>0445b087fed038c4</code></td><td><code>shenzhen_v2/run_report.json</code></td></tr>
+<tr><td>Real Shenzhen v1</td><td>635 kept, 27 quarantined, hash <code>702a4658c7447e13</code></td><td><code>shenzhen_v1/run_report.json</code></td></tr>
+<tr><td>Synthetic, clean</td><td>381 kept, 19 quarantined, hash <code>1dd066baf6b0a52f</code>, reproduced 10 Nov 2026</td><td>testenv README, re-run</td></tr>
+<tr><td>Synthetic, one reading edited</td><td>380 kept, 92 TB records changed split, hash <code>dd3c5772411ac699</code></td><td>re-run 10 Nov 2026</td></tr>
+</table></div>
+
+<h3>What is not tested or not measured</h3>
+<ul>
+<li>Your own testing beyond the unit tests: none recorded.</li>
+<li>Results of the paired team's attacks on the synthetic set: not reported in the repo.</li>
+<li>dHash stability under brightness changes: not tested.</li>
+<li>The 512 px floor on real data: never fired (smallest real side 2009 px).</li>
+<li>The <code>STB</code> gap: documented, but no test asserts the current behaviour or the planned v3 fix.</li>
+<li>Run time of the quadratic pair loops: not measured.</li>
+</ul>
+</section>
+
+<!-- ============================================================ 6 -->
+<section id="glossary">
+<h2>6. Glossary</h2>
+<dl id="gloss-list"></dl>
+</section>
+
+</div>
+</main>
+</div>
+<div id="tip" role="tooltip"></div>
+
+<script>
+// Pure logic for the tutorial widgets. Re-implementations for illustration only.
+
+function sha256Hex(text) {
+  const bytes = new TextEncoder().encode(text);
+  const rotr = (x, n) => (x >>> n) | (x << (32 - n));
+  const primes = [];
+  for (let c = 2; primes.length < 64; c++) {
+    if (primes.every(p => c % p !== 0)) primes.push(c);
+  }
+  const frac = x => Math.floor((x - Math.floor(x)) * 4294967296) >>> 0;
+  const K = primes.map(p => frac(Math.cbrt(p)));
+  const H = primes.slice(0, 8).map(p => frac(Math.sqrt(p)));
+  const len = bytes.length;
+  const padded = new Uint8Array((((len + 9) + 63) >> 6) << 6);
+  padded.set(bytes);
+  padded[len] = 0x80;
+  const dv = new DataView(padded.buffer);
+  const bits = len * 8;
+  dv.setUint32(padded.length - 4, bits >>> 0);
+  dv.setUint32(padded.length - 8, Math.floor(bits / 4294967296));
+  const W = new Uint32Array(64);
+  for (let off = 0; off < padded.length; off += 64) {
+    for (let t = 0; t < 16; t++) W[t] = dv.getUint32(off + 4 * t);
+    for (let t = 16; t < 64; t++) {
+      const s0 = rotr(W[t - 15], 7) ^ rotr(W[t - 15], 18) ^ (W[t - 15] >>> 3);
+      const s1 = rotr(W[t - 2], 17) ^ rotr(W[t - 2], 19) ^ (W[t - 2] >>> 10);
+      W[t] = (W[t - 16] + s0 + W[t - 7] + s1) | 0;
+    }
+    let [a, b, c, d, e, f, g, h] = H;
+    for (let t = 0; t < 64; t++) {
+      const S1 = rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25);
+      const ch = (e & f) ^ (~e & g);
+      const t1 = (h + S1 + ch + K[t] + W[t]) | 0;
+      const S0 = rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22);
+      const maj = (a & b) ^ (a & c) ^ (b & c);
+      const t2 = (S0 + maj) | 0;
+      h = g; g = f; f = e; e = (d + t1) | 0; d = c; c = b; b = a; a = (t1 + t2) | 0;
+    }
+    const v = [a, b, c, d, e, f, g, h];
+    for (let i = 0; i < 8; i++) H[i] = (H[i] + v[i]) >>> 0;
+  }
+  return H.map(x => (x >>> 0).toString(16).padStart(8, "0")).join("");
+}
+
+function hexBitDiff(h1, h2) {
+  let n = 0;
+  for (let i = 0; i < h1.length; i++) {
+    let x = parseInt(h1[i], 16) ^ parseInt(h2[i], 16);
+    while (x) { n += x & 1; x >>= 1; }
+  }
+  return n;
+}
+
+// label_check from ml/pipeline/build_dataset.py, lines 96 to 131
+const AMBIGUOUS_RE = /\b(?:no|not|without|negative|normal|normale|possible|possibly|probable|probably|suspect\w*|uncertain|unlikely|cannot|can't|exclude\w*|rule[ds]?\s+out|question\w*)\b|\?/;
+
+function readingSaysNormal(finding) {
+  const f = (finding || "").toLowerCase().replace(/^[ .]+|[ .]+$/g, "");
+  return /^normale?(?:\s+(?:chest|lungs?|cxr|x-ray))?$/.test(f);
+}
+
+function readingMentionsTb(finding) {
+  return /\b(?:p?tb|tuberculosis|tuberculous|tubercular)\b/.test((finding || "").toLowerCase());
+}
+
+function labelCheck(label, finding) {
+  if (label === 0) return readingSaysNormal(finding) ? null : "label 0: reading is not plainly normal";
+  if (label !== 1) return "unknown label " + label;
+  const m = AMBIGUOUS_RE.exec((finding || "").toLowerCase());
+  if (m) return "label 1: reading contains '" + m[0] + "'";
+  if (!readingMentionsTb(finding)) return "label 1: reading does not name TB";
+  return null;
+}
+
+// dHash on a small grid: bit = 1 when the right neighbour is brighter
+function gridBits(grid) {
+  const bits = [];
+  for (const row of grid) for (let c = 0; c + 1 < row.length; c++) bits.push(row[c + 1] > row[c] ? 1 : 0);
+  return bits;
+}
+
+// near_duplicate_groups from build_dataset.py, lines 169 to 195, recorded step by step
+function unionFindSteps(ids, dist, maxBits) {
+  const n = ids.length;
+  const parent = ids.map((_, i) => i);
+  const steps = [];
+  const find = i => {
+    while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; }
+    return i;
+  };
+  const snap = msg => steps.push({ msg, parent: parent.slice(), groups: ids.map((_, i) => ids[findNoCompress(parent, i)]) });
+  snap("Start: every record is its own parent.");
+  const first = {};
+  ids.forEach((p, i) => {
+    if (p in first) {
+      parent[find(i)] = find(first[p]);
+      snap("Record " + i + " has the same patient ID (" + p + ") as record " + first[p] + ": union.");
+    } else first[p] = i;
+  });
+  for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
+    const d = dist(i, j);
+    if (d <= maxBits) {
+      parent[find(i)] = find(j);
+      snap("Records " + i + " and " + j + " are " + d + " bits apart (at most " + maxBits + "): union.");
+    }
+  }
+  steps.push({ msg: "Done. Each record's group ID is the patient ID of its root.", parent: parent.slice(),
+    groups: ids.map((_, i) => ids[find(i)]) });
+  return steps;
+}
+
+function findNoCompress(parent, i) {
+  while (parent[i] !== i) i = parent[i];
+  return i;
+}
+
+// split sizes as in assign_splits: Python round() is round-half-to-even
+function pyRound(x) {
+  const f = Math.floor(x), d = x - f;
+  if (Math.abs(d - 0.5) < 1e-12) return f % 2 === 0 ? f : f + 1;
+  return Math.round(x);
+}
+
+if (typeof module !== "undefined") module.exports = { sha256Hex, hexBitDiff, labelCheck, gridBits, unionFindSteps, pyRound };
+
+
+const GLOSS = {
+  manifest: ["Manifest", "A file listing every record in a dataset version: file name, patient ID, group, label, split and fingerprints. Here, manifest.csv."],
+  quarantine: ["Quarantine", "Setting one record aside, with the stage, check and reason written to quarantine.csv, while the run continues."],
+  hardfail: ["Hard fail", "A check failure that stops the whole run and writes no manifest, because the problem is with the dataset as a whole."],
+  split: ["Split", "One of the separate parts the data is divided into: train, validation or test (here, a second held-out validation set)."],
+  validation: ["Validation set", "Data kept out of training and used to tune the model and choose thresholds and calibration."],
+  heldout: ["Held-out set", "Data kept out of training and tuning, used rarely for a final score. In this project the split named test is a second held-out validation set."],
+  leakage: ["Data leakage", "Information from the data used for scoring reaching training, which makes the score look better than the model really is."],
+  prevalence: ["Prevalence", "The share of records that have the condition. Here, the TB rate."],
+  strat: ["Stratified sampling", "Splitting each class separately with the same fractions, so each split has about the same class balance as the whole."],
+  seed: ["Seed", "The starting number for a pseudo-random generator. The same seed gives the same sequence every time."],
+  intended: ["Intended use", "Who and what a tool is meant for. For TriageLens chest X-rays: trained health workers, patients aged 15 and over (TRD 3.3, 9.1)."],
+  regex: ["Regular expression", "A pattern language for matching text. Python's re module runs them."],
+  labelnoise: ["Label noise", "Wrong labels in training data."],
+  precision: ["Precision", "Of the items a filter or model accepts as positive, the share that truly are positive."],
+  recall: ["Recall", "Of the truly positive items, the share a filter or model accepts. Also called sensitivity."],
+  wordboundary: ["Word boundary (\\b)", "In a regex, the point between a word character (letter, digit, underscore) and a non-word character, or the start or end of the text."],
+  hash: ["Hash function", "A function that maps input of any length to a fixed-size output, the digest."],
+  crypto: ["Cryptographic hash", "A hash where tiny input changes scramble the output and finding two inputs with the same digest is not possible in practice."],
+  sha256: ["SHA-256", "A standard cryptographic hash with a 256-bit digest, usually written as 64 hex characters."],
+  avalanche: ["Avalanche effect", "In a good cryptographic hash, changing one input bit flips about half of the output bits."],
+  collision: ["Collision", "Two different inputs with the same hash digest."],
+  phash: ["Perceptual hash", "A fingerprint of what an image looks like, so similar images get similar hashes."],
+  dhash: ["dHash (difference hash)", "A perceptual hash: shrink to grayscale, then record whether each pixel's right-hand neighbour is brighter. 16 by 16 gives 256 bits here."],
+  grayscale: ["Grayscale", "An image with one brightness value per pixel and no colour. Pillow mode L."],
+  lanczos: ["Lanczos resampling", "A resizing filter that averages nearby pixels with a windowed sinc weight. It reduces jagged artefacts when shrinking."],
+  hamming: ["Hamming distance", "The number of positions at which two bit strings differ: the count of 1s in a XOR b."],
+  component: ["Connected component", "In a graph, a largest set of nodes where every node can reach every other through edges."],
+  transitive: ["Transitive", "A relation where A to B and B to C imply A to C. Grouping by links is transitive."],
+  unionfind: ["Union-find", "A data structure that tracks which items are in the same group, with fast find (which group?) and union (merge two groups)."],
+  pathhalving: ["Path halving", "A union-find speed-up: during find, each node visited is pointed at its grandparent, which keeps the trees shallow."],
+  repro: ["Reproducibility", "Being able to rebuild exactly the same output from the same inputs."],
+  provenance: ["Provenance", "A record of where an output came from: data, code commit, versions, settings."],
+  prng: ["Pseudo-random number generator", "An algorithm that makes a random-looking sequence that is fully determined by its seed. numpy's default is PCG64."],
+  dirty: ["+dirty", "Added to the recorded git commit when ml/pipeline/ had uncommitted changes, so the code that ran is not exactly that commit."],
+  synthetic: ["Synthetic data", "Made-up data with the structure of real data but none of its content."],
+  adversarial: ["Adversarial testing", "Trying on purpose to break a system with bad or tricky input, to check that its defences catch it."],
+  bernoulli: ["Bernoulli trial", "A single yes or no random draw with a fixed probability of yes, like a weighted coin."]
+};
+
+(function glossary() {
+  const tip = document.getElementById("tip");
+  let pinned = null;
+  function show(el) {
+    const g = GLOSS[el.dataset.g]; if (!g) return;
+    tip.innerHTML = "";
+    const b = document.createElement("b"); b.textContent = g[0]; tip.appendChild(b);
+    tip.appendChild(document.createTextNode(g[1]));
+    tip.style.display = "block";
+    const r = el.getBoundingClientRect();
+    const w = tip.offsetWidth;
+    let left = r.left + window.scrollX;
+    left = Math.max(16, Math.min(left, window.scrollX + document.documentElement.clientWidth - w - 16));
+    tip.style.left = left + "px";
+    tip.style.top = (r.bottom + window.scrollY + 6) + "px";
+  }
+  function hide() { tip.style.display = "none"; pinned = null; }
+  document.querySelectorAll("dfn.t").forEach(el => {
+    el.tabIndex = 0;
+    el.setAttribute("role", "button");
+    el.addEventListener("mouseenter", () => { if (!pinned) show(el); });
+    el.addEventListener("mouseleave", () => { if (!pinned) hide(); });
+    el.addEventListener("focus", () => show(el));
+    el.addEventListener("blur", () => { if (pinned !== el) hide(); });
+    el.addEventListener("click", e => { e.stopPropagation(); if (pinned === el) { hide(); } else { pinned = el; show(el); } });
+  });
+  document.addEventListener("click", hide);
+  document.addEventListener("keydown", e => { if (e.key === "Escape") hide(); });
+  const dl = document.getElementById("gloss-list");
+  Object.keys(GLOSS).sort((a, b) => GLOSS[a][0].replace(/^\W+/, "").localeCompare(GLOSS[b][0].replace(/^\W+/, ""))).forEach(k => {
+    const dt = document.createElement("dt"); dt.id = "g-" + k; dt.innerHTML = "<b></b>"; dt.firstChild.textContent = GLOSS[k][0];
+    const first = document.querySelector('dfn.t[data-g="' + k + '"]');
+    if (first) {
+      const sec = first.closest("section");
+      if (sec) {
+        const num = sec.querySelector("h2,h3").textContent.split(" ")[0].replace(/\.$/, "");
+        const a = document.createElement("a"); a.href = "#" + sec.id; a.className = "small";
+        a.textContent = " (first used in " + num + ")"; dt.appendChild(a);
+      }
+    }
+    const dd = document.createElement("dd"); dd.textContent = GLOSS[k][1]; dd.style.margin = "0 0 12px 0";
+    dl.appendChild(dt); dl.appendChild(dd);
+  });
+})();
+
+(function toc() {
+  const btn = document.getElementById("tocbtn"), nav = document.getElementById("toc");
+  btn.addEventListener("click", () => { const o = nav.classList.toggle("open"); btn.setAttribute("aria-expanded", o); });
+  nav.addEventListener("click", e => { if (e.target.tagName === "A" && window.innerWidth < 980) { nav.classList.remove("open"); btn.setAttribute("aria-expanded", "false"); } });
+  const links = [...nav.querySelectorAll("a")];
+  const secs = links.map(a => document.querySelector(a.getAttribute("href")));
+  function onScroll() {
+    let cur = 0;
+    secs.forEach((s, i) => { if (s && s.getBoundingClientRect().top < 120) cur = i; });
+    links.forEach((a, i) => a.classList.toggle("active", i === cur));
+  }
+  window.addEventListener("scroll", onScroll, { passive: true }); onScroll();
+})();
+
+function chip(text, cls) { const s = document.createElement("span"); s.className = "chip " + cls; s.textContent = text; return s; }
+function verdict(el, ok, text) { el.className = "verdict " + (ok ? "ok" : "bad"); el.textContent = text; }
+const SPLITS = ["train", "val", "test"];
+
+(function leakWidget() {
+  const patients = { A: 3, B: 2, C: 2, D: 1, E: 2, F: 2 };
+  const out = document.getElementById("leak-out"), v = document.getElementById("leak-verdict");
+  function shuffle(a) { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+  function sizes(n) { const tr = pyRound(n * 0.7), va = pyRound(n * 0.15); return [tr, va, n - tr - va]; }
+  function assign(items) { const s = sizes(items.length), m = {}; shuffle(items).forEach((x, i) => { m[x] = i < s[0] ? "train" : i < s[0] + s[1] ? "val" : "test"; }); return m; }
+  function run(mode) {
+    const images = []; Object.entries(patients).forEach(([p, k]) => { for (let i = 1; i <= k; i++) images.push(p + i); });
+    let split;
+    if (mode === "image") split = assign(images.slice());
+    else { const pm = assign(Object.keys(patients)); split = {}; images.forEach(im => split[im] = pm[im[0]]); }
+    out.innerHTML = ""; let leaked = 0;
+    Object.entries(patients).forEach(([p, k]) => {
+      const row = document.createElement("div"); row.className = "row";
+      const lab = document.createElement("b"); lab.textContent = "Patient " + p; lab.style.width = "6em"; row.appendChild(lab);
+      const used = new Set();
+      for (let i = 1; i <= k; i++) { const s = split[p + i]; used.add(s); row.appendChild(chip(p + i, s)); }
+      if (used.size > 1) { leaked++; const w = document.createElement("span"); w.className = "small"; w.style.color = "var(--bad)"; w.textContent = "leaked"; row.appendChild(w); }
+      out.appendChild(row);
+    });
+    verdict(v, leaked === 0, (mode === "image" ? "Split by image: " : "Split by patient: ") + leaked + " of 5 multi-image patients leaked. Click again to re-roll.");
+  }
+  document.querySelectorAll("#w-leak button").forEach(b => b.addEventListener("click", () => run(b.dataset.mode)));
+  run("image");
+})();
+
+(function prevWidget() {
+  const sel = document.getElementById("prev-split"), rng = document.getElementById("prev-n");
+  const k = document.getElementById("prev-k"), out = document.getElementById("prev-out"), v = document.getElementById("prev-verdict");
+  const overall = 316 / 618;
+  function setSplit() { const [n, tb] = sel.value.split(",").map(Number); rng.max = n; rng.value = tb; update(); }
+  function update() {
+    const n = Number(rng.max), t = Number(rng.value), rate = t / n, gap = Math.abs(rate - overall);
+    let lo = null, hi = null; for (let i = 0; i <= n; i++) if (Math.abs(i / n - overall) <= 0.05) { if (lo === null) lo = i; hi = i; }
+    k.textContent = t + " of " + n;
+    out.textContent = "rate = " + t + " / " + n + " = " + rate.toFixed(3) + "   |rate - 0.511| = " + gap.toFixed(3) + "   passing range: " + lo + " to " + hi + " TB records";
+    verdict(v, gap <= 0.05, gap <= 0.05 ? "Passes: gap is at most 0.05" : "Fails: gap is over 0.05, so the run would hard fail");
+  }
+  sel.addEventListener("change", setSplit); rng.addEventListener("input", update); setSplit();
+})();
+
+(function carryWidget() {
+  const files = [["f01", "train"], ["f02", "train"], ["f03", "train"], ["f04", "val"], ["f05", "test"], ["f06", "train"], ["f07", "test"], ["f08", "train"], ["f09", "val"], ["f10", "train"]];
+  const removed = new Set(["f03", "f07"]);
+  const resplit = { f01: "train", f02: "test", f04: "train", f05: "train", f06: "train", f08: "val", f09: "train", f10: "train" };
+  const steps = [
+    ["Step 1 of 4. Version 1: ten files and their splits. A model is trained on the train files.", f => [f[1], ""]],
+    ["Step 2 of 4. A stricter rule removes f03 and f07. The other eight remain.", f => removed.has(f[0]) ? ["gone", ""] : [f[1], ""]],
+    ["Step 3 of 4. Re-split from scratch: the shuffle runs on eight files, not ten, so the order changes. Outlined files moved. f02 was a v1 training file and is now in test, so the v1 model would be scored on an image it learned from.", f => removed.has(f[0]) ? ["gone", ""] : [resplit[f[0]], resplit[f[0]] !== f[1] ? " moved" : ""]],
+    ["Step 4 of 4. Carry over (what carry_splits does): every remaining file keeps its v1 split. Splits shrink, nothing moves, nothing leaks.", f => removed.has(f[0]) ? ["gone", ""] : [f[1], ""]]
+  ];
+  let i = 0;
+  const out = document.getElementById("carry-out"), lab = document.getElementById("carry-step");
+  const prev = document.getElementById("carry-prev"), next = document.getElementById("carry-next");
+  function draw() {
+    out.innerHTML = "";
+    const p = document.createElement("p"); p.textContent = steps[i][0]; out.appendChild(p);
+    const row = document.createElement("div"); files.forEach(f => { const [s, extra] = steps[i][1](f); row.appendChild(chip(f[0], s + extra)); }); out.appendChild(row);
+    lab.textContent = ""; prev.disabled = i === 0; next.disabled = i === steps.length - 1;
+  }
+  prev.addEventListener("click", () => { if (i > 0) { i--; draw(); } });
+  next.addEventListener("click", () => { if (i < steps.length - 1) { i++; draw(); } });
+  draw();
+})();
+
+(function labelWidget() {
+  const l = document.getElementById("lab-l"), f = document.getElementById("lab-f"), out = document.getElementById("lab-out");
+  function update() {
+    const r = labelCheck(Number(l.value), f.value);
+    out.innerHTML = "";
+    const v = document.createElement("div");
+    verdict(v, r === null, r === null ? "Kept: the reading confirms the label (label_check returns None)" : "Quarantined: " + r);
+    out.appendChild(v);
+  }
+  l.addEventListener("change", update); f.addEventListener("input", update);
+  document.querySelectorAll("#w-label button[data-ex]").forEach(b => b.addEventListener("click", () => {
+    const [lab, ...rest] = b.dataset.ex.split("|"); l.value = lab; f.value = rest.join("|"); update();
+  }));
+  update();
+})();
+
+(function shaWidget() {
+  const a = document.getElementById("sha-a"), b = document.getElementById("sha-b"), out = document.getElementById("sha-out");
+  function update() {
+    const ha = sha256Hex(a.value), hb = sha256Hex(b.value), d = hexBitDiff(ha, hb);
+    out.innerHTML = "";
+    [["A: ", ha], ["B: ", hb]].forEach(([p, h]) => { const div = document.createElement("div"); div.textContent = p + h; out.appendChild(div); });
+    const s = document.createElement("div"); s.style.marginTop = "6px"; s.style.fontFamily = "var(--sans)";
+    s.textContent = d + " of 256 bits differ (" + (100 * d / 256).toFixed(0) + "%). First 16 hex characters of A, the length of a dataset version hash: " + ha.slice(0, 16);
+    out.appendChild(s);
+  }
+  a.addEventListener("input", update); b.addEventListener("input", update); update();
+})();
+
+(function dhashWidget() {
+  const LEVELS = [0, 60, 120, 180, 240];
+  const A = [[0, 60, 120, 60, 0], [60, 120, 180, 120, 60], [60, 180, 240, 180, 60], [0, 60, 120, 60, 0]];
+  let B = A.map(r => r.slice());
+  const gA = document.getElementById("gridA"), gB = document.getElementById("gridB"), out = document.getElementById("db-out");
+  function cellStyle(btn, v) { btn.style.background = "rgb(" + v + "," + v + "," + v + ")"; btn.style.color = v > 130 ? "#000" : "#fff"; btn.textContent = v; }
+  function build(el, g, editable) {
+    el.innerHTML = ""; el.style.gridTemplateColumns = "repeat(5, 38px)";
+    g.forEach((row, r) => row.forEach((v, c) => {
+      const btn = document.createElement("button"); btn.className = "cell"; cellStyle(btn, v);
+      btn.setAttribute("aria-label", "row " + (r + 1) + " column " + (c + 1) + " brightness " + v);
+      btn.addEventListener("click", () => {
+        const i = LEVELS.indexOf(g[r][c]);
+        g[r][c] = i === -1 ? LEVELS[0] : LEVELS[(i + 1) % LEVELS.length];
+        draw();
+      });
+      el.appendChild(btn);
+    }));
+  }
+  function bitsHtml(bits, other) { return bits.map((b, i) => '<span class="' + (b !== other[i] ? "diff" : "") + '">' + b + "</span>").join(""); }
+  function draw() {
+    build(gA, A); build(gB, B);
+    const ba = gridBits(A), bb = gridBits(B), d = ba.filter((x, i) => x !== bb[i]).length;
+    out.innerHTML = '<div class="bits">A bits: ' + bitsHtml(ba, bb) + '</div><div class="bits">B bits: ' + bitsHtml(bb, ba) +
+      '</div><div class="verdict ' + (d <= 3 ? "ok" : "bad") + '">Hamming distance: ' + d + " of 16 bits</div>";
+  }
+  document.getElementById("db-copy").addEventListener("click", () => { B = A.map(r => r.slice()); draw(); });
+  document.getElementById("db-bright").addEventListener("click", () => { B = B.map(r => r.map(v => Math.min(255, v + 15))); draw(); });
+  document.getElementById("db-rand").addEventListener("click", () => { B = B.map(r => r.map(() => LEVELS[Math.floor(Math.random() * 5)])); draw(); });
+  draw();
+})();
+
+(function ufWidget() {
+  const ids = ["p1", "p1", "p2", "p3", "p4", "p5"];
+  const D = { "1,2": 8, "2,3": 20, "3,4": 25, "4,5": 30 };
+  const dist = (i, j) => D[i + "," + j] ?? 70 + i + j;
+  const t = document.getElementById("uf-t"), tv = document.getElementById("uf-tv");
+  const msg = document.getElementById("uf-msg"), tab = document.getElementById("uf-table"), lab = document.getElementById("uf-step");
+  const prev = document.getElementById("uf-prev"), next = document.getElementById("uf-next");
+  let steps = [], i = 0;
+  function rebuild() { tv.textContent = t.value; steps = unionFindSteps(ids, dist, Number(t.value)); i = 0; draw(); }
+  function draw() {
+    const s = steps[i];
+    lab.textContent = "Step " + (i + 1) + " of " + steps.length;
+    msg.textContent = s.msg;
+    let h = "<table><tr><th>record</th>" + ids.map((_, k) => "<th>" + k + "</th>").join("") + "</tr>";
+    h += "<tr><td>patient</td>" + ids.map(p => "<td>" + p + "</td>").join("") + "</tr>";
+    h += "<tr><td>parent</td>" + s.parent.map((p, k) => '<td class="' + (p === k ? "root" : "") + '">' + p + "</td>").join("") + "</tr>";
+    h += "<tr><td>group</td>" + s.groups.map(g => "<td>" + g + "</td>").join("") + "</tr></table>";
+    const n = new Set(s.groups).size;
+    tab.innerHTML = h + '<p class="small">' + n + " group" + (n === 1 ? "" : "s") + ". Bold parent = root.</p>";
+    prev.disabled = i === 0; next.disabled = i === steps.length - 1;
+  }
+  t.addEventListener("input", rebuild);
+  prev.addEventListener("click", () => { if (i > 0) { i--; draw(); } });
+  next.addEventListener("click", () => { if (i < steps.length - 1) { i++; draw(); } });
+  rebuild();
+})();
+</script>
+</body>
+</html>

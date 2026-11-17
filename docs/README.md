@@ -67,6 +67,8 @@ Every document in `docs/`, who owns it and how it changes.
 | Document | Description | Owner | Update rule |
 |----------|-------------|-------|-------------|
 | [model-cards/TEMPLATE.md](model-cards/TEMPLATE.md) | Model card template (TRD 9.10) | Chelsea | Template |
+| [tutorials/data-pipeline-tutorial.html](tutorials/data-pipeline-tutorial.html) | Offline, interactive tutorial on the concepts behind the `E1-03` data pipeline and synthetic test set. Open it in a browser. Shows only the essential code lines | Chelsea | Living; rebuild if the pipeline code changes |
+| [tutorials/data-pipeline-tutorial-full-code.html](tutorials/data-pipeline-tutorial-full-code.html) | The same tutorial, with each complete function or block | Chelsea | Living; rebuild if the pipeline code changes |
 | [benchmarks/README.md](benchmarks/README.md) | Where device benchmark reports go | Nana Yaw | Living |
 | [usability/ux-plan/README.md](usability/ux-plan/README.md) | E8-01 UX plan: interview guide, notes and synthesis templates, user journeys, low-fi flows | Kweku | Living |
 | [usability/test-plan.md](usability/test-plan.md) | Usability test plan (TRD 13.4) | Kweku | Living |

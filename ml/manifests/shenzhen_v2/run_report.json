@@ -1,0 +1,104 @@
+{
+  "dataset": "NLM Shenzhen Hospital CXR Set",
+  "dataset_version_hash": "0445b087fed038c4",
+  "pipeline_version": "0.2.1",
+  "seed": 591,
+  "run_utc": "2026-10-21T18:59:51+00:00",
+  "python": "3.10.12",
+  "numpy": "2.2.6",
+  "pandas": "2.3.3",
+  "pillow": "12.3.0",
+  "code_commit": "b21a47fae3a08ad46a97397050ec831726c9d3b1",
+  "images_found": 662,
+  "records_kept": 618,
+  "records_quarantined": 44,
+  "quarantine_by_check": {
+    "intended_population": 25,
+    "label_vs_reading": 18,
+    "age_unknown": 1
+  },
+  "quarantine_by_check_and_label": {
+    "age_unknown (label 0)": 1,
+    "intended_population (label 0)": 23,
+    "intended_population (label 1)": 2,
+    "label_vs_reading (label 1)": 18
+  },
+  "near_duplicate_pairs": 0,
+  "missing_reading_rate": 0.0,
+  "label_counts": {
+    "1": 316,
+    "0": 302
+  },
+  "split_counts": {
+    "test": {
+      "1": 47,
+      "0": 46
+    },
+    "train": {
+      "1": 220,
+      "0": 211
+    },
+    "val": {
+      "1": 49,
+      "0": 45
+    }
+  },
+  "sex_counts": {
+    "male": 416,
+    "female": 202
+  },
+  "age_band_counts": {
+    "15-24": 104,
+    "25-34": 228,
+    "35-44": 145,
+    "45-54": 65,
+    "55-64": 48,
+    "65+": 28
+  },
+  "resolution_px": {
+    "smallest_side_min": 2009,
+    "largest_side_max": 3001
+  },
+  "split_source": {
+    "prior_manifest": "ml/manifests/shenzhen_v1/manifest.csv",
+    "carried": 618,
+    "new": 0
+  },
+  "batch_checks": [
+    {
+      "check": "no_patient_across_splits",
+      "passed": true,
+      "detail": "each patient identity sits in one split, independently of image grouping"
+    },
+    {
+      "check": "no_patient_group_across_splits",
+      "passed": true,
+      "detail": "each patient or near-duplicate group sits in one split"
+    },
+    {
+      "check": "no_identical_image_across_splits",
+      "passed": true,
+      "detail": "each byte-identical image sits in one split"
+    },
+    {
+      "check": "tb_rate_train",
+      "passed": true,
+      "detail": "0.510 vs overall 0.511"
+    },
+    {
+      "check": "tb_rate_val",
+      "passed": true,
+      "detail": "0.521 vs overall 0.511"
+    },
+    {
+      "check": "tb_rate_test",
+      "passed": true,
+      "detail": "0.505 vs overall 0.511"
+    },
+    {
+      "check": "min_records",
+      "passed": true,
+      "detail": "618 records kept, need 300"
+    }
+  ]
+}

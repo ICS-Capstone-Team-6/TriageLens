@@ -14,6 +14,10 @@ Python code for data, training, export and evaluation (TRD 9, 14.1).
 - Model binaries (`*.onnx`, `*.pt`).
 - The Kermany paediatric set in any training data (ML-DATA-05).
 
-## Status
+## Contents
 
-Empty on purpose. Code arrives through backlog stories; see `docs/planning/02_Product_Backlog.md`.
+- `pipeline/`: data pipeline for the Shenzhen TB set (`E1-03`). See `pipeline/README.md`.
+- `train/`: TB model training for M2 (`E2-01`). See `train/README.md`.
+- `modal/`: Modal GPU entry points (ADR-13).
+- `tests/`: unit tests on synthetic images. Run `python3 -m unittest discover -s ml/tests -v`.
+- `requirements.txt`: pinned Python dependencies.

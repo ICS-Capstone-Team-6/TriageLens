@@ -235,6 +235,10 @@ By signing, each member agrees to follow these rules and to raise concerns early
 | Date | Change | Agreed by |
 |------------|-----------------------------------------|-----------|
 | 15 Oct 2026 | First version | Draft |
+| 18 Oct 2026 | D4 answered: Modal is the main GPU source, Kaggle plus Colab as fallback ([ADR-13](../adr/0013-modal-gpu-compute.md)) | Pending: team |
+| 18 Oct 2026 | M2 chest X-ray model has a TB output only; pneumonia output deferred until pneumonia data exists; TRD 10.6 interface changed for M2 ([ADR-14](../adr/0014-tb-only-output-m2.md)) | Pending: team |
+| 18 Oct 2026 | Interim backbone bake-off judged on validation AUROC, int8 drop and size until an external set exists ([ADR-15](../adr/0015-interim-bake-off-criteria.md)) | Pending: team |
+| 18 Oct 2026 | Chest X-rays stretched to 320 by 320 instead of padded, because image shape predicts TB in the Shenzhen set; TRD 9.3 "resize with padding" no longer applies ([ADR-16](../adr/0016-stretch-not-pad-preprocessing.md)) | Pending: team |
 | 21 Oct 2026 | Shenzhen's 15% split (named `test` in the manifest) is a second held-out validation set, not an internal test set, so it matches TRD Appendix A (Shenzhen: train and validate). It stays locked. The name is kept in the files so the dataset version hash does not change. Committing file names, patient numbers, labels, splits and fingerprints is within the dataset's ReadMe terms (PR #78 review) | Chelsea; pending: team |
 | 21 Oct 2026 | M2 thin slice deployed in Sprint 0, ahead of G1, for the ICS 591 M2 deadline (23 Oct); Sprint 0 cap and swap rule not met this week ([ADR-19](../adr/0019-m2-thin-slice-pulled-forward.md)) | Pending: team |
 | 21 Oct 2026 | M2 slice thresholds: screen-out at 95% or higher sensitivity (TRD 7.2 says 90%) and refer at 95% or higher specificity, on raw validation logits, until E6-01 calibration ([ADR-20](../adr/0020-interim-slice-thresholds.md)) | Pending: team |

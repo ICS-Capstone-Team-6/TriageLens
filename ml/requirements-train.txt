@@ -1,0 +1,18 @@
+# Training dependencies (story E2-01). Pinned per Team Rules 6.
+# Used by the Modal image (ml/modal/train_app.py) and for local runs of the torch tests.
+# Kept apart from ml/requirements.txt so the light CI job stays small.
+# torch and torchvision: model and training (TRD 9.4). timm: the two backbones (ADR-3, ADR-15).
+# scikit-learn and scipy: baseline ladder. matplotlib: learning curves. numpy, pandas, pillow: same pins as ml/requirements.txt.
+torch==2.5.1
+torchvision==0.20.1
+timm==1.0.11
+# timm downloads pretrained weights through these. Pinned because timm 1.0.11 cannot
+# import huggingface_hub 2.x and then reports it as not installed (first Modal run, 18 Oct).
+huggingface_hub==0.26.2
+safetensors==0.4.5
+scikit-learn==1.5.2
+scipy==1.14.1
+matplotlib==3.9.2
+numpy==2.2.6
+pandas==2.3.3
+pillow==12.3.0

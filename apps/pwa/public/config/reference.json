@@ -1,0 +1,7 @@
+{
+  "status": "pending",
+  "note": "Chelsea fills this with scripts/make_reference.py: the validation score histogram for the frozen run and training input-statistic histograms (same definitions as src/lib/stats.ts). Until then the monitoring page shows live numbers only.",
+  "run_id": "efficientnet_lite0_seed1_20261021T114608Z",
+  "score_hist_validation": null,
+  "inputs": null
+}

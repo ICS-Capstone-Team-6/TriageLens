@@ -1,0 +1,36 @@
+{
+  "name": "@triagelens/pwa",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "TriageLens M2 slice: TB screening on a chest X-ray, model on the phone (ADR-19).",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "copy-ort": "node scripts/copy-ort.mjs",
+    "predev": "npm run copy-ort",
+    "dev": "vite",
+    "prebuild": "npm run copy-ort",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@fontsource/manrope": "5.1.0",
+    "@supabase/supabase-js": "2.118.0",
+    "onnxruntime-web": "1.20.1",
+    "react": "18.3.1",
+    "react-dom": "18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "22.10.2",
+    "@types/react": "18.3.18",
+    "@types/react-dom": "18.3.5",
+    "@vitejs/plugin-react": "4.3.4",
+    "typescript": "5.6.3",
+    "vite": "5.4.11",
+    "vitest": "2.1.8"
+  }
+}

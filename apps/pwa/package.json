@@ -5,7 +5,7 @@
   "type": "module",
   "description": "TriageLens M2 slice: TB screening on a chest X-ray, model on the phone (ADR-19).",
   "engines": {
-    "node": ">=22"
+    "node": ">=22.12.0"
   },
   "scripts": {
     "copy-ort": "node scripts/copy-ort.mjs",
@@ -25,12 +25,12 @@
     "react-dom": "18.3.1"
   },
   "devDependencies": {
-    "@types/node": "22.10.2",
+    "@types/node": "22.20.5",
     "@types/react": "18.3.18",
     "@types/react-dom": "18.3.5",
-    "@vitejs/plugin-react": "4.3.4",
+    "@vitejs/plugin-react": "5.2.0",
     "typescript": "5.6.3",
-    "vite": "5.4.11",
-    "vitest": "2.1.8"
+    "vite": "8.3.4",
+    "vitest": "4.1.12"
   }
 }

@@ -28,13 +28,15 @@ Reference phone: TBD, see decision D2 (default: cheapest Android phone a team me
 ## 1. Export (TRD 9.5 step 1, 10.6)
 
 - [ ] Fixed input size: `cxr-tb-pneu` [1, 3, 320, 320]; `dr` [1, 3, 384, 384]; `gate` [1, 3, 224, 224]. float32, normalized.
-- [ ] Outputs named as in TRD 10.6: chest X-ray gives TB logit, pneumonia logit, last feature map; DR gives 4 ordinal logits plus feature map; gate gives 5 class logits.
+- [ ] Outputs named as in TRD 10.6: chest X-ray gives TB logit, pneumonia logit, last feature map (M2: `tb_logit` and `features` only, ADR-14); DR gives 4 ordinal logits plus feature map; gate gives 5 class logits.
 - [ ] Feature map kept as an output so the browser can compute the class activation map (ADR-9).
 - [ ] Run the exported model in ONNX Runtime (Python) and compare with PyTorch on a fixed image set before quantizing.
+- [ ] Preprocessing follows `ml/train/preprocess_spec.json` (`cxr-pre-2`: stretch to 320 by 320, no padding, ADR-16).
+- [ ] Code: `ml/export/export_onnx.py`; on Modal `modal run ml/modal/train_app.py::export`.
 
 ## 2. Static int8 quantization (TRD 9.5 step 2, ADR-5)
 
-- [ ] Calibration set: about 500 images from the **validation** split. Never test or external data.
+- [ ] Calibration set: a fixed sample of **train** images, no augmentation (ADR-17; 300 for Shenzhen). Never validation, test or external data, so the drop is measured on images the ranges were not set on.
 - [ ] Produce both QOperator and QDQ formats.
 - [ ] Measure both **in the browser** (ONNX Runtime Web, WebAssembly) on the reference phone; keep the faster one and record why.
 
@@ -46,7 +48,7 @@ Reference phone: TBD, see decision D2 (default: cheapest Android phone a team me
 
 ## 4. Accuracy drop (TRD 9.5 step 4)
 
-- [ ] int8 AUROC within 0.015 of fp32 on the internal test set (floor 0.03).
+- [ ] int8 AUROC within 0.015 of fp32 (floor 0.03). Bake-off: on validation (ADR-15 rule 2). Frozen model: once more on the internal test set.
 - [ ] If not, keep full precision for that model **only if** it still fits the size budget. Record the decision.
 
 ## 5. Size (NFR-SIZE-01)

@@ -53,7 +53,7 @@ In the Shenzhen set TB images are narrower than normal ones, so image shape pred
 | Field | Healthy | Warning sign |
 | --- | --- | --- |
 | `within_class_corr` (normal, tb) | Near 0 | Stronger than 0.3 either way: the score follows shape |
-| `by_aspect_third[].auroc` | Close to the overall validation AUROC | More than 0.10 below it inside a third |
+| `by_aspect_third[].auroc` (or `by_aspect_value` when a set has only a few fixed shapes, as Montgomery) | Close to the overall validation AUROC | More than 0.10 below it inside a group |
 
 Training also stretches width and height independently by up to 15% (`shape_jitter`, default 0.15; 0 turns it off), so apparent chest width stops being a reliable clue. Bake-off 1 ran without it and still showed within-class correlations of -0.26 to -0.53. The bake-off table shows the mean within-class correlation as `shape corr`. Rung 0 in the baselines still scores about 0.80: it measures the dataset, not the model.
 
@@ -62,6 +62,19 @@ Training also stretches width and height independently by up to 15% (`shape_jitt
 ## After the bake-off
 
 ONNX export, int8 and the rule 2 comparison: [`ml/export/README.md`](../export/README.md).
+
+## One-time evaluation of the frozen model
+
+ML-DATA-04: the Shenzhen held-out split (`test`) and Montgomery are scored once per frozen model. `evaluate.py` checks the preprocessing version first, then claims each set with a lock file before reading it and saves its result at once. A retry reuses saved results and never scores a set again; a set claimed by an attempt that died while scoring it is refused, and the gap must be reported. Every attempt is logged.
+
+```sh
+modal volume put triagelens-data ml/data/raw/montgomery /montgomery/raw   # once
+modal run ml/modal/train_app.py::evaluate        # median seed of the latest bake-off (ADR-18)
+modal volume get --force triagelens-runs /eval ml/runs/
+python3 ml/train/subgroups.py ml/runs/eval/<run>  # sex, age, active vs inactive TB; runs locally
+```
+
+The only operating point uses a threshold set on validation (90% sensitivity). `subgroups.py` reads the git-ignored private metadata on the team's machine and saves counts and rates only. Results for the frozen model: ADR-18, section "Results".
 
 ## Tests
 

@@ -73,17 +73,27 @@ def shape_check(y, score, aspect):
       read shape, AUROC would drop inside groups of similar shape.
     """
     y, score, aspect = np.asarray(y), np.asarray(score), np.asarray(aspect)
-    cuts = np.quantile(aspect, [1 / 3, 2 / 3])
-    group = np.digitize(aspect, cuts)
-    thirds = []
-    for g in range(3):
+    levels = np.unique(aspect)
+    if len(levels) <= 3:
+        # A few fixed shapes (Montgomery: portrait and landscape only): one group per shape.
+        # Thirds by quantile would leave a group empty.
+        key, group = "by_aspect_value", np.searchsorted(levels, aspect)
+        n_groups = len(levels)
+    else:
+        key, group = "by_aspect_third", np.digitize(aspect, np.quantile(aspect, [1 / 3, 2 / 3]))
+        n_groups = 3
+    groups = []
+    for g in range(n_groups):
         sel = group == g
-        thirds.append({"aspect_range": [float(aspect[sel].min()), float(aspect[sel].max())],
+        if not sel.any():
+            continue
+        both = 0 < y[sel].sum() < sel.sum()
+        groups.append({"aspect_range": [float(aspect[sel].min()), float(aspect[sel].max())],
                        "n": int(sel.sum()), "n_tb": int(y[sel].sum()),
-                       "auroc": auroc(y[sel], score[sel])})
+                       "auroc": auroc(y[sel], score[sel]) if both else None})
     return {
         "aspect_alone_auroc": auroc(y, -aspect),  # narrower = TB, as in the data
         "within_class_corr": {"normal": spearman(score[y == 0], aspect[y == 0]),
                               "tb": spearman(score[y == 1], aspect[y == 1])},
-        "by_aspect_third": thirds,
+        key: groups,
     }

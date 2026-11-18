@@ -58,9 +58,10 @@ async function screen(file: Blob) {
   const t1 = performance.now();
 
   const quality = checkQuality(rgbaToGray(rgba), width, height, colourfulness(rgba));
+  const t1b = performance.now();
   if (quality.passed) post({ type: 'progress', step: 1 });
   if (!quality.passed) {
-    return post({ type: 'screened', quality, stats: null, logit: null, preprocess: PREPROCESS_VERSION, timings: { decode_ms: t1 - t0, preprocess_ms: 0, model_ms: 0 }, threads });
+    return post({ type: 'screened', quality, stats: null, logit: null, preprocess: PREPROCESS_VERSION, timings: { decode_ms: t1 - t0, quality_ms: t1b - t1, preprocess_ms: 0, model_ms: 0 }, threads });
   }
   const { small, tensor } = preprocess(rgba, width, height);
   const stats = inputStats(small, INPUT_SIZE, width, height);
@@ -73,9 +74,9 @@ async function screen(file: Blob) {
     const out = await session.run(feeds, ['tb_logit']);
     const logit = Number((out.tb_logit.data as Float32Array)[0]);
     const t3 = performance.now();
-    post({ type: 'screened', quality, stats, logit, preprocess: PREPROCESS_VERSION, timings: { decode_ms: t1 - t0, preprocess_ms: t2 - t1, model_ms: t3 - t2 }, threads });
+    post({ type: 'screened', quality, stats, logit, preprocess: PREPROCESS_VERSION, timings: { decode_ms: t1 - t0, quality_ms: t1b - t1, preprocess_ms: t2 - t1b, model_ms: t3 - t2 }, threads });
   } catch {
-    post({ type: 'error', code: 'model_run' });
+    return post({ type: 'error', code: 'model_run' });
   }
 }
 

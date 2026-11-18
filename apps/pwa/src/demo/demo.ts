@@ -34,11 +34,11 @@ export class DemoClient {
   async screen(_file: Blob, onProgress: (step: 1 | 2) => void): Promise<Screened> {
     const o = next;
     await wait(500);
-    const timings = { decode_ms: 120, preprocess_ms: 0, model_ms: 0 };
+    const timings = { decode_ms: 120, quality_ms: 40, preprocess_ms: 0, model_ms: 0 };
     if (o === 'retake') {
       return {
         type: 'screened', preprocess: 'cxr-pre-2', threads: 1, timings, stats: null, logit: null,
-        quality: { version: 'quality-v1', passed: false, reason: 'too_dark', width: 1600, height: 1800, mean: 22, std: 30, colourfulness: 2 },
+        quality: { version: 'quality-v2', passed: false, reason: 'too_dark', width: 1600, height: 1800, mean: 22, std: 30, colourfulness: 2, sharpness: 300, glare_fraction: 0, border_flat: 0.1, interior_std: 30 },
       };
     }
     onProgress(1);
@@ -47,8 +47,8 @@ export class DemoClient {
     await wait(800);
     return {
       type: 'screened', preprocess: 'cxr-pre-2', threads: 1,
-      timings: { decode_ms: 120, preprocess_ms: 60, model_ms: 900 + Math.round(Math.random() * 600) },
-      quality: { version: 'quality-v1', passed: true, reason: null, width: 1600, height: 1800, mean: 128, std: 52, colourfulness: 3 },
+      timings: { decode_ms: 120, quality_ms: 40, preprocess_ms: 60, model_ms: 900 + Math.round(Math.random() * 600) },
+      quality: { version: 'quality-v2', passed: true, reason: null, width: 1600, height: 1800, mean: 128, std: 52, colourfulness: 3, sharpness: 300, glare_fraction: 0, border_flat: 0.1, interior_std: 52 },
       stats: { version: 'input-stats-v1', width: 1600, height: 1800, aspect_ratio: 0.8889, mean_brightness: 126 + Math.round(Math.random() * 10), edge_energy: 0.05 + Math.random() * 0.02 },
       logit: LOGIT[o] + (Math.random() - 0.5) * 0.4,
     };

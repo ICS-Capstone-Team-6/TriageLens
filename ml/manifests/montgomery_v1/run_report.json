@@ -1,0 +1,74 @@
+{
+  "dataset": "NLM Montgomery County CXR Set (images: Kaggle raddar copy; readings: NLM)",
+  "dataset_version_hash": "6faf25d05645dcb0",
+  "pipeline_version": "0.1.0",
+  "role": "locked external test (ML-DATA-04)",
+  "source_kaggle_version": 1,
+  "run_utc": "2026-10-20T13:43:08+00:00",
+  "python": "3.10.12",
+  "numpy": "2.2.6",
+  "pandas": "2.3.3",
+  "images_found": 138,
+  "records_kept": 127,
+  "records_quarantined": 11,
+  "quarantine_by_check": {
+    "intended_population": 11
+  },
+  "quarantine_by_check_and_label": {
+    "intended_population (label 0)": 10,
+    "intended_population (label 1)": 1
+  },
+  "label_counts": {
+    "0": 70,
+    "1": 57
+  },
+  "tb_inactive_or_healed": 21,
+  "patient_groups": 124,
+  "images_in_multi_image_groups": 5,
+  "reading_links_to_other_images": 4,
+  "near_duplicate_pairs": 0,
+  "shenzhen_overlap": 0,
+  "csv_vs_readings_differences": {},
+  "sex_counts": {
+    "female": 68,
+    "male": 59
+  },
+  "age_band_counts": {
+    "15-24": 16,
+    "25-34": 34,
+    "35-44": 22,
+    "45-54": 33,
+    "55-64": 8,
+    "65+": 14
+  },
+  "orientation_counts": {
+    "portrait": 93,
+    "landscape": 34
+  },
+  "resolution_px": {
+    "smallest_side_min": 4020,
+    "largest_side_max": 4892
+  },
+  "batch_checks": [
+    {
+      "check": "source_matches_nlm_counts",
+      "passed": true,
+      "detail": "found {'images': 138, '0': 80, '1': 58}, NLM lists {'images': 138, '0': 80, '1': 58}"
+    },
+    {
+      "check": "no_training_source_overlap",
+      "passed": true,
+      "detail": "0 image(s) overlapped Shenzhen and were quarantined"
+    },
+    {
+      "check": "min_records",
+      "passed": true,
+      "detail": "127 records kept, need 100"
+    },
+    {
+      "check": "both_classes_present",
+      "passed": true,
+      "detail": "labels kept: [0, 1]"
+    }
+  ]
+}

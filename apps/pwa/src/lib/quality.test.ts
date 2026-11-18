@@ -215,3 +215,32 @@ describe('colourfulness', () => {
     expect(colourfulness(rgba((i) => (i % 3 === 0 ? [230, 40, 40] : i % 3 === 1 ? [40, 200, 60] : [50, 60, 220])))).toBeGreaterThan(COLOURFUL_MAX);
   });
 });
+
+
+describe('quality sampling regressions', () => {
+  it.each([512, 1792, 3584])('does not read a periodic texture as blank at %i px', (size) => {
+    const a = image(size, size, (i) => i % 2 ? 180 : 60);
+    const q = checkQuality(a, size, size, 0);
+    expect(q.mean).toBeCloseTo(120, -1);
+    expect(q.std).toBeGreaterThan(50);
+    expect(q.reason).not.toBe('blank');
+  });
+
+  it.each(['rows', 'columns'] as const)('detects clipped %s hidden between the old step-7 samples', (axis) => {
+    const size = 1792;
+    const a = image(size, size, (i) => {
+      const x = i % size, y = Math.floor(i / size);
+      return (axis === 'rows' ? y : x) % 7 === 0
+        ? 60 + ((Math.floor(x / 7) * 37 + Math.floor(y / 7) * 19) % 140) : 255;
+    });
+    const q = checkQuality(a, size, size, 0);
+    expect(q.passed).toBe(false);
+    expect(q.mean).toBeGreaterThan(230);
+    expect(q.glare_fraction).toBeGreaterThan(0.8);
+  });
+
+  it('is deterministic across repeated checks', () => {
+    const a = grain(1792, 1024);
+    expect(checkQuality(a, 1792, 1024, 0)).toEqual(checkQuality(a, 1792, 1024, 0));
+  });
+});

@@ -25,8 +25,8 @@
 //     so the band is wide enough to leave a protocol-compliant border alone.
 // Exposure and glare are checked before framing because they hide detail inside the film.
 // A film photographed small on a bright background can therefore be reported as glare first.
-// Every check samples a grid of about 256 x 256 points, so cost does not grow with the photo
-// and the whole gate stays inside its 300 ms budget (NFR-PERF-03).
+// Each grayscale check samples at most 256 x 256 points. Colourfulness still scans one
+// pixel in four; the full worker budget needs measurement on the reference phone (NFR-PERF-03).
 
 export const QUALITY_VERSION = 'quality-v2';
 export const MIN_SIDE = 512;
@@ -94,25 +94,42 @@ function sampleStep(width: number, height: number): number {
   return Math.max(1, Math.floor(Math.min(width, height) / GRID));
 }
 
+/** Mix a cell index into a stable unsigned value; no random state between screenings. */
+function mix(value: number): number {
+  let h = Math.imul(value ^ (value >>> 16), 0x7feb352d);
+  h = Math.imul(h ^ (h >>> 15), 0x846ca68b);
+  return (h ^ (h >>> 16)) >>> 0;
+}
+
 /**
- * Per-row start offset. A regular grid can line up with a fine repeating pattern, such as the
- * moire of a photo of a screen, and then every sample lands on the same phase. Shifting each
- * sampled row by a small co-prime amount keeps samples spread over the pattern.
+ * One sample per cell, at most GRID cells per axis. Independent offsets in both axes
+ * avoid the old fixed-row stride and step-7 resonance. Sampling is still an estimate:
+ * no sparse sampler can guarantee detection of every possible repeating pattern.
  */
-function rowOffset(row: number, s: number): number {
-  return s > 1 ? (row * 7) % s : 0;
+function forEachSample(width: number, height: number, visit: (x: number, y: number) => void,
+  x0 = 0, y0 = 0, x1 = width, y1 = height): void {
+  const cols = Math.min(GRID, x1 - x0), rows = Math.min(GRID, y1 - y0);
+  for (let row = 0; row < rows; row++) {
+    const top = y0 + Math.floor(row * (y1 - y0) / rows);
+    const bottom = y0 + Math.floor((row + 1) * (y1 - y0) / rows);
+    for (let col = 0; col < cols; col++) {
+      const left = x0 + Math.floor(col * (x1 - x0) / cols);
+      const right = x0 + Math.floor((col + 1) * (x1 - x0) / cols);
+      const cell = row * GRID + col;
+      const x = left + mix(cell * 2 + 1) % (right - left);
+      const y = top + mix(cell * 2 + 2) % (bottom - top);
+      visit(x, y);
+    }
+  }
 }
 
 /** Mean and spread of brightness over the sampling grid. */
 export function moments(gray: Uint8Array, width: number, height: number): { mean: number; std: number } {
-  const s = sampleStep(width, height);
-  let sum = 0, sq = 0, n = 0, r = 0;
-  for (let y = 0; y < height; y += s, r++) {
-    for (let x = rowOffset(r, s); x < width; x += s) {
-      const v = gray[y * width + x];
-      sum += v; sq += v * v; n++;
-    }
-  }
+  let sum = 0, sq = 0, n = 0;
+  forEachSample(width, height, (x, y) => {
+    const v = gray[y * width + x];
+    sum += v; sq += v * v; n++;
+  });
   if (!n) return { mean: 0, std: 0 };
   const mean = sum / n;
   return { mean, std: Math.sqrt(Math.max(sq / n - mean * mean, 0)) };
@@ -125,14 +142,12 @@ export function moments(gray: Uint8Array, width: number, height: number): { mean
  */
 export function sharpness(gray: Uint8Array, width: number, height: number): number {
   const s = sampleStep(width, height);
-  let sum = 0, sq = 0, n = 0, r = 0;
-  for (let y = s; y < height - s; y += s, r++) {
-    for (let x = s + rowOffset(r, s); x < width - s; x += s) {
-      const i = y * width + x;
-      const l = 4 * gray[i] - gray[i - s] - gray[i + s] - gray[i - s * width] - gray[i + s * width];
-      sum += l; sq += l * l; n++;
-    }
-  }
+  let sum = 0, sq = 0, n = 0;
+  forEachSample(width, height, (x, y) => {
+    const i = y * width + x;
+    const l = 4 * gray[i] - gray[i - s] - gray[i + s] - gray[i - s * width] - gray[i + s * width];
+    sum += l; sq += l * l; n++;
+  }, s, s, width - s, height - s);
   if (!n) return 0;
   const mean = sum / n;
   return Math.max(sq / n - mean * mean, 0);
@@ -140,28 +155,22 @@ export function sharpness(gray: Uint8Array, width: number, height: number): numb
 
 /** Share of sampled pixels that are clipped bright. Light reflecting off film, a screen or a light box washes out everything it covers. */
 export function glareFraction(gray: Uint8Array, width: number, height: number): number {
-  const s = sampleStep(width, height);
-  let hits = 0, n = 0, r = 0;
-  for (let y = 0; y < height; y += s, r++) {
-    for (let x = rowOffset(r, s); x < width; x += s) {
-      n++;
-      if (gray[y * width + x] >= GLARE_LEVEL) hits++;
-    }
-  }
+  let hits = 0, n = 0;
+  forEachSample(width, height, (x, y) => {
+    n++;
+    if (gray[y * width + x] >= GLARE_LEVEL) hits++;
+  });
   return n ? hits / n : 0;
 }
 
 /** Fraction of one edge band within FLAT_TOLERANCE of that band's median. */
-function edgeFlatness(gray: Uint8Array, width: number, height: number, s: number, band: number, side: 'left' | 'right' | 'top' | 'bottom'): number {
+function edgeFlatness(gray: Uint8Array, width: number, height: number, band: number, side: 'left' | 'right' | 'top' | 'bottom'): number {
   const vals: number[] = [];
-  let r = 0;
-  for (let y = 0; y < height; y += s, r++) {
+  forEachSample(width, height, (x, y) => {
     const edgeRow = side === 'top' ? y < band : side === 'bottom' ? y >= height - band : true;
-    for (let x = rowOffset(r, s); x < width; x += s) {
-      const edgeCol = side === 'left' ? x < band : side === 'right' ? x >= width - band : true;
-      if (edgeRow && edgeCol) vals.push(gray[y * width + x]);
-    }
-  }
+    const edgeCol = side === 'left' ? x < band : side === 'right' ? x >= width - band : true;
+    if (edgeRow && edgeCol) vals.push(gray[y * width + x]);
+  });
   if (!vals.length) return 0;
   const sorted = [...vals].sort((a, b) => a - b);
   const median = sorted[sorted.length >> 1];
@@ -171,16 +180,14 @@ function edgeFlatness(gray: Uint8Array, width: number, height: number, s: number
 }
 
 /** Spread of brightness in the middle half, so a plain photo is not called badly framed. */
-function interiorStd(gray: Uint8Array, width: number, height: number, s: number): number {
+function interiorStd(gray: Uint8Array, width: number, height: number): number {
   const x0 = Math.floor(width * 0.25), x1 = Math.ceil(width * 0.75);
   const y0 = Math.floor(height * 0.25), y1 = Math.ceil(height * 0.75);
-  let sum = 0, sq = 0, n = 0, r = 0;
-  for (let y = y0; y < y1; y += s, r++) {
-    for (let x = x0 + rowOffset(r, s); x < x1; x += s) {
-      const v = gray[y * width + x];
-      sum += v; sq += v * v; n++;
-    }
-  }
+  let sum = 0, sq = 0, n = 0;
+  forEachSample(width, height, (x, y) => {
+    const v = gray[y * width + x];
+    sum += v; sq += v * v; n++;
+  }, x0, y0, x1, y1);
   if (!n) return 0;
   const mean = sum / n;
   return Math.sqrt(Math.max(sq / n - mean * mean, 0));
@@ -191,20 +198,19 @@ function interiorStd(gray: Uint8Array, width: number, height: number, s: number)
  * modality-related check, which fails open (NFR-SAFE-02, hazard H3).
  */
 export function checkQuality(gray: Uint8Array, width: number, height: number, colour: number): QualityResult {
-  // One grid for every check, so the numbers always agree with each other.
+  // All checks use the same deterministic stratified sampling rule.
   const { mean, std } = moments(gray, width, height);
-  const grid = sampleStep(width, height);
   const sharp = sharpness(gray, width, height);
   const glare = glareFraction(gray, width, height);
   // Wide enough that a protocol-compliant small border (TRD 7.4, Appendix C) stays out of it.
   const band = Math.max(2, Math.round(Math.min(width, height) * 0.1));
   const border = Math.min(
-    edgeFlatness(gray, width, height, grid, band, 'left'),
-    edgeFlatness(gray, width, height, grid, band, 'right'),
-    edgeFlatness(gray, width, height, grid, band, 'top'),
-    edgeFlatness(gray, width, height, grid, band, 'bottom'),
+    edgeFlatness(gray, width, height, band, 'left'),
+    edgeFlatness(gray, width, height, band, 'right'),
+    edgeFlatness(gray, width, height, band, 'top'),
+    edgeFlatness(gray, width, height, band, 'bottom'),
   );
-  const interior = interiorStd(gray, width, height, grid);
+  const interior = interiorStd(gray, width, height);
 
   let reason: RetakeReason | null = null;
   if (Math.min(width, height) < MIN_SIDE) reason = 'too_small';

@@ -68,3 +68,7 @@ Two reviewed files in `public/config/` control results:
 - Model binaries (served from a URL and checked by hash).
 - Third-party scripts (NFR-SEC-05). ONNX Runtime and the Manrope font are self-hosted.
 - Hard-coded user-facing strings (NFR-LOC-01). They live in `src/strings/en.json`, which the wording lint checks.
+
+## Android test APK
+
+The [Android runbook](../../docs/runbook/android-apk.md) covers the bundled Capacitor app and the APK artifact built on each main update. Relevant PRs build a separate preview app. Full offline model loading, login and queued saving are not implemented by the wrapper.

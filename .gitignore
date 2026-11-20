@@ -71,3 +71,11 @@ Thumbs.db
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# Android local state, signing material and installable build output
+*.jks
+*.keystore
+*.p12
+*.apk
+*.aab
+android-signing/

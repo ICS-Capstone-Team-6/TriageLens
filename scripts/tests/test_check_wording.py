@@ -81,3 +81,11 @@ class WordingLintTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class AndroidGeneratedAssetTests(unittest.TestCase):
+    def test_copied_android_bundle_is_excluded(self):
+        self.assertTrue(cw.is_skipped(Path("android/app/src/main/assets/public/assets/index.js")))
+
+    def test_android_source_is_not_excluded(self):
+        self.assertFalse(cw.is_skipped(Path("android/app/src/main/source.js")))

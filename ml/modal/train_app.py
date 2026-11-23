@@ -197,6 +197,28 @@ def evaluate_remote(run_dir: str) -> dict:
     return report
 
 
+@app.function(cpu=4, memory=32768, timeout=2 * 60 * 60,
+              volumes={DATA_DIR: data_volume, RUNS_DIR: runs_volume})
+def evaluate_combined_remote(run_dir: str) -> dict:
+    """ONE-TIME score of a frozen Shenzhen + TBX11K candidate (ADR-23) on the Shenzhen held-out
+    split, the TBX11K test split and Montgomery, each scored and reported on its own.
+    Main threshold: 90% sensitivity on the combined validation set. Second, fixed in the
+    same way before any test read: 90% sensitivity on Shenzhen validation alone, the rule
+    the frozen Shenzhen-only model was scored with."""
+    _train_code()
+    sys.path.insert(0, "/root/ml/export")
+    import evaluate as ev
+
+    runs_volume.reload()
+    data_volume.reload()
+    sets = {"shenzhen_test": (PROCESSED, "test"), "tbx11k_test": (TBX_PROCESSED, "test"),
+            "montgomery": (MONT_PROCESSED, "external")}
+    report = ev.evaluate(run_dir, sets, f"{RUNS_DIR}/eval/{Path(run_dir).name}", COMBINED,
+                         extra_thresholds={"shenzhen_val": PROCESSED})
+    runs_volume.commit()
+    return report
+
+
 @app.function(cpu=4, memory=8192, timeout=30 * 60,
               volumes={DATA_DIR: data_volume, RUNS_DIR: runs_volume})
 def review_remote(run_dir: str, per_kind: int) -> dict:
@@ -456,6 +478,45 @@ def evaluate(summary: str = "", backbone: str = "efficientnet_lite0"):
     print(f"\nSaved to {dest.relative_to(REPO)}. Then, for subgroups (personal data stays on this machine):")
     print("    modal volume get --force triagelens-runs /eval ml/runs/")
     print(f"    python3 ml/train/subgroups.py ml/runs/eval/{Path(run_dir).name}")
+
+
+@app.local_entrypoint()
+def evaluate_combined(summary: str = "", backbone: str = "efficientnet_lite0"):
+    """ONE-TIME evaluation of the combined candidate: median seed by the selection metric
+    from a combined bake-off summary with the natural sampler (ml/train/README.md)."""
+    runs_dir = REPO / "ml" / "runs"
+    if summary:
+        path = Path(summary)
+    else:
+        natural = [p for p in sorted(runs_dir.glob("combined_summary_*.json"))
+                   if json.loads(p.read_text()).get("sampler") == "natural"]
+        if not natural:
+            raise SystemExit("no combined bake-off summary with the natural sampler in ml/runs/")
+        path = natural[-1]
+    s = json.loads(path.read_text())
+    if s.get("data") != "combined":
+        raise SystemExit(f"{path.name} is not a combined bake-off")
+    entry = s["summary"][backbone]
+    ranked = sorted(zip(entry["val_auroc"], entry["runs"]))
+    val_auc, run_dir = ranked[len(ranked) // 2]
+    print(f"Frozen candidate (median of {len(ranked)} seeds in {path.name}, sampler {s.get('sampler')}): "
+          f"{run_dir}, selection AUROC {val_auc:.3f}")
+    print("Scoring the Shenzhen held-out split, the TBX11K test split and Montgomery ONCE (ML-DATA-04).")
+    r = evaluate_combined_remote.remote(run_dir)
+    op = r["operating_point"]
+    print(f"\nMain threshold (combined validation): probability {op['probability_threshold']:.3f}")
+    for k, x in op["extra"].items():
+        print(f"Second threshold ({k}): probability {x['probability_threshold']:.3f}")
+    print(f"\n{'set':15s} {'n':>4s} {'TB':>4s} {'AUROC [95% CI]':>22s} {'sens':>6s} {'spec':>6s} "
+          f"{'sens2':>6s} {'spec2':>6s} {'int8 drop':>9s}")
+    for name, e in r["sets"].items():
+        f, a, b = e["fp32"], e["at_validation_threshold"], e["at_threshold_shenzhen_val"]
+        print(f"{name:15s} {f['n']:4d} {f['n_tb']:4d} {f['auroc']:7.3f} [{f['ci95'][0]:.3f}, {f['ci95'][1]:.3f}] "
+              f"{a['sensitivity']:6.3f} {a['specificity']:6.3f} {b['sensitivity']:6.3f} {b['specificity']:6.3f} "
+              f"{e['int8']['drop']:+9.3f}")
+    dest = runs_dir / f"eval_{Path(run_dir).name}.json"  # git-ignored
+    dest.write_text(json.dumps(r, indent=2))
+    print(f"\nSaved to {dest.relative_to(REPO)}. Subgroups: modal volume get --force triagelens-runs /eval ml/runs/")
 
 
 @app.local_entrypoint()

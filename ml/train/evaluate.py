@@ -19,7 +19,9 @@ sweep, ADR-17) is scored beside it for ML-EVAL-03, not shipped.
 Operating point: no threshold is tuned on test data. The one operating point reported takes
 the threshold that reaches 90% sensitivity on VALIDATION (the TRD target for TB triage) and
 applies it unchanged to each test set. Calibration and the three triage zones come later
-(E6), also from validation only.
+(E6), also from validation only. extra_thresholds adds more operating points by the same
+rule on other validation folders (for a combined model: Shenzhen validation alone, the rule
+the Shenzhen-only model was scored with). All of them are fixed before any locked set is read.
 
 For each set it writes predictions.csv (file, label, scores, aspect ratio) and adds to
 eval_report.json: AUROC with 95% CI, sensitivity and specificity at the validation
@@ -148,17 +150,20 @@ def set_status(out_dir, name, checkpoint_sha):
     return "exposed" if lock.exists() else "new"
 
 
-def evaluate(run_dir, sets, out_dir, train_data_dir, int8=True, log=print):
+def evaluate(run_dir, sets, out_dir, train_data_dir, int8=True, log=print, extra_thresholds=None):
     """sets: {name: (processed folder, split)}, e.g. {"shenzhen_test": (..., "test"),
     "montgomery": (..., "external")}. train_data_dir holds val (threshold) and train
-    (int8 calibration images). Returns the report."""
+    (int8 calibration images). extra_thresholds: {name: processed folder}; each adds an
+    operating point at 90% sensitivity on that folder's val split. Returns the report."""
+    extra_thresholds = extra_thresholds or {}
     run_dir, out_dir, train_data_dir = Path(run_dir), Path(out_dir), Path(train_data_dir)
     if (out_dir / "eval_report.json").exists():
         raise AlreadyEvaluated(f"{out_dir} already holds an evaluation; the locked sets are scored once")
     spec = load_spec()
     cfg = json.loads((run_dir / "config.json").read_text())
     # Preflight before any reservation or read of a locked set
-    check_preprocessing(cfg, [train_data_dir, *(Path(d) for d, _ in sets.values())], spec)
+    check_preprocessing(cfg, [train_data_dir, *(Path(d) for d, _ in sets.values()),
+                              *(Path(d) for d in extra_thresholds.values())], spec)
     checkpoint_sha = _sha256(run_dir / "best.pt")
     status = {name: set_status(out_dir, name, checkpoint_sha) for name in sets}
     exposed = [n for n, st in status.items() if st == "exposed"]
@@ -182,6 +187,14 @@ def evaluate(run_dir, sets, out_dir, train_data_dir, int8=True, log=print):
     val = load_split(train_data_dir, "val")
     val_logit = torch_logits(model, val["x"], spec)
     t = threshold_for_sensitivity(val["y"], val_logit)
+    extra = {}
+    for xname, xdir in extra_thresholds.items():
+        xval = load_split(xdir, "val")
+        xlogit = torch_logits(model, xval["x"], spec)
+        xt = threshold_for_sensitivity(xval["y"], xlogit)
+        extra[xname] = {"logit_threshold": xt, "probability_threshold": float(_sigmoid(xt)),
+                        "validation": at_threshold(xval["y"], xlogit, xt),
+                        "combined_validation": at_threshold(val["y"], val_logit, xt)}
     report = {
         "run": run_dir.name, "backbone": cfg["backbone"], "seed": cfg["seed"],
         "trained_on": cfg.get("dataset_version_hash"), "code_commit_of_run": cfg.get("git_commit"),
@@ -189,7 +202,8 @@ def evaluate(run_dir, sets, out_dir, train_data_dir, int8=True, log=print):
         "evaluated_utc": _now(),
         "operating_point": {"rule": f"threshold reaching {TARGET_SENSITIVITY:.0%} sensitivity on validation",
                             "logit_threshold": t, "probability_threshold": float(_sigmoid(t)),
-                            "validation": at_threshold(val["y"], val_logit, t)},
+                            "validation": at_threshold(val["y"], val_logit, t),
+                            "extra": extra},
         "int8_setting": INT8_SETTING if int8 else None,
         "sets": {},
     }
@@ -211,7 +225,8 @@ def evaluate(run_dir, sets, out_dir, train_data_dir, int8=True, log=print):
         result_path = out_dir / "results" / f"{name}.json"
         if status[name] == "done":
             saved = json.loads(result_path.read_text())
-            if saved["logit_threshold"] != t:
+            if saved["logit_threshold"] != t or saved.get("extra_thresholds", {}) != {
+                    k: v["logit_threshold"] for k, v in extra.items()}:
                 raise AlreadyEvaluated(f"{name} was scored at another threshold; not mixing results")
             log(f"{name}: already scored by an earlier attempt, reusing the saved result")
             report["sets"][name] = saved["entry"]
@@ -230,6 +245,8 @@ def evaluate(run_dir, sets, out_dir, train_data_dir, int8=True, log=print):
             "fp32": summarize(y, logit), "at_validation_threshold": at_threshold(y, logit, t),
             "border_masked_auroc": auroc(y, masked), "shape_check": shape_check(y, logit, aspect),
         }
+        for xname, x in extra.items():
+            entry[f"at_threshold_{xname}"] = at_threshold(y, logit, x["logit_threshold"])
         rows = {"file": d["files"], "label": y, "prob_fp32": _sigmoid(logit), "aspect": aspect}
         if q_path is not None:
             import export_onnx
@@ -237,9 +254,13 @@ def evaluate(run_dir, sets, out_dir, train_data_dir, int8=True, log=print):
             q_logit, _ = export_onnx.run_onnx(q_path, d["x"], spec)
             entry["int8"] = {**summarize(y, q_logit), "drop": auroc(y, logit) - auroc(y, q_logit),
                              "at_validation_threshold": at_threshold(y, q_logit, t)}
+            for xname, x in extra.items():
+                entry["int8"][f"at_threshold_{xname}"] = at_threshold(y, q_logit, x["logit_threshold"])
             rows["prob_int8"] = _sigmoid(q_logit)
         pd.DataFrame(rows).to_csv(out_dir / f"predictions_{name}.csv", index=False)
         _write_atomic(result_path, json.dumps({"checkpoint_sha256": checkpoint_sha, "logit_threshold": t,
+                                               "extra_thresholds": {k: v["logit_threshold"]
+                                                                    for k, v in extra.items()},
                                                "scored_utc": _now(), "entry": entry}, indent=2))
         report["sets"][name] = entry
     attempts[-1]["finished"] = True

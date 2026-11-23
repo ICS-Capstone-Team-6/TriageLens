@@ -23,7 +23,7 @@
     "@capacitor/android": "8.6.2",
     "@capacitor/core": "8.6.2",
     "@fontsource/manrope": "5.3.0",
-    "@supabase/supabase-js": "2.118.0",
+    "@supabase/supabase-js": "2.119.2",
     "onnxruntime-web": "1.31.1",
     "react": "19.3.1",
     "react-dom": "19.3.1"

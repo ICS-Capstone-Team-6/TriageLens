@@ -254,6 +254,18 @@ class TestSubgroups(unittest.TestCase):
             saved = (root / "subgroups.json").read_text()
             self.assertNotIn("MCUCXR_", saved)  # aggregates only, no per-patient rows
 
+    def test_set_without_private_metadata_is_skipped(self):
+        # TBX11K has no sex or age (ADR-23): the run must not crash on it
+        import subgroups as sg
+
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            (root / "eval_report.json").write_text(json.dumps(
+                {"run": "r", "operating_point": {"probability_threshold": 0.5}, "sets": {"tbx11k_test": {}}}))
+            r = sg.subgroups(root, private={})
+            self.assertIn("skipped", r["sets"]["tbx11k_test"])
+            self.assertEqual(sg.main([str(root)]), 0)  # printing handles it too
+
 
 if __name__ == "__main__":
     unittest.main()

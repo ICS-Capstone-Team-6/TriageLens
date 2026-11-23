@@ -107,7 +107,21 @@ Seed 1 of the natural run: Shenzhen 0.932 (95% CI 0.874 to 0.976). No run stoppe
 - **The source offset remains.** Normal Shenzhen films score about three times higher than normal TBX11K films. A single threshold will act differently on each source, which is the Montgomery sensitivity drop seen before. Only the external test can show whether TBX11K fixes it.
 - **Sampler.** Source-balanced sampling is no better and makes the shape correlation slightly worse. Keep `natural`.
 
-Next: freeze a combined candidate, using the natural sampler's median seed. Then do the ADR-8 calibration and thresholds on validation, and score it once on the locked sets (Montgomery, Shenzhen held-out, TBX11K test) next to the frozen Shenzhen-only model.
+**One-time evaluation of the combined candidate (23 Nov 2026).** Run `efficientnet_lite0_seed1_20261123T160548Z`: the natural sampler's median seed, at full precision, with evaluation code `4ce6426`. Each set was scored once (ML-DATA-04). Threshold: 90% sensitivity on combined validation (probability 0.755). Second threshold: 90% sensitivity on Shenzhen validation alone (0.381), the rule the Shenzhen-only model used.
+
+| Set | Shenzhen only (ADR-18 model) AUROC [95% CI] | Combined AUROC [95% CI] | Combined sens / spec at Shenzhen-val threshold |
+| --- | --- | --- | --- |
+| Shenzhen held-out (93, 47 TB) | 0.978 [0.942, 1.000] | 0.981 [0.950, 1.000] | 0.979 / 0.935 |
+| TBX11K test (884, 100 TB) | not scored | 0.997 [0.994, 0.999] | 0.980 / 0.980 |
+| **Montgomery, external (127, 57 TB)** | **0.887 [0.830, 0.938]** | **0.734 [0.630, 0.821]** | **0.667 / 0.600** |
+
+- **TBX11K made external results worse.** On the same 127 Montgomery films, the paired bootstrap difference is -0.153 AUROC (95% CI -0.252 to -0.061). The combined model is below the 0.80 floor (TRD 3.4), and its sensitivity is below the 85% floor at both thresholds. The Shenzhen-only model stays the frozen model.
+- **Normal Montgomery films look like TB to it.** Their mean TB score is 0.35, against 0.09 under the Shenzhen-only model, and 0.05 to 0.14 for normal films from the training sources.
+- **Active TB suffers most.** Montgomery active TB against all normals: AUROC 0.687 (Shenzhen only: 0.908). Inactive or healed: 0.814 (0.850). Women: 0.566. Age 55+: 0.553 (22 films, 17 TB). These are small groups, so treat them as warnings, not estimates.
+- **Internal numbers didn't predict this.** Validation and both internal tests went up. A second training source that looks unlike the external set can make generalisation worse, so internal test scores are not enough to choose a model.
+- int8 drop: -0.017 on Montgomery, +0.001 on TBX11K, -0.002 on Shenzhen.
+
+Possible causes, not tested: TBX11K's 512 px downsizing and processing differ from the full-resolution US films; TBX11K labels (sick but not TB counted as 0, latent counted as 1) may not match Montgomery's; the model may lean on source-specific texture (H11). Any new candidate needs its own one-time evaluation.
 
 ## After the bake-off
 

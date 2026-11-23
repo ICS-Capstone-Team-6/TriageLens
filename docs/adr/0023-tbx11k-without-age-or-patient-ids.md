@@ -35,6 +35,10 @@ Option 2, the team's choice on 23 Nov 2026.
 - Subgroup analysis by age and sex (TRD 9.9, `E6-03`) can't include TBX11K. Report this as a missing group.
 - TRD 9.1 and ML-DATA-02 get a TBX11K exception, recorded in the change log in `docs/planning/04_Team_Rules_and_Requirements.md`.
 
+## Results (23 Nov 2026)
+
+TBX11K was used as Option 2 describes, and one candidate trained on Shenzhen plus TBX11K was scored once on the locked sets (details in `ml/train/README.md`). It improved internal results but **made external results worse**. Montgomery AUROC fell from 0.887 to 0.734 (paired difference -0.153, 95% CI -0.252 to -0.061), below the 0.80 floor, and active-TB AUROC fell from 0.908 to 0.687. The Shenzhen-only model (ADR-18) stays frozen. The team should decide whether TBX11K stays in training at all before more GPU time goes to it. Hazard H11 (shortcut learning) gets this as evidence.
+
 ## Revisit trigger
 
 The authors release age or patient metadata, or a review of the TBX11K failures (ML-EVAL-04) finds children's films or repeat patients across splits.

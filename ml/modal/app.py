@@ -21,7 +21,7 @@ GPU = "T4"  # cheapest Modal GPU; enough for MobileNet-sized backbones (ADR-3)
 # Python 3.11 matches CI. Pins per Team Rules 6.
 image = modal.Image.debian_slim(python_version="3.11").pip_install(
     "torch==2.5.1",
-    "numpy==2.2.6",  # same pin as ml/requirements.txt
+    "numpy==2.4.6",  # same pin as ml/requirements.txt
 )
 
 data_volume = modal.Volume.from_name(DATA_VOLUME, create_if_missing=True)

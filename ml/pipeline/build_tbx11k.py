@@ -103,7 +103,8 @@ def tb_subtypes(ann_dir):
     out = {}
     if not ann_dir.is_dir():
         return out
-    for path in sorted(ann_dir.rglob("*.json")):
+    # TBX11K_*.json only: the all_*.json files in the archive also cover the bundled extra sets
+    for path in sorted(ann_dir.rglob("TBX11K_*.json")):
         try:
             coco = json.loads(path.read_text())
         except ValueError:

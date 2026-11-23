@@ -92,13 +92,17 @@ class TestHelpers(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             ann = Path(d) / "json"
             ann.mkdir()
-            (ann / "a.json").write_text(json.dumps({
+            # all_*.json also covers the bundled extra sets: must be ignored
+            (ann / "all_train.json").write_text(json.dumps({
+                "images": [{"id": 9, "file_name": "tb0009.png"}],
+                "annotations": [{"image_id": 9, "category_id": 1}]}))
+            (ann / "TBX11K_a.json").write_text(json.dumps({
                 "images": [{"id": 1, "file_name": "tb/tb0001.png"}, {"id": 2, "file_name": "tb0002.png"},
                            {"id": 3, "file_name": "tb0003.png"}, {"id": 4, "file_name": "tb0004.png"}],
                 "annotations": [{"image_id": 1, "category_id": 1}, {"image_id": 2, "category_id": 2},
                                 {"image_id": 3, "category_id": 1}, {"image_id": 3, "category_id": 2},
                                 {"image_id": 4, "category_id": 3}]}))
-            (ann / "not_coco.json").write_text("[1, 2]")
+            (ann / "TBX11K_not_coco.json").write_text("[1, 2]")
             got = bt.tb_subtypes(Path(d))
         self.assertEqual(got, {"tb0001.png": "active", "tb0002.png": "latent", "tb0003.png": "active_and_latent"})
 

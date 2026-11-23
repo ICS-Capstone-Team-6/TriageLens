@@ -1,0 +1,104 @@
+name: Android APK
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - 'apps/pwa/**'
+      - '.github/workflows/android-apk.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-apk-${{ github.event_name == 'pull_request' && github.ref || github.run_id }}
+  # Keep each main build; superseded PR checks can be cancelled.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  apk:
+    name: Android build and APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+      VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
+      VITE_MODEL_URL: ${{ vars.VITE_MODEL_URL }}
+      VITE_MODEL_SHA256: ${{ vars.VITE_MODEL_SHA256 }}
+      VITE_APP_BUILD: android-${{ github.run_number }}-${{ github.sha }}
+      ANDROID_VERSION_CODE: ${{ github.run_number }}
+      ANDROID_VERSION_NAME: 0.1.${{ github.run_number }}
+    defaults:
+      run:
+        working-directory: apps/pwa
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/pwa/package-lock.json
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Check public build configuration
+        run: node scripts/check-android-env.mjs
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - name: Bundle web files and sync Android
+        run: npm run android:sync
+      - name: Restore main test-build signing key
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          : "${KEYSTORE_BASE64:?Missing ANDROID_KEYSTORE_BASE64}"
+          : "${ANDROID_KEYSTORE_PASSWORD:?Missing ANDROID_KEYSTORE_PASSWORD}"
+          : "${ANDROID_KEY_ALIAS:?Missing ANDROID_KEY_ALIAS}"
+          : "${ANDROID_KEY_PASSWORD:?Missing ANDROID_KEY_PASSWORD}"
+          umask 077
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/triagelens-test.p12"
+      - name: Build signed main APK
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        env:
+          ANDROID_KEYSTORE_PATH: ${{ runner.temp }}/triagelens-test.p12
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: bash android/gradlew -p android --no-daemon assembleRelease lintRelease
+      - name: Build isolated PR preview APK
+        if: github.ref != 'refs/heads/main' || github.event_name == 'pull_request'
+        run: bash android/gradlew -p android --no-daemon assembleDebug assembleRelease lintDebug lintRelease
+      - name: Prepare APK and checksum
+        run: |
+          set -euo pipefail
+          mkdir -p apk-output
+          if [ "$GITHUB_REF" = refs/heads/main ] && [ "$GITHUB_EVENT_NAME" != pull_request ]; then
+            source=android/app/build/outputs/apk/release/app-release.apk
+            label=main
+          else
+            source=android/app/build/outputs/apk/debug/app-debug.apk
+            label=preview
+          fi
+          name="triagelens-${label}-${GITHUB_RUN_NUMBER}-${GITHUB_SHA:0:7}.apk"
+          cp "$source" "apk-output/$name"
+          (cd apk-output && sha256sum "$name" > SHA256SUMS.txt)
+          printf '### TriageLens Android build\n\nDownload the APK artifact below. Install on Android only.\n\nBuild: `%s`\n\n' "$GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
+          printf 'The screens and runtime are bundled. Internet is still required for model loading, sign-in and saving records.\n' >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v7.0.2
+        with:
+          name: triagelens-apk-${{ github.run_number }}-${{ github.run_attempt }}
+          path: apps/pwa/apk-output/
+          if-no-files-found: error
+          retention-days: 30
+      - name: Remove signing file
+        if: always()
+        run: rm -f "$RUNNER_TEMP/triagelens-test.p12"

@@ -15,22 +15,27 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "android:sync": "npm run build && cap sync android",
+    "android:apk": "npm run android:sync && cd android && bash gradlew assembleDebug"
   },
   "dependencies": {
+    "@capacitor/android": "8.6.2",
+    "@capacitor/core": "8.6.2",
     "@fontsource/manrope": "5.3.0",
-    "@supabase/supabase-js": "2.118.0",
+    "@supabase/supabase-js": "2.119.2",
     "onnxruntime-web": "1.31.1",
     "react": "19.3.1",
     "react-dom": "19.3.1"
   },
   "devDependencies": {
-    "@types/node": "26.6.5",
+    "@capacitor/cli": "8.6.2",
+    "@types/node": "26.6.6",
     "@types/react": "19.3.0",
     "@types/react-dom": "19.3.0",
-    "@vitejs/plugin-react": "5.2.0",
+    "@vitejs/plugin-react": "6.3.0",
     "typescript": "5.6.3",
     "vite": "8.3.4",
-    "vitest": "4.1.12"
+    "vitest": "5.1.1"
   }
 }

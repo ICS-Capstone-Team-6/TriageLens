@@ -63,10 +63,11 @@ def export_fp32(model, path, size=320):
     # The wrapper must be in eval mode too: torch.onnx.export puts the module back in its
     # original mode afterwards, and a new wrapper starts in train mode, which would switch
     # the model's BatchNorm to batch statistics for anything run after the export.
+    # Keep the existing opset-17 TorchScript export when upgrading PyTorch.
     wrapper = _ForExport(model).eval()
     torch.onnx.export(wrapper, torch.zeros(1, 3, size, size), str(path),
                       opset_version=OPSET, input_names=[INPUT], output_names=OUTPUTS,
-                      do_constant_folding=True)
+                      dynamo=False, do_constant_folding=True)
     import onnx
     onnx.checker.check_model(str(path))
     return path

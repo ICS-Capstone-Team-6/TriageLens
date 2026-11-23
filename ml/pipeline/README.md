@@ -92,3 +92,22 @@ python3 ml/pipeline/build_external.py
 ```
 
 It writes `ml/manifests/montgomery_v1/` (committed: `manifest.csv`, `quarantine.csv`, `near_duplicates.csv`, `run_report.json`, `DATA_CARD.md`) and the private metadata to `ml/data/interim/montgomery_v1/`. It reuses the Shenzhen checks, with three differences explained in its docstring and the data card: no split (every record is `external`), a label check that accepts TB findings without the word TB, and patient groups from readings that name another image. It also quarantines any image that matches Shenzhen.
+
+## TBX11K (training source)
+
+TBX11K adds about 8,400 labelled images (800 TB) from another source (TRD Appendix A: train, validate, internal test). Download the authors' official archive, linked from [github.com/yun-liu/Tuberculosis](https://github.com/yun-liu/Tuberculosis), and unpack it into `ml/data/raw/tbx11k/` (git-ignored). The pipeline finds `imgs/` and `lists/` there or one level below (for example `ml/data/raw/tbx11k/TBX11K/`). Then, from the repo root:
+
+```sh
+python3 ml/pipeline/build_tbx11k.py
+```
+
+It writes `ml/manifests/tbx11k_v1/` (committed: `manifest.csv`, `quarantine.csv`, `near_duplicates.csv`, `run_report.json`, `DATA_CARD.md`). Its docstring and [ADR-23](../../docs/adr/0023-tbx11k-without-age-or-patient-ids.md) explain how it differs from Shenzhen:
+
+- Labels come from the class folder: health and sick are 0, tb is 1, and latent TB counts as TB.
+- There is no age check, because TBX11K has no age data.
+- Each image is its own patient ID, and near-duplicates are grouped.
+- Official train goes to `train`. Official val is split half and half into `val` and `test`.
+- Images matching Shenzhen or Montgomery are quarantined. Only official train and val list entries under health, sick or tb are read.
+- The run stops if the list counts differ from the official README table.
+
+Manifest `file` values are paths under `imgs/` (for example `tb/tb0003.png`). `run_report.json` gives that folder as `image_root`. Pairwise duplicate search is vectorised (`np.bitwise_count`), because the Shenzhen loop is too slow for 8,400 images.

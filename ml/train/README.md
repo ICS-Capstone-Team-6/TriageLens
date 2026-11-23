@@ -92,6 +92,23 @@ Locally: `prepare_data.py --raw ml/data/raw/tbx11k --img-subdir TBX11K/imgs --ma
 
 The locked sets (Shenzhen held-out, TBX11K test, Montgomery) are still scored once per frozen candidate.
 
+**Result (combined bake-off, 23 Nov 2026).** EfficientNet-Lite0, three seeds per sampler, commit `f99e6e6`, combined data `51d2c6a3f4f73a41`. All numbers are on validation. The locked sets were not touched.
+
+| Run | Shenzhen val AUROC (n = 94, 49 TB) | TBX11K val AUROC (n = 884, 100 TB) | Mean normal score, Shenzhen / TBX11K | Shenzhen shape corr (normal, TB) |
+| --- | --- | --- | --- | --- |
+| Shenzhen only (v2 bake-off) | 0.922 (sd 0.005) | not measured | n/a | -0.39 (mean of both) |
+| Combined, natural | 0.930 (sd 0.006) | 0.996 (sd 0.005) | 0.13 / 0.04 | -0.30, -0.27 |
+| Combined, source-balanced | 0.922 (sd 0.009) | 0.994 (sd 0.002) | 0.15 / 0.04 | -0.40, -0.30 |
+
+Seed 1 of the natural run: Shenzhen 0.932 (95% CI 0.874 to 0.976). No run stopped at its last epoch. The best epochs were 14 to 25.
+
+- **Shenzhen barely changes.** +0.008 with the natural sampler is far inside each run's interval (about ±0.05 on 94 images). TBX11K didn't hurt Shenzhen, but it isn't proven to help it either.
+- **TBX11K validation is near perfect, and probably optimistic.** The split is by image, not patient (ADR-23), and TBX11K may simply be easier.
+- **The source offset remains.** Normal Shenzhen films score about three times higher than normal TBX11K films. A single threshold will act differently on each source, which is the Montgomery sensitivity drop seen before. Only the external test can show whether TBX11K fixes it.
+- **Sampler.** Source-balanced sampling is no better and makes the shape correlation slightly worse. Keep `natural`.
+
+Next: freeze a combined candidate, using the natural sampler's median seed. Then do the ADR-8 calibration and thresholds on validation, and score it once on the locked sets (Montgomery, Shenzhen held-out, TBX11K test) next to the frozen Shenzhen-only model.
+
 ## After the bake-off
 
 ONNX export, int8 and the rule 2 comparison: [`ml/export/README.md`](../export/README.md).

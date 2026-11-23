@@ -15,6 +15,7 @@ Dataset version hash: `2c2a19943177fa2f`. Log this hash with every training run 
 | Our label | `health` and `sick` = 0; `tb` = 1, **including latent-only TB** (ADR-23). The subtype is kept in the manifest column `tb_subtype`. |
 | Terms of use | **Two statements disagree.** The project page (mmcheng.net/tb) says the dataset is under Creative Commons Attribution 4.0. The GitHub `LICENSE.md` says the code is under CC BY-NC-SA 4.0, non-commercial only. Our use is non-commercial research and we don't redistribute the data, so both allow it. Cite Liu et al. The README inside the archive gives no licence, only the request to cite. Still to do: a licence-register entry (`E1-01`). |
 | Personal data | None supplied. No age, sex, patient ID or DICOM tags. |
+| Private cloud storage (ADR-13) | Allowed. Neither licence statement limits private storage for research. Copies go only to the one-member `triagelens-data` Modal volume, and are never shared or redistributed (ML-DATA-07). |
 | Role (TRD Appendix A) | Train, validate, internal test (TB) |
 
 ## Official counts (labelled part)

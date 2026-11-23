@@ -50,23 +50,26 @@ def dataset_version_hash(manifest):
 
 
 def _process(args):
-    path, expected_sha, spec = args
+    """Key is the manifest's file value. TBX11K files sit in class folders
+    ('tb/tb0003.png'), so the bare file name is not a safe key."""
+    path, key, expected_sha, spec = args
     if not path.exists():
-        return ("missing", path.name, None)
+        return ("missing", key, None)
     actual = sha256_file(path)
     if actual != expected_sha:
-        return ("changed", path.name, None)
+        return ("changed", key, None)
     with Image.open(path) as im:
-        return ("ok", path.name, to_model_size(im, spec))
+        return ("ok", key, to_model_size(im, spec))
 
 
 def prepare(raw, manifest_path, out, workers=4, img_subdir="CXR_png", splits=SPLITS):
-    """img_subdir and splits differ for an external set: Montgomery keeps its images in
-    images/images/ and has one split, "external" (ml/pipeline/build_external.py)."""
+    """img_subdir and splits differ by source: Montgomery keeps its images in
+    images/images/ and has one split, "external" (ml/pipeline/build_external.py); TBX11K
+    keeps them in TBX11K/imgs/ (image_root in its run_report.json)."""
     spec = load_spec()
     manifest = pd.read_csv(manifest_path, dtype={"patient_id": str, "group_id": str})
     img_dir = Path(raw) / img_subdir
-    jobs = [(img_dir / f, s, spec) for f, s in zip(manifest["file"], manifest["sha256"])]
+    jobs = [(img_dir / f, f, s, spec) for f, s in zip(manifest["file"], manifest["sha256"])]
     with ProcessPoolExecutor(max_workers=workers) as pool:
         results = list(pool.map(_process, jobs, chunksize=8))
     bad = [(status, name) for status, name, _ in results if status != "ok"]
@@ -109,9 +112,11 @@ def main(argv=None):
     ap.add_argument("--manifest", default="ml/manifests/shenzhen_v2/manifest.csv")
     ap.add_argument("--out", default="ml/data/processed/shenzhen_v2_320")
     ap.add_argument("--workers", type=int, default=4)
+    ap.add_argument("--img-subdir", default="CXR_png",
+                    help="image folder under --raw (TBX11K: TBX11K/imgs)")
     a = ap.parse_args(argv)
     try:
-        report = prepare(a.raw, a.manifest, a.out, a.workers)
+        report = prepare(a.raw, a.manifest, a.out, a.workers, img_subdir=a.img_subdir)
     except ProvenanceError as e:
         print(f"HARD FAIL: {e}", file=sys.stderr)
         return 1

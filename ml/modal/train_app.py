@@ -6,6 +6,15 @@ Run from the repo root, in this order:
     modal run ml/modal/train_app.py::baselines    # baseline ladder, rungs 0 to 2 (GPU)
     modal run ml/modal/train_app.py::bakeoff      # 2 backbones x 3 seeds (GPU, in parallel)
     modal run ml/modal/train_app.py::train_one --backbone mobilenetv3_large --seed 1
+
+Combined Shenzhen + TBX11K training (story E1-03, ADR-23), after uploading TBX11K:
+
+    modal run ml/modal/train_app.py::prepare_tbx11k   # check hashes, 320 px arrays (CPU)
+    modal run ml/modal/train_app.py::combine          # join with Shenzhen split by split (CPU)
+    modal run ml/modal/train_app.py::train_one --backbone efficientnet_lite0 --data combined --smoke
+    modal run ml/modal/train_app.py::bakeoff --backbones efficientnet_lite0 --data combined
+    modal run ml/modal/train_app.py::bakeoff --backbones efficientnet_lite0 --data combined \
+        --sampler source_balanced
     modal run ml/modal/train_app.py::export       # ONNX and static int8 for the latest bake-off (CPU)
     modal run ml/modal/train_app.py::quant_sweep  # compare int8 settings when the drop is too big
     modal run ml/modal/train_app.py::evaluate     # ONE-TIME score of the frozen model on the locked sets
@@ -36,6 +45,15 @@ MANIFEST = "/root/ml/manifests/shenzhen_v2/manifest.csv"
 MONT_RAW = f"{DATA_DIR}/montgomery/raw"
 MONT_PROCESSED = f"{DATA_DIR}/montgomery/processed_v1_cxr-pre-2"
 MONT_MANIFEST = "/root/ml/manifests/montgomery_v1/manifest.csv"
+# Second training source (ml/pipeline/build_tbx11k.py), uploaded with
+#   modal volume put triagelens-data ml/data/raw/tbx11k/TBX11K /tbx11k/raw/TBX11K
+TBX_RAW = f"{DATA_DIR}/tbx11k/raw"
+TBX_PROCESSED = f"{DATA_DIR}/tbx11k/processed_v1_cxr-pre-2"  # dataset v1 (2c2a19943177fa2f)
+TBX_MANIFEST = "/root/ml/manifests/tbx11k_v1/manifest.csv"
+COMBINED = f"{DATA_DIR}/combined/shenzhen_v2+tbx11k_v1_cxr-pre-2"
+DATA_SETS = {"shenzhen": PROCESSED, "combined": COMBINED}
+# Run folders per data set, so the Shenzhen bake-off history stays as it was.
+RUN_GROUPS = {"shenzhen": "bakeoff", "combined": "combined"}
 GPU = "T4"  # same as app.py; enough for MobileNet-sized backbones
 BACKBONES = ("mobilenetv3_large", "efficientnet_lite0")
 SEEDS = (1, 2, 3)  # TRD 9.4: three seeds per configuration
@@ -70,6 +88,27 @@ def prepare_remote() -> dict:
     return report
 
 
+@app.function(cpu=8, memory=32768, timeout=60 * 60, volumes={DATA_DIR: data_volume})
+def prepare_tbx11k_remote() -> dict:
+    _train_code()
+    import prepare_data
+
+    report = prepare_data.prepare(TBX_RAW, TBX_MANIFEST, TBX_PROCESSED, workers=8, img_subdir="TBX11K/imgs")
+    data_volume.commit()
+    return report
+
+
+@app.function(cpu=2, memory=32768, timeout=30 * 60, volumes={DATA_DIR: data_volume})
+def combine_remote() -> dict:
+    _train_code()
+    import combine_data
+
+    data_volume.reload()
+    report = combine_data.combine({"shenzhen": PROCESSED, "tbx11k": TBX_PROCESSED}, COMBINED)
+    data_volume.commit()
+    return report
+
+
 @app.function(gpu=GPU, cpu=4, timeout=30 * 60, volumes={DATA_DIR: data_volume, RUNS_DIR: runs_volume})
 def baselines_remote(stamp: str) -> dict:
     _train_code()
@@ -81,23 +120,29 @@ def baselines_remote(stamp: str) -> dict:
 
 
 @app.function(timeout=10 * 60, volumes={RUNS_DIR: runs_volume})
-def plot_bakeoff_remote(run_dirs: list, stamp: str) -> str:
+def plot_bakeoff_remote(run_dirs: list, stamp: str, group: str = "bakeoff") -> str:
     _train_code()
     from plot_curves import plot_bakeoff
 
     runs_volume.reload()
-    out = plot_bakeoff(run_dirs, f"{RUNS_DIR}/bakeoff/bakeoff_curves_{stamp}.png")
+    out = plot_bakeoff(run_dirs, f"{RUNS_DIR}/{group}/{group}_curves_{stamp}.png")
     runs_volume.commit()
     return str(out)
 
 
-@app.function(gpu=GPU, cpu=4, memory=16384, timeout=60 * 60,
+@app.function(gpu=GPU, cpu=4, memory=32768, timeout=4 * 60 * 60,
               volumes={DATA_DIR: data_volume, RUNS_DIR: runs_volume})
-def train_remote(backbone: str, seed: int, git_commit: str, git_dirty: bool) -> dict:
+def train_remote(backbone: str, seed: int, git_commit: str, git_dirty: bool,
+                 data: str = "shenzhen", sampler: str = "natural", smoke: bool = False) -> dict:
     _train_code()
     from train import Config, run
 
-    run_dir, metrics = run(Config(backbone=backbone, seed=seed), PROCESSED, f"{RUNS_DIR}/bakeoff",
+    cfg = Config(backbone=backbone, seed=seed, sampler=sampler)
+    group = RUN_GROUPS[data]
+    if smoke:  # pipeline check only: one warm-up and one full epoch, kept apart from results
+        cfg = Config(backbone=backbone, seed=seed, sampler=sampler, epochs_head=1, epochs_max=1)
+        group = "smoke"
+    run_dir, metrics = run(cfg, DATA_SETS[data], f"{RUNS_DIR}/{group}",
                            git_commit=git_commit, git_dirty=git_dirty)
     runs_volume.commit()
     return {"run_dir": str(run_dir), **metrics}
@@ -186,6 +231,25 @@ def prepare():
 
 
 @app.local_entrypoint()
+def prepare_tbx11k():
+    print(json.dumps(prepare_tbx11k_remote.remote(), indent=2))
+
+
+@app.local_entrypoint()
+def combine():
+    print(json.dumps(combine_remote.remote(), indent=2))
+
+
+def _check_data(data, sampler):
+    if data not in DATA_SETS:
+        raise SystemExit(f"unknown data {data!r}, expected one of {sorted(DATA_SETS)}")
+    if sampler not in ("natural", "source_balanced"):
+        raise SystemExit(f"unknown sampler {sampler!r}")
+    if sampler == "source_balanced" and data != "combined":
+        raise SystemExit("--sampler source_balanced needs --data combined")
+
+
+@app.local_entrypoint()
 def baselines():
     import datetime
 
@@ -194,31 +258,44 @@ def baselines():
 
 
 @app.local_entrypoint()
-def train_one(backbone: str = "mobilenetv3_large", seed: int = 1):
+def train_one(backbone: str = "mobilenetv3_large", seed: int = 1, data: str = "shenzhen",
+              sampler: str = "natural", smoke: bool = False):
+    """--smoke: one warm-up and one full epoch, saved under /runs/smoke. Checks the pipeline
+    end to end on a GPU; its numbers are not results."""
+    _check_data(data, sampler)
     commit, dirty = _git_state()
-    print(json.dumps(train_remote.remote(backbone, seed, commit, dirty), indent=2))
+    print(json.dumps(train_remote.remote(backbone, seed, commit, dirty, data, sampler, smoke), indent=2))
 
 
 @app.local_entrypoint()
-def bakeoff(backbones: str = ""):
+def bakeoff(backbones: str = "", data: str = "shenzhen", sampler: str = "natural"):
     """ADR-15: both backbones, three seeds each, run in parallel; prints the comparison.
 
     backbones: comma-separated subset, e.g. --backbones efficientnet_lite0 to retrain only the
     chosen backbone (ADR-18) on a new dataset version. Default: all of BACKBONES.
+    data: "shenzhen" (default) or "combined" (Shenzhen + TBX11K, ADR-23). sampler: "natural"
+    or "source_balanced" (combined only). Combined runs and summaries are kept apart from
+    the Shenzhen bake-off (/runs/combined, ml/runs/combined_summary_*.json).
     """
+    _check_data(data, sampler)
+    group = RUN_GROUPS[data]
     chosen = tuple(b for b in backbones.split(",") if b) or BACKBONES
     unknown = set(chosen) - set(BACKBONES)
     if unknown:
         raise SystemExit(f"unknown backbone(s) {sorted(unknown)}, expected {BACKBONES}")
     commit, dirty = _git_state()
-    jobs = [(b, s, commit, dirty) for b in chosen for s in SEEDS]
+    jobs = [(b, s, commit, dirty, data, sampler) for b in chosen for s in SEEDS]
     results = list(train_remote.starmap(jobs))
+    if data == "combined":
+        print("\nval AUROC below = mean of the per-source validation AUROCs (selection metric)")
     print(f"\n{'backbone':20s} {'val AUROC per seed':28s} {'mean':>6s} {'sd':>6s} "
           f"{'fit gap':>8s} {'masked drop':>12s} {'shape corr':>11s}")
     summary = {}
     for b in chosen:
         rs = [r for r in results if r["backbone"] == b]
-        aucs = [r["val"]["auroc"] for r in rs]
+        # combined: the selection score (mean of per-source AUROCs); pooled AUROC can be
+        # raised by recognising the source, so it is not shown here
+        aucs = [r["fit"]["val_auroc"] if data == "combined" else r["val"]["auroc"] for r in rs]
         drops = [r["shortcut_check"]["drop"] for r in rs]
         gaps = [r["fit"]["gap"] for r in rs]
         corrs = [(r["shape_check"]["within_class_corr"]["normal"]
@@ -235,16 +312,23 @@ def bakeoff(backbones: str = ""):
 
     stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     # git-ignored (ml/runs/); timestamped so an earlier bake-off is never overwritten
-    out = REPO / "ml" / "runs" / f"bakeoff_summary_{stamp}.json"
+    out = REPO / "ml" / "runs" / f"{group}_summary_{stamp}.json"
     out.parent.mkdir(parents=True, exist_ok=True)
     jitter = sorted({r.get("shape_jitter") for r in results}, key=str)
     print(f"shape_jitter used: {jitter}")
+    if data == "combined":  # per-source validation AUROC per seed (train.py val_by_source)
+        for b in chosen:
+            rs = [r for r in results if r["backbone"] == b]
+            per = {k: [r["val_by_source"][k]["auroc"] for r in rs] for k in rs[0]["val_by_source"]}
+            summary[b]["val_auroc_by_source"] = per
+            print(f"{b:20s} " + "  ".join(f"{k} {statistics.mean(v):.3f} (sd {statistics.stdev(v):.3f})"
+                                          for k, v in per.items()))
     out.write_text(json.dumps({"git_commit": commit, "git_dirty": dirty, "shape_jitter": jitter,
-                               "summary": summary}, indent=2))
+                               "data": data, "sampler": sampler, "summary": summary}, indent=2))
     print(f"\nSummary saved to {out.relative_to(REPO)}")
-    figure = plot_bakeoff_remote.remote([r["run_dir"] for r in results], stamp)
+    figure = plot_bakeoff_remote.remote([r["run_dir"] for r in results], stamp, group)
     print(f"Bake-off curves: {figure}. Each run folder also holds curves.png. Download all with:")
-    print("    modal volume get --force triagelens-runs /bakeoff ml/runs/")
+    print(f"    modal volume get --force triagelens-runs /{group} ml/runs/")
 
 
 @app.local_entrypoint()

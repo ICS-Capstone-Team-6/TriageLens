@@ -145,6 +145,45 @@ class TestTrainingRun(unittest.TestCase):
             out = plot_bakeoff([run_dir, run_dir2], root / "bakeoff.png")
             self.assertGreater(out.stat().st_size, 10_000)
 
+    def test_combined_run_scores_each_source(self):
+        import combine_data
+        import pandas as pd
+        from test_combine_data import prepared_pair
+        from train import Config, run
+
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            combine_data.combine(prepared_pair(root), root / "combined")
+            for sampler in ("natural", "source_balanced"):
+                cfg = Config(pretrained=False, epochs_head=1, epochs_max=1, batch_size=8,
+                             num_workers=0, sampler=sampler)
+                run_dir, m = run(cfg, root / "combined", root / "runs", log=lambda *_: None)
+                self.assertEqual(m["sampler"], sampler)
+                self.assertEqual(m["selection_metric"], "mean_per_source_val_auroc")
+                self.assertEqual(set(m["val_by_source"]), {"shenzhen", "tbx11k"})
+                self.assertEqual(set(m["source_check"]["source_alone_auroc"]), {"shenzhen", "tbx11k"})
+                h = pd.read_csv(run_dir / "history.csv")
+                for col in ("val_auroc_shenzhen", "val_auroc_tbx11k", "val_auroc_pooled"):
+                    self.assertIn(col, h.columns)
+                # the selection score is the mean of the per-source AUROCs
+                last = h.iloc[-1]
+                self.assertAlmostEqual(last["val_auroc"],
+                                       (last["val_auroc_shenzhen"] + last["val_auroc_tbx11k"]) / 2)
+                config = json.loads((run_dir / "config.json").read_text())
+                self.assertEqual(set(config["dataset_components"]), {"shenzhen", "tbx11k"})
+
+    def test_source_balanced_needs_combined_data(self):
+        import prepare_data
+        from test_train_core import make_raw
+        from train import Config, run
+
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            prepare_data.prepare(root / "raw", make_raw(root / "raw", n=20), root / "data", workers=1)
+            with self.assertRaisesRegex(ValueError, "source_balanced"):
+                run(Config(pretrained=False, num_workers=0, sampler="source_balanced"),
+                    root / "data", root / "runs", log=lambda *_: None)
+
     def test_baselines_rungs_0_and_1(self):
         import baselines
         import prepare_data

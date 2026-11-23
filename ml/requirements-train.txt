@@ -13,7 +13,7 @@ safetensors==0.4.5
 scikit-learn==1.5.2
 scipy==1.17.1
 matplotlib==3.9.2
-numpy==2.2.6
+numpy==2.4.6
 pandas==2.3.3
 pillow==12.3.0
 # ONNX export and static int8 quantization (story E5-02; TRD 9.5; ADR-2, ADR-5).

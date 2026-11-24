@@ -80,6 +80,15 @@ describe('withSymptoms (FR-05: raise, never lower)', () => {
     expect(withSymptoms('retake', 2)).toBe('retake');
   });
 
+  it('property: for every zone and symptom count, the zone never moves toward low risk', () => {
+    // Order of caution for a zone: low_risk < unsure < refer_now. A retake has no zone and must stay one.
+    const rank = { low_risk: 0, unsure: 1, refer_now: 2 } as const;
+    for (const z of ['low_risk', 'unsure', 'refer_now'] as const) {
+      for (let n = 0; n <= 4; n++) expect(rank[withSymptoms(z, n) as keyof typeof rank]).toBeGreaterThanOrEqual(rank[z]);
+    }
+    for (let n = 0; n <= 4; n++) expect(withSymptoms('retake', n)).toBe('retake');
+  });
+
   it('an invalid count is treated as symptoms present, toward refer', () => {
     expect(withSymptoms('low_risk', Number.NaN)).toBe('unsure');
     expect(withSymptoms('low_risk', -1)).toBe('unsure');

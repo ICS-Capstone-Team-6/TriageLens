@@ -1,7 +1,7 @@
-# ADR-23. TBX11K is used without age or patient IDs
+# ADR-23. TBX11K is onboarded without age or patient IDs, and not used for training
 
 - **Status:** Proposed
-- **Date:** 23 Nov 2026
+- **Date:** 23 Nov 2026; updated 24 Nov 2026 after the one-time evaluation
 - **Decided by:** Chelsea (ML lead). Needs team agreement; Kweku decides if there is no agreement (Team Rules 2). Kweku owns safety, so the hazard-log note needs his review.
 - **Related:** TRD 9.1, TRD 9.2 (ML-DATA-02, ML-DATA-03), TRD Appendix A, `E1-03`, H4, H11; data card `ml/manifests/tbx11k_v1/DATA_CARD.md`
 
@@ -22,11 +22,13 @@ TBX11K has two gaps against our data rules:
 
 ## Decision
 
-Option 2, the team's choice on 23 Nov 2026.
+**Data:** Option 2, the team's choice on 23 Nov 2026.
 
 - `ml/pipeline/build_tbx11k.py` records "age not checkable" in the run report and the data card instead of quarantining.
 - Each image is its own patient ID. Near-identical images (256-bit dHash, 12 bits or less) are still grouped, so a resized or re-saved copy can't cross splits.
 - Latent TB counts as TB (label 1), as in Montgomery, whose label 1 includes inactive or healed TB.
+
+**Training (proposed 24 Nov 2026, after the results below):** don't use TBX11K to train any model that ships. The Shenzhen-only model (ADR-18) stays frozen. The pipeline, the manifest and the combined-training code stay in the repo, so a later attempt starts from tested code. That attempt needs a new candidate and its own one-time evaluation. TBX11K is no longer an option for the Montgomery problem in this project, so no more candidates are scored on Montgomery for it.
 
 ## Consequences
 
@@ -37,8 +39,8 @@ Option 2, the team's choice on 23 Nov 2026.
 
 ## Results (23 Nov 2026)
 
-TBX11K was used as Option 2 describes, and one candidate trained on Shenzhen plus TBX11K was scored once on the locked sets (details in `ml/train/README.md`). It improved internal results but **made external results worse**. Montgomery AUROC fell from 0.887 to 0.734 (paired difference -0.153, 95% CI -0.252 to -0.061), below the 0.80 floor, and active-TB AUROC fell from 0.908 to 0.687. The Shenzhen-only model (ADR-18) stays frozen. The team should decide whether TBX11K stays in training at all before more GPU time goes to it. Hazard H11 (shortcut learning) gets this as evidence.
+TBX11K was used as Option 2 describes, and one candidate trained on Shenzhen plus TBX11K was scored once on the locked sets (details in `ml/train/README.md`). It improved internal results but **made external results worse**. Montgomery AUROC fell from 0.887 to 0.734 (paired difference -0.153, 95% CI -0.252 to -0.061), below the 0.80 floor, and active-TB AUROC fell from 0.908 to 0.687. The Shenzhen-only model (ADR-18) stays frozen, and TBX11K is not used for training (Decision, above). Hazard H11 (shortcut learning) gets this as evidence. The fix for the Montgomery sensitivity drop moves to calibration and cautious thresholds on validation data (`E6-01`), checked once on the India sets (`E11-01`).
 
 ## Revisit trigger
 
-The authors release age or patient metadata, or a review of the TBX11K failures (ML-EVAL-04) finds children's films or repeat patients across splits.
+The authors release age or patient metadata; a review of the TBX11K failures (ML-EVAL-04) finds children's films or repeat patients across splits; or the team plans a new multi-source attempt (for example, pretraining on TBX11K and fine-tuning on Shenzhen) with a fresh external set to judge it.

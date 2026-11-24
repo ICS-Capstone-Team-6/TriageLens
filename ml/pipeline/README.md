@@ -95,7 +95,7 @@ It writes `ml/manifests/montgomery_v1/` (committed: `manifest.csv`, `quarantine.
 
 ## TBX11K (training source)
 
-TBX11K adds about 8,400 labelled images (800 TB) from another source (TRD Appendix A: train, validate, internal test). Download the authors' official archive, linked from [github.com/yun-liu/Tuberculosis](https://github.com/yun-liu/Tuberculosis), and unpack it into `ml/data/raw/tbx11k/` (git-ignored). The pipeline finds `imgs/` and `lists/` there or one level below (for example `ml/data/raw/tbx11k/TBX11K/`). Then, from the repo root:
+TBX11K adds about 8,400 labelled images (800 TB) from another source (TRD Appendix A: train, validate, internal test). It is **not used to train shipped models**: the one combined candidate did worse on Montgomery ([ADR-23](../../docs/adr/0023-tbx11k-without-age-or-patient-ids.md), `ml/train/README.md`). The pipeline stays for later attempts. Download the authors' official archive, linked from [github.com/yun-liu/Tuberculosis](https://github.com/yun-liu/Tuberculosis), and unpack it into `ml/data/raw/tbx11k/` (git-ignored). The pipeline finds `imgs/` and `lists/` there or one level below (for example `ml/data/raw/tbx11k/TBX11K/`). Then, from the repo root:
 
 ```sh
 python3 ml/pipeline/build_tbx11k.py

@@ -34,6 +34,11 @@ Before uploading a dataset, check that its terms allow private cloud storage, an
 
 ```sh
 modal volume put triagelens-data ml/data/raw/shenzhen /shenzhen/raw
+# TBX11K: only the labelled images, lists and annotations. Not extra/ (copies of
+# DA, DB, Montgomery and Shenzhen) or test/ (no labels).
+for d in lists annotations/json imgs/health imgs/sick imgs/tb; do
+  modal volume put triagelens-data ml/data/raw/tbx11k/TBX11K/$d /tbx11k/raw/TBX11K/$d
+done
 ``` Never put real patient data from Ghana in a volume (Team Rules 8).
 
 ## Cost

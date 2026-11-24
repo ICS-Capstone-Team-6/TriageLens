@@ -29,3 +29,4 @@ Owners: the TRD names an owner in the defaults for D3 (Kweku), D4 (Chelsea) and 
 | 21 Oct 2026 | Slice thresholds use raw (uncalibrated) logits; temperature scaling and new thresholds come in E6-01 | Kweku | [ADR-20](../adr/0020-interim-slice-thresholds.md) |
 | 21 Oct 2026 | Chelsea computes the slice thresholds; Kweku wires them into the slice | Kweku | [ADR-20](../adr/0020-interim-slice-thresholds.md) |
 | 21 Oct 2026 | Visual style: Impilo-style violet and cyan on a white background, Manrope font; result zones keep red, amber and green with icon and text (TRD 7.3) | Kweku | [M2 slice canvas](https://claude.ai/artifact/XLr6FSeb2ZJyjHxE8vSiJn) |
+| 24 Nov 2026 | Proposed: if E2-03 selects two chest X-ray models, prefer two-teacher distillation into one student for the phone; sequential execution is the fallback. ADR-4 stays the main plan | Micheal (proposal) | [ADR-25](../adr/0025-chest-xray-execution-and-distillation.md) |

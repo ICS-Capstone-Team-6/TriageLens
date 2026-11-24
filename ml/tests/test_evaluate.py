@@ -207,6 +207,65 @@ class TestEvaluate(unittest.TestCase):
             with self.assertRaises(ev.AlreadyEvaluated):
                 ev.evaluate(run_dir, sets, root / "eval", root / "data", log=lambda *_: None)
 
+    def test_extra_operating_point_from_another_validation_folder(self):
+        import evaluate as ev
+        import prepare_data
+        from test_train_core import make_raw
+        from train import Config, run
+
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            prepare_data.prepare(root / "raw", make_raw(root / "raw", n=40), root / "data", workers=1)
+            prepare_data.prepare(root / "raw2", make_raw(root / "raw2", n=40, seed=3), root / "other", workers=1)
+            run_dir, _ = run(Config(pretrained=False, epochs_head=1, epochs_max=1, batch_size=8, num_workers=0),
+                             root / "data", root / "runs", log=lambda *_: None)
+            sets = {"internal_test": (root / "data", "test")}
+            report = ev.evaluate(run_dir, sets, root / "eval", root / "data", int8=False, log=lambda *_: None,
+                                 extra_thresholds={"other_val": root / "other"})
+            x = report["operating_point"]["extra"]["other_val"]
+            self.assertGreaterEqual(x["validation"]["sensitivity"], 0.90)  # on its own validation folder
+            entry = report["sets"]["internal_test"]
+            self.assertEqual(entry["at_threshold_other_val"]["threshold"], x["logit_threshold"])
+            saved = json.loads((root / "eval" / "results" / "internal_test.json").read_text())
+            self.assertEqual(saved["extra_thresholds"], {"other_val": x["logit_threshold"]})
+
+
+@unittest.skipUnless(HAS_DEPS, "ml/requirements-train.txt not installed")
+class TestExternalZones(unittest.TestCase):
+    def test_zones_are_scored_and_preflight_reads_no_locked_set(self):
+        import evaluate as ev
+        import evaluate_external as ee
+        import prepare_data
+        from test_train_core import make_raw
+        from train import Config, run
+
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            prepare_data.prepare(root / "raw", make_raw(root / "raw", n=40), root / "data", workers=1)
+            ext = make_raw(root / "ext_raw", n=20, seed=2)
+            m = pd.read_csv(ext)
+            m["split"] = "external"
+            m.to_csv(ext, index=False)
+            prepare_data.prepare(root / "ext_raw", ext, root / "ext", workers=1, splits=("external",))
+            run_dir, _ = run(Config(pretrained=False, epochs_head=1, epochs_max=1, batch_size=8, num_workers=0),
+                             root / "data", root / "runs", log=lambda *_: None)
+            tfile = root / "thresholds.json"
+            tfile.write_text(json.dumps({"version": "v1-test", "status": "set", "run_id": run_dir.name,
+                                         "screen_out_probability": 0.3, "refer_probability": 0.7,
+                                         "probability_space": "calibrated", "temperature": 1.5}))
+            sets = {"ext": str(root / "ext")}
+            zones, summary = ee.preflight(run_dir, tfile, root / "data", sets, root / "eval")
+            self.assertFalse((root / "eval" / "locked_sets").exists())  # nothing reserved or read
+            self.assertEqual(summary["sets"]["ext"]["n"], 20)
+            report = ev.evaluate(run_dir, {"ext": (root / "ext", "external")}, root / "eval", root / "data",
+                                 int8=False, log=lambda *_: None, zones=zones)
+            z = report["sets"]["ext"]["zones"]
+            self.assertEqual(sum(v["tb"] + v["normal"] for v in z["counts"].values()), 20)
+            self.assertEqual(report["zones"]["version"], "v1-test")
+            self.assertEqual(report["zones"]["temperature_applied"], 1.5)  # calibrated-scale cuts
+            with self.assertRaises(ev.AlreadyEvaluated):  # preflight now refuses: scored once
+                ee.preflight(run_dir, tfile, root / "data", sets, root / "eval")
+
 
 class TestSubgroups(unittest.TestCase):
     def test_joins_private_metadata_and_reports_counts_and_rates_only(self):
@@ -231,6 +290,18 @@ class TestSubgroups(unittest.TestCase):
             self.assertEqual(groups["all"]["n"], 60)
             saved = (root / "subgroups.json").read_text()
             self.assertNotIn("MCUCXR_", saved)  # aggregates only, no per-patient rows
+
+    def test_set_without_private_metadata_is_skipped(self):
+        # TBX11K has no sex or age (ADR-23): the run must not crash on it
+        import subgroups as sg
+
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            (root / "eval_report.json").write_text(json.dumps(
+                {"run": "r", "operating_point": {"probability_threshold": 0.5}, "sets": {"tbx11k_test": {}}}))
+            r = sg.subgroups(root, private={})
+            self.assertIn("skipped", r["sets"]["tbx11k_test"])
+            self.assertEqual(sg.main([str(root)]), 0)  # printing handles it too
 
 
 if __name__ == "__main__":

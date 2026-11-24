@@ -12,6 +12,8 @@ export const APP_BUILD = (import.meta.env.VITE_APP_BUILD as string | undefined) 
 export type AgeBand = '15-24' | '25-34' | '35-44' | '45-54' | '55-64' | '65+';
 
 export interface SaveInput {
+  /** The local case UUID (caseStore), so the phone and the server share one ID (TRD 10.8). */
+  caseId?: string;
   ageBand: AgeBand;
   screened: Screened;
   zone: Zone;
@@ -23,7 +25,7 @@ export interface SaveInput {
 
 export async function saveScreening(s: SaveInput): Promise<boolean> {
   if (!supabase) return false;
-  const caseId = crypto.randomUUID();
+  const caseId = s.caseId ?? crypto.randomUUID();
   const { error: caseError } = await supabase.rpc('save_case', {
     p_case: { id: caseId, age_band: s.ageBand, status: 'open', notes: 'M2 slice screening', client_version: 1 },
   });

@@ -11,7 +11,7 @@ const noop = () => {};
 export function Preview({ name }: { name: string }) {
   switch (name) {
     case 'signin': return <SignIn onSignIn={async () => {}} error={null} />;
-    case 'home': return <Home age="25-34" onAge={noop} onFile={noop} ready modelReady onMonitor={noop} onSignOut={noop} backendNote={false} />;
+    case 'home': return <Home age="25-34" onAge={noop} onFile={noop} ready modelReady onMonitor={noop} onCases={noop} onSignOut={noop} backendNote={false} />;
     case 'checking': return <Checking step={2} />;
     case 'retake': return <Retake reason="too_dark" onRetake={noop} onCancel={noop} />;
     case 'result-refer': return <Result zone="refer_now" versions={versions} saved onDone={noop} onRetake={noop} />;

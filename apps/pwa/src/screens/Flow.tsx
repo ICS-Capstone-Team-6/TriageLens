@@ -81,13 +81,15 @@ interface ResultProps {
   zone: 'refer_now' | 'unsure' | 'low_risk';
   versions: { model: string; thresholds: string; preprocess: string };
   saved: boolean | null;
+  /** Local case code (E8-06); null when the phone could not save the case. */
+  caseCode?: string | null;
   onDone: () => void;
   onRetake: () => void;
   /** Development builds only: the raw score, for the team (TRD 7.3 keeps it off real screens). */
   devScore?: { probability: number; screenOut: number; refer: number };
 }
 
-export function Result({ zone, versions, saved, onDone, onRetake, devScore }: ResultProps) {
+export function Result({ zone, versions, saved, caseCode = null, onDone, onRetake, devScore }: ResultProps) {
   const [referred, setReferred] = useState(false);
   return (
     <main className="screen">
@@ -120,6 +122,9 @@ export function Result({ zone, versions, saved, onDone, onRetake, devScore }: Re
       ) : (
         <button className="btn btn-primary" type="button" onClick={onDone}>{t('done_new')}</button>
       )}
+      <p className="small center" role="status">
+        {caseCode ? t('result_case', { code: caseCode }) : t('result_case_failed')}
+      </p>
       {saved !== null && <p className="small center" role="status">{saved ? t('saved') : t('not_saved')}</p>}
       <p className="versions">{t('versions', versions)}</p>
     </main>

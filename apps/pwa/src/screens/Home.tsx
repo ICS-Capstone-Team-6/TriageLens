@@ -12,12 +12,13 @@ interface Props {
   ready: boolean;
   modelReady: boolean;
   onMonitor: () => void;
+  onCases: () => void;
   onSignOut: (() => void) | null;
   backendNote: boolean;
   demo?: boolean;
 }
 
-export function Home({ age, onAge, onFile, ready, modelReady, onMonitor, onSignOut, backendNote, demo = false }: Props) {
+export function Home({ age, onAge, onFile, ready, modelReady, onMonitor, onCases, onSignOut, backendNote, demo = false }: Props) {
   const camera = useRef<HTMLInputElement>(null);
   const upload = useRef<HTMLInputElement>(null);
   const canStart = ready;
@@ -84,6 +85,7 @@ export function Home({ age, onAge, onFile, ready, modelReady, onMonitor, onSignO
         <button className="btn btn-secondary" type="button" disabled={!canStart} onClick={() => upload.current?.click()}>
           {t('upload')}
         </button>
+        <button className="link center" type="button" onClick={onCases}>{t('cases_link')}</button>
       </div>
     </main>
   );

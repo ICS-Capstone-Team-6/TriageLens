@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { InferenceClient, type Ready } from './inference/client';
 import type { Screened } from './inference/messages';
+import { createCase, finishCase, openCaseDb, type CaseResult, type LocalCase } from './lib/caseStore';
 import { loadThresholds, type ThresholdsState } from './lib/config';
 import { PREPROCESS_VERSION } from './lib/preprocess';
 import type { RetakeReason } from './lib/quality';
@@ -10,6 +11,7 @@ import { MODEL_RUN, saveScreening, type AgeBand, type InferenceRow } from './lib
 import { backendConfigured, supabase } from './lib/supabase';
 import { ageAfter, backendRequired, canScreen, modelMatches, type EndAction } from './lib/session';
 import { sigmoid, zoneFor, type Thresholds, type Zone } from './lib/triage';
+import { CaseDetail, CaseLog } from './screens/Cases';
 import { Monitor } from './screens/Monitor';
 import { Home } from './screens/Home';
 import { SignIn } from './screens/SignIn';
@@ -20,8 +22,10 @@ type View =
   | { name: 'home' }
   | { name: 'checking'; step: 0 | 1 | 2 }
   | { name: 'retake'; reason: RetakeReason }
-  | { name: 'result'; zone: 'refer_now' | 'unsure' | 'low_risk'; saved: boolean | null; probability: number | null }
-  | { name: 'error' };
+  | { name: 'result'; zone: 'refer_now' | 'unsure' | 'low_risk'; saved: boolean | null; probability: number | null; caseCode: string | null }
+  | { name: 'error' }
+  | { name: 'cases' }
+  | { name: 'case'; id: string };
 
 /** Development-only demo wiring, injected by main.tsx; production never passes it. */
 export interface DemoHooks {
@@ -45,6 +49,17 @@ export function App({ demo }: { demo?: DemoHooks }) {
   const [age, setAge] = useState<AgeBand | 'under15' | null>(null);
   const [view, setView] = useState<View>({ name: 'home' });
   const client = useRef<Pick<DemoHooks['client'], 'screen'> | null>(null);
+  // Local case log (E8-06). Demo cases go to their own database, never mixed with real ones.
+  const [db, setDb] = useState<IDBDatabase | null | 'unavailable'>(null);
+
+  useEffect(() => {
+    let open: IDBDatabase | null = null;
+    openCaseDb(indexedDB, demo ? 'triagelens-demo' : undefined).then(
+      (d) => { open = d; setDb(d); },
+      () => setDb('unavailable'),
+    );
+    return () => open?.close();
+  }, []);
 
   useEffect(() => {
     const onHash = () => setRoute(location.hash === '#/monitor' ? 'monitor' : 'app');
@@ -89,26 +104,40 @@ export function App({ demo }: { demo?: DemoHooks }) {
     if (!client.current || typeof model !== 'object' || !thresholds?.ok || !canScreen(true, true, age) || age === null || age === 'under15') return;
     const started = performance.now();
     setView({ name: 'checking', step: 0 });
+    // Write the case before the model runs, so a crash cannot lose it (FR-07, H9).
+    const store = db && db !== 'unavailable' ? db : null;
+    const local: LocalCase | null = store ? await createCase(store, age).catch(() => null) : null;
+    const finish = (status: 'result' | 'retake' | 'error', result: CaseResult | null) =>
+      store && local ? finishCase(store, local.id, status, result).then(() => true, () => false) : Promise.resolve(false);
     let r: Screened;
     try {
       r = await client.current.screen(file, (step) => setView({ name: 'checking', step }));
     } catch {
+      void finish('error', null);
       return setView({ name: 'error' });
     }
     const probability = r.logit == null ? null : sigmoid(r.logit);
     const zone = zoneFor(probability ?? Number.NaN, thresholds.thresholds, r.quality.passed);
     const totalMs = performance.now() - started;
-    const record = { ageBand: age, screened: r, zone, probability, thresholdsVersion: thresholds.thresholds.version, modelSha256: model.modelSha256, totalMs };
+    const kept = await finish(zone === 'retake' ? 'retake' : 'result', {
+      zone,
+      modelVersion: demo ? 'demo-stand-in' : MODEL_RUN,
+      thresholdsVersion: thresholds.thresholds.version,
+      preprocessVersion: r.preprocess,
+      quality: { passed: r.quality.passed, reason: r.quality.reason ?? null },
+    });
+    const caseCode = kept && local ? local.code : null;
+    const record = { caseId: local?.id, ageBand: age, screened: r, zone, probability, thresholdsVersion: thresholds.thresholds.version, modelSha256: model.modelSha256, totalMs };
     if (demo) {
       demo.record(r, zone, probability, totalMs);
-      return setView(zone === 'retake' ? { name: 'retake', reason: r.quality.reason ?? 'blank' } : { name: 'result', zone, saved: null, probability });
+      return setView(zone === 'retake' ? { name: 'retake', reason: r.quality.reason ?? 'blank' } : { name: 'result', zone, saved: null, probability, caseCode });
     }
     if (zone === 'retake') {
       setView({ name: 'retake', reason: r.quality.reason ?? 'blank' });
       void saveScreening(record);
       return;
     }
-    setView({ name: 'result', zone, saved: null, probability });
+    setView({ name: 'result', zone, saved: null, probability, caseCode });
     const saved = await saveScreening(record);
     setView((v) => (v.name === 'result' ? { ...v, saved } : v));
   }
@@ -122,6 +151,12 @@ export function App({ demo }: { demo?: DemoHooks }) {
   if (!demo && backendConfigured && signedIn === null) return null;
   if (!demo && backendConfigured && !signedIn) return <SignIn onSignIn={signIn} error={signInError} />;
   if (route === 'monitor') return <Monitor onBack={() => go('#/')} rows={demo ? [...demo.rows] : undefined} />;
+  if (view.name === 'cases') {
+    return <CaseLog db={db} onBack={() => setView({ name: 'home' })} onOpen={(id) => setView({ name: 'case', id })} />;
+  }
+  if (view.name === 'case' && db && db !== 'unavailable') {
+    return <CaseDetail db={db} id={view.id} onBack={() => setView({ name: 'cases' })} />;
+  }
 
   if (age === 'under15') {
     return <Blocked title={t('under15_title')} body={t('under15_body')} action={t('under15_back')} onAction={() => setAge(null)} />;
@@ -151,6 +186,7 @@ export function App({ demo }: { demo?: DemoHooks }) {
         <Result
           zone={view.zone}
           saved={backendConfigured ? view.saved : null}
+          caseCode={view.caseCode}
           versions={{ model: demo ? 'demo-stand-in' : MODEL_RUN, thresholds: thresholds?.ok ? thresholds.thresholds.version : '–', preprocess: PREPROCESS_VERSION }}
           devScore={import.meta.env.DEV && thresholds?.ok && view.probability != null ? { probability: view.probability, screenOut: thresholds.thresholds.screenOut, refer: thresholds.thresholds.refer } : undefined}
           onDone={() => end('done')}
@@ -166,6 +202,7 @@ export function App({ demo }: { demo?: DemoHooks }) {
           ready={canScreen(typeof model === 'object', Boolean(thresholds?.ok), age)}
           modelReady={typeof model === 'object'}
           onMonitor={() => go('#/monitor')}
+          onCases={() => setView({ name: 'cases' })}
           onSignOut={supabase && !demo ? () => void supabase!.auth.signOut() : null}
           backendNote={!backendConfigured && !demo}
           demo={Boolean(demo)}

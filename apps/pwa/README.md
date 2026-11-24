@@ -50,6 +50,15 @@ Two reviewed files in `public/config/` control results:
   Fill it with `python3 scripts/set_thresholds.py --val val_logits.csv --model <fp32.onnx>`: the validation split's `label,logit` CSV and the exact model file. It applies the ADR-20 rules, reports sensitivity and specificity with 95% CIs, and refuses to write if the thresholds cross.
 - `reference.json`: the validation score histogram and training input-statistic histograms for drift (PSI). Made with `scripts/make_reference.py`. Until it is set, the monitoring page shows live numbers only.
 
+## Case log on the phone (E8-06)
+
+- `src/lib/caseStore.ts` keeps cases in IndexedDB. A case is written when the photo is taken, before the model runs, so a crash cannot lose it (FR-07, H9). Its UUID is also the server case ID, so a later sync (E9-02) can repeat safely.
+- Each case has a random code like `TL-7K3MPQ`, the age band, the result with model, threshold and preprocessing versions and the quality check, and notes. No names or phone numbers.
+- A finished result is never changed. A retake keeps its quality reason but never a zone.
+- **Saved cases on this phone** (Home) lists cases newest first, 30 at a time, with search by code. 500 cases open the first page in under 200 ms (unit test).
+- Images: `src/lib/imageCrypto.ts` encrypts with AES-GCM 256 and a PBKDF2 key from the PIN (600,000 iterations). The PIN comes with offline unlock (E9-03). Until then **no image is stored on the phone at all**.
+- Demo mode (`?demo`) uses a separate database, `triagelens-demo`.
+
 ## Offline (E8-02)
 
 After one online load, the app opens and screens with no network.

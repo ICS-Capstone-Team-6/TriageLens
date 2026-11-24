@@ -146,7 +146,8 @@ def near_pairs(hashes, max_bits=NEAR_DUP_BITS, bits=HASH_SIZE * HASH_SIZE):
     such pair; candidates are then checked exactly. Same result as the all-pairs loop.
     """
     n_bands = max_bits + 1
-    edges = np.linspace(0, bits, n_bands + 1).astype(int)
+    # Plain Python ints: shifting a 256-bit int by a numpy int64 overflows on numpy 2.
+    edges = [int(e) for e in np.linspace(0, bits, n_bands + 1)]
     seen = set()
     for lo, hi in zip(edges[:-1], edges[1:]):
         buckets = {}

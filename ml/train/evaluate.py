@@ -47,6 +47,7 @@ from data import load_split  # noqa: E402
 from metrics import auroc, shape_check, summarize  # noqa: E402
 from models import TBNet  # noqa: E402
 from preprocess import check_preprocessing, load_spec, normalize  # noqa: E402
+from zones import ThresholdsError, load_zone_thresholds, zone_report  # noqa: E402,F401
 
 TARGET_SENSITIVITY = 0.90  # TRD 3.4: TB triage at 90% sensitivity
 INT8_SETTING = "minmax_reduce_range"  # chosen by the label-free sweep (ADR-17, ADR-18)
@@ -150,11 +151,13 @@ def set_status(out_dir, name, checkpoint_sha):
     return "exposed" if lock.exists() else "new"
 
 
-def evaluate(run_dir, sets, out_dir, train_data_dir, int8=True, log=print, extra_thresholds=None):
+def evaluate(run_dir, sets, out_dir, train_data_dir, int8=True, log=print, extra_thresholds=None,
+             zones=None):
     """sets: {name: (processed folder, split)}, e.g. {"shenzhen_test": (..., "test"),
     "montgomery": (..., "external")}. train_data_dir holds val (threshold) and train
     (int8 calibration images). extra_thresholds: {name: processed folder}; each adds an
-    operating point at 90% sensitivity on that folder's val split. Returns the report."""
+    operating point at 90% sensitivity on that folder's val split. zones: the result of
+    load_zone_thresholds; each set then also gets a three-zone report. Returns the report."""
     extra_thresholds = extra_thresholds or {}
     run_dir, out_dir, train_data_dir = Path(run_dir), Path(out_dir), Path(train_data_dir)
     if (out_dir / "eval_report.json").exists():
@@ -205,6 +208,7 @@ def evaluate(run_dir, sets, out_dir, train_data_dir, int8=True, log=print, extra
                             "validation": at_threshold(val["y"], val_logit, t),
                             "extra": extra},
         "int8_setting": INT8_SETTING if int8 else None,
+        "zones": zones,
         "sets": {},
     }
 
@@ -226,7 +230,8 @@ def evaluate(run_dir, sets, out_dir, train_data_dir, int8=True, log=print, extra
         if status[name] == "done":
             saved = json.loads(result_path.read_text())
             if saved["logit_threshold"] != t or saved.get("extra_thresholds", {}) != {
-                    k: v["logit_threshold"] for k, v in extra.items()}:
+                    k: v["logit_threshold"] for k, v in extra.items()} or saved.get(
+                    "zones_sha256") != (zones or {}).get("file_sha256"):
                 raise AlreadyEvaluated(f"{name} was scored at another threshold; not mixing results")
             log(f"{name}: already scored by an earlier attempt, reusing the saved result")
             report["sets"][name] = saved["entry"]
@@ -247,6 +252,8 @@ def evaluate(run_dir, sets, out_dir, train_data_dir, int8=True, log=print, extra
         }
         for xname, x in extra.items():
             entry[f"at_threshold_{xname}"] = at_threshold(y, logit, x["logit_threshold"])
+        if zones:
+            entry["zones"] = zone_report(y, logit, zones)
         rows = {"file": d["files"], "label": y, "prob_fp32": _sigmoid(logit), "aspect": aspect}
         if q_path is not None:
             import export_onnx
@@ -261,6 +268,7 @@ def evaluate(run_dir, sets, out_dir, train_data_dir, int8=True, log=print, extra
         _write_atomic(result_path, json.dumps({"checkpoint_sha256": checkpoint_sha, "logit_threshold": t,
                                                "extra_thresholds": {k: v["logit_threshold"]
                                                                     for k, v in extra.items()},
+                                               "zones_sha256": (zones or {}).get("file_sha256"),
                                                "scored_utc": _now(), "entry": entry}, indent=2))
         report["sets"][name] = entry
     attempts[-1]["finished"] = True

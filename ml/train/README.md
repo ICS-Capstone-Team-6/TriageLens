@@ -140,6 +140,22 @@ python3 ml/train/subgroups.py ml/runs/eval/<run>  # sex, age, active vs inactive
 
 The only operating point uses a threshold set on validation (90% sensitivity). `subgroups.py` reads the git-ignored private metadata on the team's machine and saves counts and rates only. Results for the frozen model: ADR-18, section "Results".
 
+## One-time score on the India sets (after E6-01)
+
+DA and DB are scored once, locally (ADR-24), at the three-zone thresholds that `E6-01` writes to `apps/pwa/public/config/thresholds.json`. `evaluate_external.py` refuses the interim ADR-20 file (`v0-uncalibrated`) and any file written for another run. A `temperature` in the file means the zones apply to calibrated scores.
+
+```sh
+modal volume get triagelens-runs /bakeoff/efficientnet_lite0_seed1_20261021T114608Z ml/runs/frozen/   # once
+for s in da db; do
+  python3 ml/train/prepare_data.py --raw ml/data/interim/india_tb_v1 --img-subdir images \
+    --manifest ml/manifests/india_tb_v1/$s/manifest.csv --out ml/data/processed/india_${s}_v1_cxr-pre-2 --splits external
+done
+python3 ml/train/evaluate_external.py --check-only   # touches no locked data
+python3 ml/train/evaluate_external.py                # ONE time, after E6-01 is merged
+```
+
+For each set, it reports AUROC with its 95% CI and the three zones: TB films in low risk, sensitivity of "not low risk", specificity of "not refer", and the share of Unsure. Results go to `ml/runs/eval/<run>_india/`. The zone code is in `zones.py`, which has no torch dependency, so CI tests it.
+
 ## Tests
 
 ```sh

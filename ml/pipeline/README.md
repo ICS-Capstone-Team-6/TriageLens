@@ -111,3 +111,21 @@ It writes `ml/manifests/tbx11k_v1/` (committed: `manifest.csv`, `quarantine.csv`
 - The run stops if the list counts differ from the official README table.
 
 Manifest `file` values are paths under `imgs/` (for example `tb/tb0003.png`). `run_report.json` gives that folder as `image_root`. Pairwise duplicate search is vectorised (`np.bitwise_count`), because the Shenzhen loop is too slow for 8,400 images.
+
+## India DA and DB (locked external tests)
+
+Two small TB sets from New Delhi ([ADR-24](../../docs/adr/0024-india-da-db-external-sets.md), data card `ml/manifests/india_tb_v1/DATA_CARD.md`). They have no explicit licence, so they stay on the team's machine and never go to Modal. Download the Kaggle copy into `ml/data/raw/india_tb/` (git-ignored), then build:
+
+```sh
+pip install kagglehub==1.0.2
+KAGGLEHUB_CACHE=ml/data/raw/india_tb/_kagglehub python3 -c "import kagglehub; kagglehub.dataset_download('vbookshelf/da-and-db-tb-chest-x-ray-datasets')"
+python3 ml/pipeline/build_india.py
+```
+
+It writes `ml/manifests/india_tb_v1/da/` and `db/` (committed) and the staged images to `ml/data/interim/india_tb_v1/images/` (git-ignored). DB is DICOM, so `pydicom` is needed (pinned in `ml/requirements.txt`). Its docstring and the data card explain the rest:
+
+- Labels come from the file names: `p` = TB, `n` = normal.
+- DB is converted to 8-bit PNG with a fixed display window.
+- There is no age check, because neither set has age data.
+- Duplicates and any overlap with Shenzhen, Montgomery or TBX11K are quarantined.
+- The run stops if the counts differ from the authors' folders.

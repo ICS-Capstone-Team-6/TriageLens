@@ -113,10 +113,13 @@ def main(argv=None):
     ap.add_argument("--out", default="ml/data/processed/shenzhen_v2_320")
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--img-subdir", default="CXR_png",
-                    help="image folder under --raw (TBX11K: TBX11K/imgs)")
+                    help="image folder under --raw (TBX11K: TBX11K/imgs; India DA/DB: images)")
+    ap.add_argument("--splits", default=",".join(SPLITS),
+                    help="comma-separated splits to write (external sets: external)")
     a = ap.parse_args(argv)
     try:
-        report = prepare(a.raw, a.manifest, a.out, a.workers, img_subdir=a.img_subdir)
+        report = prepare(a.raw, a.manifest, a.out, a.workers, img_subdir=a.img_subdir,
+                         splits=tuple(x for x in a.splits.split(",") if x))
     except ProvenanceError as e:
         print(f"HARD FAIL: {e}", file=sys.stderr)
         return 1

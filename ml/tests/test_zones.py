@@ -30,13 +30,23 @@ class TestLoad(unittest.TestCase):
             z = zones.load_zone_thresholds(thresholds_file(d), RUN)
         self.assertAlmostEqual(z["screen_out_logit"], np.log(0.2 / 0.8))
         self.assertAlmostEqual(z["refer_logit"], np.log(0.8 / 0.2))
-        self.assertEqual(z["temperature"], 1.0)
+        self.assertEqual(z["temperature_applied"], 1.0)
+        self.assertEqual(z["probability_space"], "raw_sigmoid")
         self.assertEqual(len(z["file_sha256"]), 64)
 
-    def test_temperature_scales_the_cutoffs(self):
+    def test_raw_scale_cuts_ignore_any_temperature_like_the_app(self):
+        # v1 (ADR-25): cuts on the raw scale; T is information. triage.ts applies no T, so
+        # neither may the one-time score. Applying it here would let more TB into low risk.
+        with tempfile.TemporaryDirectory() as d:
+            z = zones.load_zone_thresholds(thresholds_file(
+                d, probability_space="raw_sigmoid", temperature=1.34, calibration={"temperature": 1.34}), RUN)
+        self.assertEqual(z["temperature_applied"], 1.0)
+        self.assertAlmostEqual(z["screen_out_logit"], np.log(0.2 / 0.8))
+
+    def test_temperature_scales_the_cutoffs_only_on_the_calibrated_scale(self):
         # calibrated p = sigmoid(logit / T) >= q  exactly when  logit >= T * logit(q)
         with tempfile.TemporaryDirectory() as d:
-            z = zones.load_zone_thresholds(thresholds_file(d, temperature=2.0), RUN)
+            z = zones.load_zone_thresholds(thresholds_file(d, probability_space="calibrated", temperature=2.0), RUN)
         for q, cut in ((0.2, z["screen_out_logit"]), (0.8, z["refer_logit"])):
             self.assertAlmostEqual(cut, 2.0 * np.log(q / (1 - q)))
             self.assertAlmostEqual(1 / (1 + np.exp(-cut / 2.0)), q)
@@ -47,7 +57,8 @@ class TestLoad(unittest.TestCase):
                               ({"status": "pending"}, "status"),
                               ({"version": "v0-uncalibrated"}, "interim"),
                               ({"screen_out_probability": 0.9}, "screen_out < refer"),
-                              ({"temperature": 0}, "temperature")):
+                              ({"probability_space": "calibrated", "temperature": 0}, "temperature"),
+                              ({"probability_space": "logit"}, "unknown probability_space")):
                 with self.subTest(over=over), self.assertRaisesRegex(zones.ThresholdsError, msg):
                     zones.load_zone_thresholds(thresholds_file(d, **over), RUN)
             with self.assertRaises(zones.ThresholdsError):

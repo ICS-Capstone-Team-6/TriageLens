@@ -142,7 +142,7 @@ The only operating point uses a threshold set on validation (90% sensitivity). `
 
 ## One-time score on the India sets (after E6-01)
 
-DA and DB are scored once, locally (ADR-24), at the three-zone thresholds that `E6-01` writes to `apps/pwa/public/config/thresholds.json`. `evaluate_external.py` refuses the interim ADR-20 file (`v0-uncalibrated`) and any file written for another run. A `temperature` in the file means the zones apply to calibrated scores.
+DA and DB are scored once, locally (ADR-24), at the three-zone thresholds that `E6-01` writes to `apps/pwa/public/config/thresholds.json`. `evaluate_external.py` refuses the interim ADR-20 file (`v0-uncalibrated`) and any file written for another run. The cuts are read exactly as the app reads them: on the raw sigmoid scale, with any temperature treated as information only. A temperature is applied only if the file says `probability_space: calibrated` (ADR-25, on the E6-01 branch).
 
 ```sh
 modal volume get triagelens-runs /bakeoff/efficientnet_lite0_seed1_20261021T114608Z ml/runs/frozen/   # once

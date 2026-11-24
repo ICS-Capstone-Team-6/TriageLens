@@ -34,11 +34,13 @@ INTERIM_VERSIONS = ("v0-uncalibrated",)  # ADR-20 slice thresholds: not the E6-0
 def load_zone_thresholds(path, run_name, allow_interim=False):
     """Read the app's three-zone thresholds file (apps/pwa/public/config/thresholds.json).
 
-    Returns logit cut-offs, so zones apply to calibrated scores when the file has a
-    temperature (ADR-8): calibrated p = sigmoid(logit / T), and p >= q exactly when
-    logit >= T * log(q / (1 - q)). The file must name this run, and an interim version is
-    refused unless allow_interim, so the one-time score uses the E6-01 thresholds.
-    Signature checks (ADR-11) belong to whoever signs the file; this records its SHA-256.
+    Returns logit cut-offs read exactly as the app reads the file (triage.ts compares
+    sigmoid(logit) with the cuts): by default the cuts are on the raw sigmoid scale and any
+    temperature is information only (ADR-25). Only a file that says probability_space
+    'calibrated' has its cuts applied to sigmoid(logit / T), where p >= q exactly when
+    logit >= T * log(q / (1 - q)). An unknown scale is refused. The file must name this run,
+    and an interim version is refused unless allow_interim, so the one-time score uses the
+    E6-01 thresholds. Signing (ADR-11) is deferred to E2-05; this records the file's SHA-256.
     """
     path = Path(path)
     if not path.exists():
@@ -50,7 +52,10 @@ def load_zone_thresholds(path, run_name, allow_interim=False):
         raise ThresholdsError(f"{path} is for run {t.get('run_id')!r}, not {run_name!r}")
     if t.get("version") in INTERIM_VERSIONS and not allow_interim:
         raise ThresholdsError(f"{path} is the interim version {t['version']!r}; wait for E6-01 (W2)")
-    temp = float(t.get("temperature", 1.0))
+    space = t.get("probability_space", "raw_sigmoid")
+    if space not in ("raw_sigmoid", "calibrated"):
+        raise ThresholdsError(f"{path}: unknown probability_space {space!r}")
+    temp = float(t.get("temperature", 1.0)) if space == "calibrated" else 1.0
     lo, hi = float(t["screen_out_probability"]), float(t["refer_probability"])
     if not (0 < lo < hi < 1) or temp <= 0:
         raise ThresholdsError(f"{path}: need 0 < screen_out < refer < 1 and temperature > 0")
@@ -58,7 +63,8 @@ def load_zone_thresholds(path, run_name, allow_interim=False):
     def to_logit(q):
         return temp * float(np.log(q / (1 - q)))
 
-    return {"version": t.get("version"), "file_sha256": _sha256(path), "temperature": temp,
+    return {"version": t.get("version"), "file_sha256": _sha256(path), "probability_space": space,
+            "temperature_applied": temp,
             "screen_out_probability": lo, "refer_probability": hi,
             "screen_out_logit": to_logit(lo), "refer_logit": to_logit(hi)}
 

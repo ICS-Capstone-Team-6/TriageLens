@@ -3,3 +3,5 @@
 numpy==2.4.6
 pandas==2.3.3
 pillow==12.3.0
+# pydicom: reads the India DB set, which is DICOM (ml/pipeline/build_india.py, E11-01).
+pydicom==3.0.1

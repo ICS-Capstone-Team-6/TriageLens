@@ -1,6 +1,6 @@
 # Data card: India TB chest X-ray sets DA and DB, version 1 (locked external tests)
 
-Story `E11-01`. Built by `ml/pipeline/build_india.py` (pipeline 0.1.0, commit `699b218`). Decisions: [ADR-24](../../../docs/adr/0024-india-da-db-external-sets.md).
+Story `E11-01`. Built by `ml/pipeline/build_india.py` (pipeline 0.1.0, commit `edf54ef`). Decisions: [ADR-24](../../../docs/adr/0024-india-da-db-external-sets.md).
 
 | Set | Dataset version hash | Kept | TB | Normal |
 | --- | --- | --- | --- | --- |

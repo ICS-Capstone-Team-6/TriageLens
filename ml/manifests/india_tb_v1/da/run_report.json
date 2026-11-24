@@ -3,12 +3,12 @@
   "dataset_version_hash": "f88389fc343acd0b",
   "pipeline_version": "0.1.0",
   "role": "locked external test (ML-DATA-04)",
-  "run_utc": "2026-11-24T10:28:57+00:00",
+  "run_utc": "2026-11-24T13:06:25+00:00",
   "python": "3.13.9",
   "numpy": "2.3.5",
   "pandas": "2.3.3",
   "pillow": "12.0.0",
-  "code_commit": "699b2189b6a915eef936c614af679513f3a3e098",
+  "code_commit": "edf54ef64380596f1a92550793617b11028bc946",
   "staging": {
     "dicom_window_percentiles": [
       0.5,

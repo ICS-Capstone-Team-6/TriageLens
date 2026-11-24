@@ -225,8 +225,8 @@ By signing, each member agrees to follow these rules and to raise concerns early
 
 | Name | Role | Signature | Date |
 |--------------|--------------------------------|----------------------|------------|
-| Kweku | Team lead and product owner | | |
-| Micheal | Project manager | | |
+| Kweku | Team lead and product owner | Kweku-Abeiku Attah Anyen | 21 Oct 2026 |
+| Micheal | Project manager | Michael Sylvester | 21 Oct 2026 |
 | Chelsea | ML lead | | |
 | Nana Yaw | DevOps and QA lead | Nana Yaw Koranteng | 20 Oct 2026 |
 
@@ -235,3 +235,15 @@ By signing, each member agrees to follow these rules and to raise concerns early
 | Date | Change | Agreed by |
 |------------|-----------------------------------------|-----------|
 | 15 Oct 2026 | First version | Draft |
+| 18 Oct 2026 | D4 answered: Modal is the main GPU source, Kaggle plus Colab as fallback ([ADR-13](../adr/0013-modal-gpu-compute.md)) | Pending: team |
+| 18 Oct 2026 | M2 chest X-ray model has a TB output only; pneumonia output deferred until pneumonia data exists; TRD 10.6 interface changed for M2 ([ADR-14](../adr/0014-tb-only-output-m2.md)) | Pending: team |
+| 18 Oct 2026 | Interim backbone bake-off judged on validation AUROC, int8 drop and size until an external set exists ([ADR-15](../adr/0015-interim-bake-off-criteria.md)) | Pending: team |
+| 18 Oct 2026 | Chest X-rays stretched to 320 by 320 instead of padded, because image shape predicts TB in the Shenzhen set; TRD 9.3 "resize with padding" no longer applies ([ADR-16](../adr/0016-stretch-not-pad-preprocessing.md)) | Pending: team |
+| 18 Oct 2026 | Static int8 calibration images come from the train split, not validation, so the bake-off int8 drop is measured on images not used for calibration; TRD 9.5 step 2 changed ([ADR-17](../adr/0017-int8-calibration-from-train.md)) | Pending: team |
+| 20 Oct 2026 | M2 backbone is EfficientNet-Lite0 (not the ADR-3 default MobileNetV3-Large); both failed the int8 drop rule, so the frozen model (median seed) ships at full precision, 12.8 MB, as TRD 9.5 step 4 allows; ADR-5 revisit trigger fired ([ADR-18](../adr/0018-efficientnet-lite0-full-precision.md)) | Pending: team |
+| 21 Oct 2026 | Shenzhen's 15% split (named `test` in the manifest) is a second held-out validation set, not an internal test set, so it matches TRD Appendix A (Shenzhen: train and validate). It stays locked. The name is kept in the files so the dataset version hash does not change. Committing file names, patient numbers, labels, splits and fingerprints is within the dataset's ReadMe terms (PR #78 review) | Chelsea; pending: team |
+| 21 Oct 2026 | M2 thin slice deployed in Sprint 0, ahead of G1, for the ICS 591 M2 deadline (23 Oct); Sprint 0 cap and swap rule not met this week ([ADR-19](../adr/0019-m2-thin-slice-pulled-forward.md)) | Pending: team |
+| 21 Oct 2026 | M2 slice thresholds: screen-out at 95% or higher sensitivity (TRD 7.2 says 90%) and refer at 95% or higher specificity, on raw validation logits, until E6-01 calibration ([ADR-20](../adr/0020-interim-slice-thresholds.md)) | Pending: team |
+| 21 Oct 2026 | Required pull-request approval removed from `main` branch protection; the four CI checks stay required (Team Rules 6 says one review minimum) | Kweku; pending: team |
+| 23 Nov 2026 | TBX11K onboarded without age or patient IDs (not used for training after its one-time evaluation, 24 Nov): TRD 9.1 age check and ML-DATA-02 patient-level split get a TBX11K exception (image-level split with near-duplicate grouping); latent TB counts as TB ([ADR-23](../adr/0023-tbx11k-without-age-or-patient-ids.md)) | Chelsea; pending: team |
+| 24 Nov 2026 | India DA and DB used as locked external TB tests without age data (TRD 9.1 exception); no explicit licence, so they are kept and scored only on the team's machine, never uploaded ([ADR-24](../adr/0024-india-da-db-external-sets.md)) | Chelsea; pending: team |

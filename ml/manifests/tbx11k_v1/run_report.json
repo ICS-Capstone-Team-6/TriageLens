@@ -1,0 +1,127 @@
+{
+  "dataset": "TBX11K (Media Computing Lab, Nankai University)",
+  "dataset_version_hash": "2c2a19943177fa2f",
+  "pipeline_version": "0.1.0",
+  "role": "train, validate, internal test (TRD Appendix A)",
+  "seed": 591,
+  "run_utc": "2026-11-23T14:24:24+00:00",
+  "python": "3.13.9",
+  "numpy": "2.3.5",
+  "pandas": "2.3.3",
+  "pillow": "12.0.0",
+  "code_commit": "b2cb2df3f817831e008d0e4f89127547c845fa77",
+  "image_root": "TBX11K/imgs",
+  "list_entries": 8400,
+  "records_kept": 8274,
+  "records_quarantined": 126,
+  "quarantine_by_check": {
+    "exact_duplicate": 126
+  },
+  "quarantine_by_check_and_label": {
+    "exact_duplicate (label 0)": 126
+  },
+  "other_source_overlap": {},
+  "near_duplicate_pairs": 29,
+  "val_records_moved_to_train": 7,
+  "label_counts": {
+    "0": 7474,
+    "1": 800
+  },
+  "class_counts": {
+    "health": 3800,
+    "sick": 3674,
+    "tb": 800
+  },
+  "tb_subtype_counts": {
+    "active": 630,
+    "latent": 139,
+    "active_and_latent": 30,
+    "unknown": 1
+  },
+  "split_counts": {
+    "test": {
+      "0": 784,
+      "1": 100
+    },
+    "train": {
+      "0": 5906,
+      "1": 600
+    },
+    "val": {
+      "0": 784,
+      "1": 100
+    }
+  },
+  "split_class_counts": {
+    "test": {
+      "health": 414,
+      "sick": 370,
+      "tb": 100
+    },
+    "train": {
+      "health": 3000,
+      "sick": 2906,
+      "tb": 600
+    },
+    "val": {
+      "sick": 398,
+      "health": 386,
+      "tb": 100
+    }
+  },
+  "image_modes": {
+    "RGB": 8274
+  },
+  "resolution_px": {
+    "smallest_side_min": 512,
+    "largest_side_max": 512
+  },
+  "age_check": "not run: TBX11K has no age metadata; accepted and recorded (TRD 9.1 gap)",
+  "batch_checks": [
+    {
+      "check": "source_matches_official_counts",
+      "passed": true,
+      "detail": "found {'train': {'health': 3000, 'sick': 3000, 'tb': 600}, 'val': {'health': 800, 'sick': 800, 'tb': 200}}, official {'train': {'health': 3000, 'sick': 3000, 'tb': 600}, 'val': {'health': 800, 'sick': 800, 'tb': 200}}"
+    },
+    {
+      "check": "no_patient_across_splits",
+      "passed": true,
+      "detail": "each patient identity sits in one split, independently of image grouping"
+    },
+    {
+      "check": "no_patient_group_across_splits",
+      "passed": true,
+      "detail": "each patient or near-duplicate group sits in one split"
+    },
+    {
+      "check": "no_identical_image_across_splits",
+      "passed": true,
+      "detail": "each byte-identical image sits in one split"
+    },
+    {
+      "check": "tb_rate_train",
+      "passed": true,
+      "detail": "0.092 vs overall 0.097"
+    },
+    {
+      "check": "tb_rate_val",
+      "passed": true,
+      "detail": "0.113 vs overall 0.097"
+    },
+    {
+      "check": "tb_rate_test",
+      "passed": true,
+      "detail": "0.113 vs overall 0.097"
+    },
+    {
+      "check": "min_records",
+      "passed": true,
+      "detail": "8274 records kept, need 300"
+    },
+    {
+      "check": "no_other_source_overlap",
+      "passed": true,
+      "detail": "0 image(s) matched another source and were quarantined"
+    }
+  ]
+}

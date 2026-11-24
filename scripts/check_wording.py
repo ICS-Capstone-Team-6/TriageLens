@@ -45,6 +45,10 @@ LINE_COMMENT = re.compile(r"^\s*(//|\*|/\*)")
 
 
 def is_skipped(path: Path) -> bool:
+    # Capacitor copies the already-checked web build (including vendor JS) here.
+    copied_assets = ("android", "app", "src", "main", "assets")
+    if any(path.parts[i:i + 5] == copied_assets for i in range(len(path.parts) - 4)):
+        return True
     return any(p in SKIP_DIRS for p in path.parts) or bool(TEST_FILE.search(path.name))
 
 

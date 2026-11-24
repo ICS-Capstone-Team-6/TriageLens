@@ -1,0 +1,92 @@
+{
+  "dataset": "NLM Shenzhen Hospital CXR Set",
+  "dataset_version_hash": "702a4658c7447e13",
+  "pipeline_version": "0.1.0",
+  "seed": 591,
+  "run_utc": "2026-10-17T14:54:03+00:00",
+  "python": "3.10.12",
+  "numpy": "2.2.6",
+  "pandas": "2.3.3",
+  "images_found": 662,
+  "records_kept": 635,
+  "records_quarantined": 27,
+  "quarantine_by_check": {
+    "intended_population": 25,
+    "label_vs_reading": 1,
+    "age_unknown": 1
+  },
+  "quarantine_by_check_and_label": {
+    "age_unknown (label 0)": 1,
+    "intended_population (label 0)": 23,
+    "intended_population (label 1)": 2,
+    "label_vs_reading (label 1)": 1
+  },
+  "near_duplicate_pairs": 0,
+  "missing_reading_rate": 0.0,
+  "label_counts": {
+    "1": 333,
+    "0": 302
+  },
+  "split_counts": {
+    "test": {
+      "1": 50,
+      "0": 46
+    },
+    "train": {
+      "1": 233,
+      "0": 211
+    },
+    "val": {
+      "1": 50,
+      "0": 45
+    }
+  },
+  "sex_counts": {
+    "male": 430,
+    "female": 205
+  },
+  "age_band_counts": {
+    "15-24": 106,
+    "25-34": 235,
+    "35-44": 150,
+    "45-54": 67,
+    "55-64": 49,
+    "65+": 28
+  },
+  "resolution_px": {
+    "smallest_side_min": 2009,
+    "largest_side_max": 3001
+  },
+  "batch_checks": [
+    {
+      "check": "no_patient_group_across_splits",
+      "passed": true,
+      "detail": "each patient or near-duplicate group sits in one split"
+    },
+    {
+      "check": "no_identical_image_across_splits",
+      "passed": true,
+      "detail": "each byte-identical image sits in one split"
+    },
+    {
+      "check": "tb_rate_train",
+      "passed": true,
+      "detail": "0.525 vs overall 0.524"
+    },
+    {
+      "check": "tb_rate_val",
+      "passed": true,
+      "detail": "0.526 vs overall 0.524"
+    },
+    {
+      "check": "tb_rate_test",
+      "passed": true,
+      "detail": "0.521 vs overall 0.524"
+    },
+    {
+      "check": "min_records",
+      "passed": true,
+      "detail": "635 records kept, need 300"
+    }
+  ]
+}

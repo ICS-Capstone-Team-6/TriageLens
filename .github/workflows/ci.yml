@@ -32,7 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: DavidAnson/markdownlint-cli2-action@v24
+      - uses: DavidAnson/markdownlint-cli2-action@v25
         with:
           globs: "**/*.md"
 
@@ -65,6 +65,17 @@ jobs:
       - name: Scan full history
         run: gitleaks detect --source . --redact --verbose --exit-code 1
 
+  ml-data-tests:
+    name: ML data pipeline tests (E1-03)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+      - run: pip install -r ml/requirements.txt
+      - run: python -m unittest discover -s ml/tests -v
+
   # ---------- TODO jobs: switched off until the code exists ----------
 
   lint-typecheck:
@@ -84,12 +95,25 @@ jobs:
       - run: echo "TODO(E0-02) run unit tests; triage rules, sync and quality gate need at least 70% coverage (NFR-MAINT-01)"
 
   build:
-    name: Build (TODO E8-02)
-    if: ${{ false }} # TODO(E8-02): enable when the PWA shell builds
+    name: PWA type-check, unit tests and build (E8-02)
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/pwa
     steps:
       - uses: actions/checkout@v7
-      - run: echo "TODO(E8-02) build the PWA"
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/pwa/package-lock.json
+      - run: npm ci
+      - name: Type-check
+        run: npx tsc --noEmit
+      - name: Unit tests (triage zones, quality check, cxr-pre-2 parity with Pillow, monitoring maths)
+        run: npx vitest run
+      - name: Build
+        run: npm run build
 
   bundle-budget:
     name: Bundle budget, app shell at most 300 KB gzip (TODO E13-03)
@@ -116,12 +140,25 @@ jobs:
       - run: echo "TODO(E13-02) run Playwright with the network disabled"
 
   rls-tests:
-    name: Supabase RLS tests (TODO E9-01)
-    if: ${{ false }} # TODO(E9-01): facility A cannot read facility B; audit rows written
+    name: Supabase RLS tests (E9-01)
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
-      - run: echo "TODO(E9-01) run RLS tests against a local Supabase"
+      - uses: supabase/setup-cli@v3
+        with:
+          version: 2.121.0
+      - name: Install PostgreSQL test client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends postgresql-client
+      - name: Start isolated local Supabase and apply migrations
+        run: supabase start
+      - name: Verify access, immutability, audit and replay rules
+        run: bash supabase/test-local.sh
+      - name: Stop local Supabase
+        if: always()
+        run: supabase stop --no-backup
 
   dependency-scan:
     name: Dependency scan (TODO E13-03)

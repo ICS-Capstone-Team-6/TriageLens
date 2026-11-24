@@ -48,13 +48,27 @@ Every document in `docs/`, who owns it and how it changes.
 | [adr/0010-opt-in-image-upload.md](adr/0010-opt-in-image-upload.md) | ADR-10. Image upload | Kweku | Living (supersede with a new ADR) |
 | [adr/0011-ecdsa-p256-signing.md](adr/0011-ecdsa-p256-signing.md) | ADR-11. Model signing | Kweku | Living (supersede with a new ADR) |
 | [adr/0012-react-typescript-vite.md](adr/0012-react-typescript-vite.md) | ADR-12. Web framework | Kweku | Living (supersede with a new ADR) |
+| [adr/0013-modal-gpu-compute.md](adr/0013-modal-gpu-compute.md) | ADR-13. GPU compute on Modal (answers D4) | Chelsea | Living (supersede with a new ADR) |
+| [adr/0014-tb-only-output-m2.md](adr/0014-tb-only-output-m2.md) | ADR-14. TB-only output for the chest X-ray model at M2 | Chelsea | Living (supersede with a new ADR) |
+| [adr/0015-interim-bake-off-criteria.md](adr/0015-interim-bake-off-criteria.md) | ADR-15. Interim bake-off criteria while no external test set exists | Chelsea | Living (supersede with a new ADR) |
+| [adr/0016-stretch-not-pad-preprocessing.md](adr/0016-stretch-not-pad-preprocessing.md) | ADR-16. Stretch chest X-rays to square instead of padding | Chelsea | Living (supersede with a new ADR) |
+| [adr/0017-int8-calibration-from-train.md](adr/0017-int8-calibration-from-train.md) | ADR-17. int8 calibration images come from the train split | Chelsea | Living (supersede with a new ADR) |
+| [adr/0018-efficientnet-lite0-full-precision.md](adr/0018-efficientnet-lite0-full-precision.md) | ADR-18. EfficientNet-Lite0 chosen; shipped at full precision until int8 passes | Chelsea | Living (supersede with a new ADR) |
+| [adr/0019-m2-thin-slice-pulled-forward.md](adr/0019-m2-thin-slice-pulled-forward.md) | ADR-19. M2 thin slice pulled forward (proposed) | Kweku | Living (supersede with a new ADR) |
+| [adr/0020-interim-slice-thresholds.md](adr/0020-interim-slice-thresholds.md) | ADR-20. Interim slice thresholds (proposed) | Kweku | Living (supersede with a new ADR) |
+| [adr/0024-india-da-db-external-sets.md](adr/0024-india-da-db-external-sets.md) | ADR-24. India DA and DB external sets without age, scored locally (proposed) | Chelsea | Living (supersede with a new ADR) |
+| [adr/0023-tbx11k-without-age-or-patient-ids.md](adr/0023-tbx11k-without-age-or-patient-ids.md) | ADR-23. TBX11K onboarded without age or patient IDs; not used for training (proposed) | Chelsea | Living (supersede with a new ADR) |
+| [adr/0025-chest-xray-execution-and-distillation.md](adr/0025-chest-xray-execution-and-distillation.md) | ADR-25. Chest X-ray execution and two-teacher distillation (proposed) | Micheal | Living (supersede with a new ADR) |
+| [adr/0026-dr-data-aptos-eyepacs.md](adr/0026-dr-data-aptos-eyepacs.md) | ADR-26. DR training data: APTOS without patient IDs, EyePACS subsample, padded crop (proposed) | Kweku | Living (supersede with a new ADR) |
 
 ## Safety and ethics
 
 | Document | Description | Owner | Update rule |
 |----------|-------------|-------|-------------|
-| [safety/intended-use.md](safety/intended-use.md) | Intended-use statement (TRD 3.3) and where it must appear | Kweku | Frozen text; change by ADR |
+| [safety/intended-use.md](safety/intended-use.md) | One-page intended use and success metrics for sign-off (TRD 3.3, 3.4; E0-04) | Kweku | Frozen after sign-off; change by ADR |
 | [safety/hazard-log.md](safety/hazard-log.md) | Hazards H1 to H12 with status and evidence (TRD 12.2) | Kweku | Living |
+| [ethics/ethics-pathway.md](ethics/ethics-pathway.md) | Review route, protocol outline, submission checklist, timing (E12-01) | Kweku | Living |
+| [ethics/clinic-contacts.md](ethics/clinic-contacts.md) | Clinic contact log; roles only, no personal details (E12-01) | Kweku | Living |
 | [ethics/irb-checklist.md](ethics/irb-checklist.md) | Ethics pathway checklist (TRD 12.3) | Kweku | Living |
 | [ethics/consent-template.md](ethics/consent-template.md) | Consent form for usability testers; draft pending Ashesi IRB review | Kweku | Living; IRB wording overrides |
 
@@ -64,6 +78,7 @@ Every document in `docs/`, who owns it and how it changes.
 |----------|-------------|-------|-------------|
 | [model-cards/TEMPLATE.md](model-cards/TEMPLATE.md) | Model card template (TRD 9.10) | Chelsea | Template |
 | [benchmarks/README.md](benchmarks/README.md) | Where device benchmark reports go | Nana Yaw | Living |
+| [usability/ux-plan/README.md](usability/ux-plan/README.md) | E8-01 UX plan: interview guide, notes and synthesis templates, user journeys, low-fi flows | Kweku | Living |
 | [usability/test-plan.md](usability/test-plan.md) | Usability test plan (TRD 13.4) | Kweku | Living |
 
 ## Sprints, operations and process
@@ -76,6 +91,7 @@ Every document in `docs/`, who owns it and how it changes.
 | [sprints/sprint-03.md](sprints/sprint-03.md) | Sprint 3 plan, gate, review, retro, workload, velocity | Micheal | Living |
 | [sprints/sprint-04.md](sprints/sprint-04.md) | Sprint 4 plan, gate, review, retro, workload, velocity | Micheal | Living |
 | [sprints/board-snapshot-2026-10-16.csv](sprints/board-snapshot-2026-10-16.csv) | First board snapshot, taken after setup | Micheal | Record |
+| [Supabase teammate handoff](../supabase/TEAM_HANDOFF.md) | Live Prosit 2 backend, app accounts, connection and RPC contract | Nana Yaw | Living |
 | [runbook/README.md](runbook/README.md) | Deploy, rollback, keys, model publishing, incidents (placeholders until E14-02) | Nana Yaw | Living |
 | [process/README.md](process/README.md) | How the team works with its tools | Micheal | Living |
 | [process/claude-code-setup.md](process/claude-code-setup.md) | What Claude Code loads, when, and who updates it | Kweku | Living |
@@ -95,3 +111,10 @@ Every document in `docs/`, who owns it and how it changes.
 ## Folder READMEs
 
 Each folder has a `README.md` with its purpose, owner, and what must not go in it: [planning](planning/README.md), [figures](figures/README.md), [adr](adr/README.md), [safety](safety/README.md), [ethics](ethics/README.md), [model-cards](model-cards/README.md), [benchmarks](benchmarks/README.md), [usability](usability/README.md), [sprints](sprints/README.md), [runbook](runbook/README.md), [process](process/README.md).
+
+## Android test distribution
+
+| Document | Description | Owner | Update rule |
+|----------|-------------|-------|-------------|
+| [adr/0021-android-test-apks.md](adr/0021-android-test-apks.md) | Proposed Android test packaging decision | Nana Yaw | Living |
+| [runbook/android-apk.md](runbook/android-apk.md) | Build, download, signing and device checks | Nana Yaw | Living |

@@ -1,0 +1,41 @@
+{
+  "name": "@triagelens/pwa",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "TriageLens M2 slice: TB screening on a chest X-ray, model on the phone (ADR-19).",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "copy-ort": "node scripts/copy-ort.mjs",
+    "predev": "npm run copy-ort",
+    "dev": "vite",
+    "prebuild": "npm run copy-ort",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "android:sync": "npm run build && cap sync android",
+    "android:apk": "npm run android:sync && cd android && bash gradlew assembleDebug"
+  },
+  "dependencies": {
+    "@capacitor/android": "8.6.2",
+    "@capacitor/core": "8.6.2",
+    "@fontsource/manrope": "5.3.0",
+    "@supabase/supabase-js": "2.119.2",
+    "onnxruntime-web": "1.31.1",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "8.6.2",
+    "@types/node": "26.6.6",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "@vitejs/plugin-react": "6.3.0",
+    "typescript": "5.6.3",
+    "vite": "8.3.8",
+    "vitest": "5.1.1"
+  }
+}

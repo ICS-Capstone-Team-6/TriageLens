@@ -108,3 +108,10 @@ Every document in `docs/`, who owns it and how it changes.
 ## Folder READMEs
 
 Each folder has a `README.md` with its purpose, owner, and what must not go in it: [planning](planning/README.md), [figures](figures/README.md), [adr](adr/README.md), [safety](safety/README.md), [ethics](ethics/README.md), [model-cards](model-cards/README.md), [benchmarks](benchmarks/README.md), [usability](usability/README.md), [sprints](sprints/README.md), [runbook](runbook/README.md), [process](process/README.md).
+
+## Android test distribution
+
+| Document | Description | Owner | Update rule |
+|----------|-------------|-------|-------------|
+| [adr/0021-android-test-apks.md](adr/0021-android-test-apks.md) | Proposed Android test packaging decision | Nana Yaw | Living |
+| [runbook/android-apk.md](runbook/android-apk.md) | Build, download, signing and device checks | Nana Yaw | Living |

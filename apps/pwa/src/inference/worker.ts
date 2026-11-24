@@ -6,6 +6,8 @@ import * as ort from 'onnxruntime-web/wasm';
 import { INPUT_SIZE, PREPROCESS_VERSION, preprocess, rgbaToGray } from '../lib/preprocess';
 import { checkQuality, colourfulness } from '../lib/quality';
 import { inputStats } from '../lib/stats';
+import { loadModelBytes } from '../lib/modelCache';
+import { MODEL_CACHE } from '../sw/routes';
 import type { WorkerRequest, WorkerResponse } from './messages';
 
 declare const self: DedicatedWorkerGlobalScope;
@@ -27,13 +29,17 @@ async function init(modelUrl: string, modelSha256: string) {
     ort.env.wasm.wasmPaths = new URL('/ort/', self.location.href).href;
     threads = self.crossOriginIsolated ? Math.min(4, navigator.hardwareConcurrency || 1) : 1;
     ort.env.wasm.numThreads = threads;
-    const r = await fetch(modelUrl);
-    if (!r.ok) return post({ type: 'error', code: 'model_unreachable' });
-    const bytes = await r.arrayBuffer();
-    const hash = await sha256Hex(bytes);
-    if (modelSha256 && hash !== modelSha256.toLowerCase()) return post({ type: 'error', code: 'model_checksum' });
-    session = await ort.InferenceSession.create(new Uint8Array(bytes), { executionProviders: ['wasm'] });
-    post({ type: 'ready', threads, modelSha256: hash, crossOriginIsolated: self.crossOriginIsolated });
+    // Offline (E8-02): verified model bytes live in the Cache API; see lib/modelCache.ts.
+    let cache: Cache | null = null;
+    try {
+      cache = 'caches' in self ? await caches.open(MODEL_CACHE) : null;
+    } catch {
+      cache = null;
+    }
+    const m = await loadModelBytes(modelUrl, modelSha256, sha256Hex, (u) => fetch(u), cache);
+    if (!m.ok) return post({ type: 'error', code: m.code });
+    session = await ort.InferenceSession.create(new Uint8Array(m.bytes), { executionProviders: ['wasm'] });
+    post({ type: 'ready', threads, modelSha256: m.hash, crossOriginIsolated: self.crossOriginIsolated });
   } catch {
     post({ type: 'error', code: 'model_load' });
   }

@@ -31,3 +31,14 @@ if (import.meta.env.DEV && params.has('preview')) {
 } else {
   render(<App />);
 }
+
+// Offline (E8-02): register the service worker in production web builds only. The Android
+// app bundles its files already, and dev builds must always show fresh code. Ask the browser
+// to keep our storage under pressure (pwa-offline rule); a refusal is not an error.
+const native = (window as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor?.isNativePlatform?.();
+if (import.meta.env.PROD && !native && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => undefined);
+    void navigator.storage?.persist?.().catch(() => false);
+  });
+}

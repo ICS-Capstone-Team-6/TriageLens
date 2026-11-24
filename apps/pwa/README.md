@@ -50,6 +50,16 @@ Two reviewed files in `public/config/` control results:
   Fill it with `python3 scripts/set_thresholds.py --val val_logits.csv --model <fp32.onnx>`: the validation split's `label,logit` CSV and the exact model file. It applies the ADR-20 rules, reports sensitivity and specificity with 95% CIs, and refuses to write if the thresholds cross.
 - `reference.json`: the validation score histogram and training input-statistic histograms for drift (PSI). Made with `scripts/make_reference.py`. Until it is set, the monitoring page shows live numbers only.
 
+## Offline (E8-02)
+
+After one online load, the app opens and screens with no network.
+
+- `src/sw/sw.ts` is built to `/sw.js`. It pre-caches the app shell, the ONNX Runtime files, fonts and config (about 15.5 MB). Pages are network first with the cached shell as the fallback; config is network first; other own files are cache first. Other origins (Supabase, the model host) are never touched.
+- The inference worker keeps the model in the Cache API (`src/lib/modelCache.ts`), only after its SHA-256 matches. A copy that no longer matches is deleted and fetched again (H7).
+- Production web builds only. Dev builds and the Android app do not register it.
+- Not offline yet: sign-in and saving the monitoring record still need the network. That is E9-03 (offline PIN) and E9-02 (outbox).
+- Still to check on a real phone: install to home screen and the Lighthouse PWA audit.
+
 ## Deploy on Vercel (Nana Yaw)
 
 1. New project from this repo, **Root Directory `apps/pwa`**. `vercel.json` sets the framework (Vite), the build, and the headers (COOP and COEP for ONNX Runtime threads, `noindex`).

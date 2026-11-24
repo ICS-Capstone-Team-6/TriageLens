@@ -1,5 +1,5 @@
 """Calibration and three-zone cut-offs from validation scores (story E6-01; TRD 7.2, 9.6;
-ADR-8, ADR-20, ADR-25). No torch needed, so CI tests it; calibrate.py feeds it real logits.
+ADR-8, ADR-20, ADR-27). No torch needed, so CI tests it; calibrate.py feeds it real logits.
 
 - Temperature scaling (ML-CALIB-01): one number T, fitted on validation by minimising log
   loss; calibrated p = sigmoid(logit / T). Dividing by T keeps the order of the films, so AUROC
@@ -9,7 +9,7 @@ ADR-8, ADR-20, ADR-25). No torch needed, so CI tests it; calibrate.py feeds it r
   halfway between two neighbouring validation scores, so a tiny numeric difference between
   PyTorch and ONNX Runtime Web cannot move a validation film across it. The app's rule
   (triage.ts): probability >= refer -> refer now; probability < screen-out -> low risk.
-- Zone cuts are stored on the raw sigmoid scale the app uses today (ADR-25), so any app
+- Zone cuts are stored on the raw sigmoid scale the app uses today (ADR-27), so any app
   version, including an old cached one, gives the same zones. T and the calibrated values
   are stored as information.
 - ECE with equal-width bins and a bootstrap interval; reliability bins; a selective-prediction

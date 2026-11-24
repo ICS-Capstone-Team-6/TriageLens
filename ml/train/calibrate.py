@@ -6,7 +6,7 @@ Shenzhen validation, fits the temperature, sets both cuts by the 95% rules, and 
 - the thresholds file the app reads (apps/pwa/public/config/thresholds.json), version v1
 
 Zone cuts stay on the raw sigmoid scale that triage.ts uses, so every app version gives the
-same zones; the temperature and calibrated cuts are stored beside them (ADR-25). The model hash
+same zones; the temperature and calibrated cuts are stored beside them (ADR-27). The model hash
 is carried over from the current file, which must name the same run.
 
 Usage (from the repo root, with ml/requirements-train.txt installed):
@@ -112,14 +112,14 @@ def thresholds_file(result, current, run_name, checkpoint_sha, n, n_tb):
             "ece_target_met": result["ece"]["10_bins"]["calibrated"] <= ECE_TARGET,
             "for_display": False,
             "note": ("Zones use the raw cuts above; the calibrated values are the same cuts on the calibrated scale. "
-                     "Not for display to health workers until the ECE target is met on more validation data (ADR-25)."),
+                     "Not for display to health workers until the ECE target is met on more validation data (ADR-27)."),
         },
         "validation": {
             "screen_out": z["screen_out"], "refer": z["refer"], "counts": z["counts"],
             "not_sure_share": round(z["unsure_share"], 3),
         },
         "signature": None,
-        "signature_note": "Signing (ADR-11) is deferred to E2-05 (ADR-25); the file is bound to the model by model_sha256.",
+        "signature_note": "Signing (ADR-11) is deferred to E2-05 (ADR-27); the file is bound to the model by model_sha256.",
         "created_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
     }
 

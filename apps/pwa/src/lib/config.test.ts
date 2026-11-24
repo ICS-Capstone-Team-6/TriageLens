@@ -37,9 +37,26 @@ describe('parseThresholds', () => {
     expect(parseThresholds({ ...base, screen_out_probability: 0.7, refer_probability: 0.3 }, RUN)).toEqual({ ok: false, reason: 'invalid' });
   });
 
+  const shipped = JSON.parse(readFileSync(join(__dirname, '..', '..', 'public', 'config', 'thresholds.json'), 'utf8'));
+
   it('the shipped file is for the frozen run', () => {
-    const shipped = JSON.parse(readFileSync(join(__dirname, '..', '..', 'public', 'config', 'thresholds.json'), 'utf8'));
     expect(shipped.run_id).toBe(RUN);
-    expect(shipped.version).toBe('v0-uncalibrated');
+    expect(shipped.version).toBe('v1-calibrated');
+  });
+
+  it('the shipped file parses and keeps its cuts on the raw scale the app compares against', () => {
+    // triage.ts compares sigmoid(logit) with these cuts and applies no temperature (ADR-27).
+    // Calibrated cuts on this scale would let more TB films into low risk.
+    expect(shipped.probability_space).toBe('raw_sigmoid');
+    const s = parseThresholds(shipped, RUN);
+    expect(s.ok).toBe(true);
+    if (s.ok) {
+      expect(s.thresholds.screenOut).toBe(shipped.screen_out_probability);
+      expect(s.thresholds.refer).toBe(shipped.refer_probability);
+    }
+  });
+
+  it('calibrated values in the shipped file are not marked for display', () => {
+    expect(shipped.calibration.for_display).toBe(false);
   });
 });

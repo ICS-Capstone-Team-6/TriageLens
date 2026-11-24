@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { sigmoid, validThresholds, zoneFor, type Thresholds } from './triage';
+import { sigmoid, validThresholds, withSymptoms, zoneFor, type Thresholds } from './triage';
 
 // Test thresholds only. Real values come from public/config/thresholds.json (ADR-20).
 const t: Thresholds = { version: 'test', screenOut: 0.2, refer: 0.7 };
@@ -61,5 +61,27 @@ describe('helpers', () => {
     expect(validThresholds({ screenOut: 0.2, refer: 0.7 })).toBe(true);
     expect(validThresholds({ screenOut: 0.7, refer: 0.2 })).toBe(false);
     expect(validThresholds({ screenOut: 0, refer: 0.7 })).toBe(false);
+  });
+});
+
+describe('withSymptoms (FR-05: raise, never lower)', () => {
+  it('a symptom against a low score gives unsure', () => {
+    expect(withSymptoms('low_risk', 1)).toBe('unsure');
+    expect(withSymptoms('low_risk', 4)).toBe('unsure');
+  });
+
+  it('no symptoms leaves the zone as it is', () => {
+    for (const z of ['low_risk', 'unsure', 'refer_now', 'retake'] as const) expect(withSymptoms(z, 0)).toBe(z);
+  });
+
+  it('never lowers refer_now or unsure, and never turns a retake into a zone', () => {
+    expect(withSymptoms('refer_now', 3)).toBe('refer_now');
+    expect(withSymptoms('unsure', 2)).toBe('unsure');
+    expect(withSymptoms('retake', 2)).toBe('retake');
+  });
+
+  it('an invalid count is treated as symptoms present, toward refer', () => {
+    expect(withSymptoms('low_risk', Number.NaN)).toBe('unsure');
+    expect(withSymptoms('low_risk', -1)).toBe('unsure');
   });
 });

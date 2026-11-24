@@ -207,6 +207,28 @@ class TestEvaluate(unittest.TestCase):
             with self.assertRaises(ev.AlreadyEvaluated):
                 ev.evaluate(run_dir, sets, root / "eval", root / "data", log=lambda *_: None)
 
+    def test_extra_operating_point_from_another_validation_folder(self):
+        import evaluate as ev
+        import prepare_data
+        from test_train_core import make_raw
+        from train import Config, run
+
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            prepare_data.prepare(root / "raw", make_raw(root / "raw", n=40), root / "data", workers=1)
+            prepare_data.prepare(root / "raw2", make_raw(root / "raw2", n=40, seed=3), root / "other", workers=1)
+            run_dir, _ = run(Config(pretrained=False, epochs_head=1, epochs_max=1, batch_size=8, num_workers=0),
+                             root / "data", root / "runs", log=lambda *_: None)
+            sets = {"internal_test": (root / "data", "test")}
+            report = ev.evaluate(run_dir, sets, root / "eval", root / "data", int8=False, log=lambda *_: None,
+                                 extra_thresholds={"other_val": root / "other"})
+            x = report["operating_point"]["extra"]["other_val"]
+            self.assertGreaterEqual(x["validation"]["sensitivity"], 0.90)  # on its own validation folder
+            entry = report["sets"]["internal_test"]
+            self.assertEqual(entry["at_threshold_other_val"]["threshold"], x["logit_threshold"])
+            saved = json.loads((root / "eval" / "results" / "internal_test.json").read_text())
+            self.assertEqual(saved["extra_thresholds"], {"other_val": x["logit_threshold"]})
+
 
 class TestSubgroups(unittest.TestCase):
     def test_joins_private_metadata_and_reports_counts_and_rates_only(self):
@@ -231,6 +253,18 @@ class TestSubgroups(unittest.TestCase):
             self.assertEqual(groups["all"]["n"], 60)
             saved = (root / "subgroups.json").read_text()
             self.assertNotIn("MCUCXR_", saved)  # aggregates only, no per-patient rows
+
+    def test_set_without_private_metadata_is_skipped(self):
+        # TBX11K has no sex or age (ADR-23): the run must not crash on it
+        import subgroups as sg
+
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            (root / "eval_report.json").write_text(json.dumps(
+                {"run": "r", "operating_point": {"probability_threshold": 0.5}, "sets": {"tbx11k_test": {}}}))
+            r = sg.subgroups(root, private={})
+            self.assertIn("skipped", r["sets"]["tbx11k_test"])
+            self.assertEqual(sg.main([str(root)]), 0)  # printing handles it too
 
 
 if __name__ == "__main__":

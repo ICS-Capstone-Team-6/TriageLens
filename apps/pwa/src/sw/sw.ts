@@ -9,8 +9,11 @@ declare const __BUILD_ID__: string;
 
 const SHELL = `${SHELL_CACHE_PREFIX}${__BUILD_ID__}`;
 
+// No skipWaiting: a new build waits until every TriageLens tab is closed, so it never swaps
+// files or deletes the old shell in the middle of a screening (update only when idle).
+// The first install still takes control at once through clients.claim() on activate.
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(SHELL).then((c) => c.addAll(__PRECACHE__)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(SHELL).then((c) => c.addAll(__PRECACHE__)));
 });
 
 self.addEventListener('activate', (e) => {

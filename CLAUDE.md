@@ -6,7 +6,7 @@ Offline-first PWA that runs AI on a low-end Android phone to triage tuberculosis
 
 ## Repo map
 
-- `apps/pwa/`: React + TypeScript + Vite PWA (capture, results, case log, review, admin). Empty until E8-02.
+- `apps/pwa/`: React + TypeScript + Vite PWA (capture, results, case log, review, admin). M2 slice live (TB only).
 - `packages/triage/`: triage rules and wording checks. `packages/quality/`: image quality-gate heuristics.
 - `ml/`: Python data, training, export, evaluation. `ml/manifests/`: split manifests and data cards.
 - `supabase/`: migrations, RLS policies, RLS tests, fake seed data.
@@ -20,11 +20,11 @@ Offline-first PWA that runs AI on a low-end Android phone to triage tuberculosis
 - Wording lint (forbidden result words in UI strings): `python3 scripts/check_wording.py`
 - Script tests: `python3 -m unittest discover -s scripts/tests` and `python3 .claude/skills/usability-study-kit/test_sus.py`
 - Markdown lint: `npx markdownlint-cli2 "**/*.md"`
-- Dev server: TODO (E8-02)
-- Unit tests: TODO (E0-02)
+- Dev server: `cd apps/pwa && npm run dev` (add `?demo` for the clickable demo)
+- Unit tests: `cd apps/pwa && npm test`; ML: `python3 -m unittest discover -s ml/tests` (Python 3.11, `ml/requirements.txt`)
 - Lint: TODO (E0-02)
-- Type-check: TODO (E0-02)
-- Build: TODO (E8-02)
+- Type-check: `cd apps/pwa && npm run typecheck`
+- Build: `cd apps/pwa && npm run build` (needs the `VITE_*` settings, see `apps/pwa/README.md`)
 - ML train / eval / export: TODO (E2-01, E5-02)
 - Offline end-to-end tests: TODO (E13-02)
 
@@ -44,7 +44,7 @@ Offline-first PWA that runs AI on a low-end Android phone to triage tuberculosis
 - Work from a backlog story ID (E#-##). Branch `type/E8-05-short-name`. PR title `[E8-05] summary`. One review minimum; CI green; main is protected.
 - Definition of Done: docs/planning/04_Team_Rules_and_Requirements.md section 5.2.
 - Board: https://github.com/orgs/ICS-Capstone-Team-6/projects/1 . Issues mirror docs/planning/product_backlog.csv. Use /board-sync and /sprint-ops.
-- Current sprint: Sprint 0 (19 to 23 Oct 2026). Updated by `/sprint-ops start N`.
+- Current sprint: Sprint 3 (23 Nov to 4 Dec 2026). G3 feature freeze Thu 3 Dec. Updated by `/sprint-ops start N`.
 
 ## Read on demand (do not load everything)
 

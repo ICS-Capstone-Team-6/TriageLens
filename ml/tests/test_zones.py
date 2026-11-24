@@ -66,6 +66,19 @@ class TestLoad(unittest.TestCase):
             z = zones.load_zone_thresholds(thresholds_file(d, version="v0-uncalibrated"), RUN, allow_interim=True)
             self.assertEqual(z["version"], "v0-uncalibrated")
 
+    def test_checkpoint_hash_must_match_when_both_are_given(self):
+        with tempfile.TemporaryDirectory() as d:
+            f = thresholds_file(d, checkpoint_sha256="AB" * 32)
+            z = zones.load_zone_thresholds(f, RUN, checkpoint_sha256="ab" * 32)  # case-insensitive
+            self.assertEqual(z["version"], "v1-calibrated")
+            with self.assertRaisesRegex(zones.ThresholdsError, "fitted on checkpoint"):
+                zones.load_zone_thresholds(f, RUN, checkpoint_sha256="cd" * 32)
+            zones.load_zone_thresholds(thresholds_file(d), RUN, checkpoint_sha256="cd" * 32)  # no hash in file
+
+    def test_interim_flag_cannot_be_used_to_score(self):
+        import evaluate_external as ee  # main() refuses before importing torch
+        self.assertEqual(ee.main(["--allow-interim"]), 2)
+
     def test_the_app_file_today_is_interim_and_refused(self):
         # Until E6-01 (W2) replaces it, the one-time score must not run on the ADR-20 file.
         app = REPO / "apps" / "pwa" / "public" / "config" / "thresholds.json"
@@ -88,6 +101,7 @@ class TestZoneReport(unittest.TestCase):
         self.assertAlmostEqual(r["sensitivity_not_low_risk"], 3 / 4)
         self.assertAlmostEqual(r["specificity_not_refer"], 3 / 4)
         self.assertAlmostEqual(r["unsure_share"], 3 / 8)
+        self.assertAlmostEqual(r["screen_out_specificity"], 1 / 4)  # normal films in low risk
         lo, hi = r["sensitivity_ci95"]
         self.assertTrue(lo < 0.75 < hi)
 

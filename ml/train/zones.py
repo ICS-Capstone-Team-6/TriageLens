@@ -31,7 +31,7 @@ class ThresholdsError(Exception):
 INTERIM_VERSIONS = ("v0-uncalibrated",)  # ADR-20 slice thresholds: not the E6-01 result
 
 
-def load_zone_thresholds(path, run_name, allow_interim=False):
+def load_zone_thresholds(path, run_name, allow_interim=False, checkpoint_sha256=None):
     """Read the app's three-zone thresholds file (apps/pwa/public/config/thresholds.json).
 
     Returns logit cut-offs read exactly as the app reads the file (triage.ts compares
@@ -40,7 +40,9 @@ def load_zone_thresholds(path, run_name, allow_interim=False):
     'calibrated' has its cuts applied to sigmoid(logit / T), where p >= q exactly when
     logit >= T * log(q / (1 - q)). An unknown scale is refused. The file must name this run,
     and an interim version is refused unless allow_interim, so the one-time score uses the
-    E6-01 thresholds. Signing (ADR-11) is deferred to E2-05; this records the file's SHA-256.
+    E6-01 thresholds. When both the file and the caller give a checkpoint SHA-256 (v1 records
+    it), they must match: the cuts were fitted on those exact weights. Signing (ADR-11) is
+    deferred to E2-05; this records the file's SHA-256.
     """
     path = Path(path)
     if not path.exists():
@@ -50,6 +52,9 @@ def load_zone_thresholds(path, run_name, allow_interim=False):
         raise ThresholdsError(f"{path} status is {t.get('status')!r}, not 'set'")
     if t.get("run_id") != run_name:
         raise ThresholdsError(f"{path} is for run {t.get('run_id')!r}, not {run_name!r}")
+    want = t.get("checkpoint_sha256")
+    if want and checkpoint_sha256 and want.lower() != checkpoint_sha256.lower():
+        raise ThresholdsError(f"{path} was fitted on checkpoint {want[:12]}..., not {checkpoint_sha256[:12]}...")
     if t.get("version") in INTERIM_VERSIONS and not allow_interim:
         raise ThresholdsError(f"{path} is the interim version {t['version']!r}; wait for E6-01 (W2)")
     space = t.get("probability_space", "raw_sigmoid")
@@ -85,5 +90,6 @@ def zone_report(y, logit, zones):
             "tb_in_low_risk": count["low_risk"]["tb"],
             "sensitivity_not_low_risk": caught / max(n_tb, 1), "sensitivity_ci95": wilson(caught, n_tb),
             "specificity_not_refer": not_referred / max(n_norm, 1), "specificity_ci95": wilson(not_referred, n_norm),
-            "refer_specificity_of_low_risk": count["low_risk"]["normal"] / max(n_norm, 1),
+            "screen_out_specificity": count["low_risk"]["normal"] / max(n_norm, 1),
+            "screen_out_specificity_ci95": wilson(count["low_risk"]["normal"], n_norm),
             "unsure_share": float(unsure.mean())}

@@ -6,6 +6,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import numpy as np
 import pandas as pd
@@ -160,6 +161,32 @@ class TestRun(unittest.TestCase):
         r = bi.run(self.raw, self.out, self.stage, self.others(), expected=SMALL)
         self.assertEqual(r["da"]["quarantine_by_check"], {"other_source_overlap": 1})
         self.assertEqual(r["db"]["quarantine_by_check"], {"other_source_overlap": 1})
+
+    def test_a_failed_staging_is_retried_on_the_next_run(self):
+        # e.g. the first run had no pydicom: the failure must not be cached for good
+        base = make_set(self.raw)
+        bad = sorted((base / "db").iterdir())[0].name
+        real = bi.stage_file
+
+        def flaky(src, dst):
+            if src.name == bad:
+                raise ModuleNotFoundError("pydicom")
+            return real(src, dst)
+
+        with mock.patch.object(bi, "stage_file", flaky):
+            r1 = bi.run(self.raw, self.out, self.stage, self.others(), expected=SMALL)
+        self.assertEqual(r1["db"]["quarantine_by_check"], {"decodable": 1})
+        r2 = bi.run(self.raw, self.out, self.stage, self.others(), expected=SMALL)
+        self.assertEqual(r2["db"]["records_kept"], SMALL["db"]["images"])
+
+    def test_bad_file_name_is_quarantined_with_its_set_path(self):
+        base = make_set(self.raw)
+        (base / "da" / "da_train_q1.jpg").write_bytes(b"x")
+        expected = {"da": dict(SMALL["da"], images=SMALL["da"]["images"] + 1), "db": SMALL["db"]}
+        r = bi.run(self.raw, self.out, self.stage, self.others(), expected=expected)
+        qd = pd.read_csv(self.out / "da" / "quarantine.csv")
+        self.assertEqual(qd["file"].tolist(), ["da/da_train_q1.jpg"])
+        self.assertTrue(next(c for c in r["da"]["batch_checks"] if c["check"] == "source_matches_author_counts")["passed"])
 
     def test_unreadable_dicom_is_quarantined(self):
         base = make_set(self.raw)

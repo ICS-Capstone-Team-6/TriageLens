@@ -127,7 +127,7 @@ def run(raw, out, stage, other_manifests, expected=EXPECTED):
             parsed = parse_name(p.name)
             found[s]["images"] += 1
             if not parsed or parsed[0] != s:
-                quarantine[s].append({"file": p.name, "label": None, "stage": "ingest", "check": "filename_schema",
+                quarantine[s].append({"file": f"{s}/{p.name}", "label": None, "stage": "ingest", "check": "filename_schema",
                                       "reason": "name does not match <set>_<train|test>_<p|n>...<number>"})
                 continue
             found[s][str(parsed[2])] += 1
@@ -150,9 +150,11 @@ def run(raw, out, stage, other_manifests, expected=EXPECTED):
         src_sha = sha256_file(p)
         dst = stage_img / rel
         key = f"{p.name}:{src_sha}:pil{PIL.__version__}:w{WINDOW_PCT}"
-        if cache.get(key, {}).get("sha256") != (sha256_file(dst) if dst.exists() else None):
-            cache.pop(key, None)  # staged file missing or changed: redo it
+        # Reuse only a successful entry whose staged file is still there, unchanged. Failures
+        # are never reused: the cause (for example pydicom not yet installed) may be fixed.
         hit = cache.get(key)
+        if hit is not None and ("error" in hit or not dst.exists() or sha256_file(dst) != hit.get("sha256")):
+            hit = None
         if hit is None:
             try:
                 how = stage_file(p, dst)
@@ -224,7 +226,7 @@ def run(raw, out, stage, other_manifests, expected=EXPECTED):
 
         qdf = pd.DataFrame(quarantine[s], columns=["file", "label", "stage", "check", "reason"])
         checks = [
-            {"check": "source_matches_author_counts", "passed": True,
+            {"check": "source_matches_author_counts", "passed": found[s] == expected[s],
              "detail": f"found {found[s]}, authors' folders {expected[s]}"},
             {"check": "no_overlap_with_training_sources_or_other_set",
              "passed": not d["file"].isin(overlap).any(),

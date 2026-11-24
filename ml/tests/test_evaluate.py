@@ -252,7 +252,7 @@ class TestExternalZones(unittest.TestCase):
             tfile = root / "thresholds.json"
             tfile.write_text(json.dumps({"version": "v1-test", "status": "set", "run_id": run_dir.name,
                                          "screen_out_probability": 0.3, "refer_probability": 0.7,
-                                         "temperature": 1.5}))
+                                         "probability_space": "calibrated", "temperature": 1.5}))
             sets = {"ext": str(root / "ext")}
             zones, summary = ee.preflight(run_dir, tfile, root / "data", sets, root / "eval")
             self.assertFalse((root / "eval" / "locked_sets").exists())  # nothing reserved or read
@@ -262,6 +262,7 @@ class TestExternalZones(unittest.TestCase):
             z = report["sets"]["ext"]["zones"]
             self.assertEqual(sum(v["tb"] + v["normal"] for v in z["counts"].values()), 20)
             self.assertEqual(report["zones"]["version"], "v1-test")
+            self.assertEqual(report["zones"]["temperature_applied"], 1.5)  # calibrated-scale cuts
             with self.assertRaises(ev.AlreadyEvaluated):  # preflight now refuses: scored once
                 ee.preflight(run_dir, tfile, root / "data", sets, root / "eval")
 

@@ -5,8 +5,9 @@ licence, so they stay on the team's machine and are scored here, not on Modal (t
 decision, 24 Nov 2026; see ml/manifests/india_tb_v1/DATA_CARD.md).
 
 The three-zone thresholds come from the app's thresholds file, written by E6-01 (W2) from
-validation data only. This script refuses the interim ADR-20 file unless --allow-interim,
-so the one-time score uses the E6-01 thresholds. Everything else follows evaluate.py: each set
+validation data only. This script refuses the interim ADR-20 file; --allow-interim works only with --check-only,
+so the one-time score can only use the E6-01 thresholds. The thresholds file's
+checkpoint_sha256, when present, must match the checkpoint being scored. Everything else follows evaluate.py: each set
 is reserved before it is read, scored once, saved at once, and never scored again.
 
 Run --check-only first: it checks the checkpoint, the thresholds file, the preprocessing
@@ -42,7 +43,9 @@ def preflight(run_dir, thresholds, val_data, sets, out_dir, allow_interim=False)
         if not (run_dir / f).exists():
             raise FileNotFoundError(f"{run_dir / f} missing: download the frozen run first (see module notes)")
     cfg = json.loads((run_dir / "config.json").read_text())
-    zones = ev.load_zone_thresholds(thresholds, run_dir.name, allow_interim=allow_interim)
+    checkpoint_sha = ev._sha256(run_dir / "best.pt")  # once; also bound to the thresholds file
+    zones = ev.load_zone_thresholds(thresholds, run_dir.name, allow_interim=allow_interim,
+                                    checkpoint_sha256=checkpoint_sha)
     check_preprocessing(cfg, [val_data, *sets.values()])
     summary = {"run": run_dir.name, "thresholds_version": zones["version"], "sets": {}}
     for name, d in sets.items():
@@ -50,7 +53,7 @@ def preflight(run_dir, thresholds, val_data, sets, out_dir, allow_interim=False)
         if not (d / "external.npz").exists():
             raise FileNotFoundError(f"{d}/external.npz missing: run prepare_data.py --splits external")
         prep = json.loads((d / "prepare_report.json").read_text())
-        status = ev.set_status(out_dir, name, ev._sha256(run_dir / "best.pt"))
+        status = ev.set_status(out_dir, name, checkpoint_sha)
         if status != "new":
             raise ev.AlreadyEvaluated(f"{name} is already {status} in {out_dir} (ML-DATA-04)")
         summary["sets"][name] = {"dataset_version_hash": prep["dataset_version_hash"],
@@ -65,11 +68,17 @@ def main(argv=None):
     ap.add_argument("--val-data", default=VAL_DATA)
     ap.add_argument("--out", default=None, help="default: ml/runs/eval/<run>_india")
     ap.add_argument("--allow-interim", action="store_true",
-                    help="score at the interim ADR-20 thresholds (not the plan: wait for E6-01)")
+                    help="with --check-only only: run the preflight against the interim ADR-20 file")
     ap.add_argument("--check-only", action="store_true", help="preflight only; reads no locked data")
     ap.add_argument("--no-int8", action="store_true")
     a = ap.parse_args(argv)
     out = Path(a.out or f"ml/runs/eval/{Path(a.run_dir).name}_india")
+    if a.allow_interim and not a.check_only:
+        # Scoring at the interim file would spend the one look at DA and DB (CLAUDE.md rule 4)
+        # and block the E6-01 score for good. Interim is for preflight checks only.
+        print("REFUSED: --allow-interim works only with --check-only; scoring waits for E6-01 thresholds",
+              file=sys.stderr)
+        return 2
     try:
         zones, summary = preflight(a.run_dir, a.thresholds, a.val_data, SETS, out, a.allow_interim)
     except Exception as e:  # a failed preflight is a clear message, not a traceback

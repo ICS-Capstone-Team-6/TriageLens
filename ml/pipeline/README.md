@@ -129,3 +129,37 @@ It writes `ml/manifests/india_tb_v1/da/` and `db/` (committed) and the staged im
 - There is no age check, because neither set has age data.
 - Duplicates and any overlap with Shenzhen, Montgomery or TBX11K are quarantined.
 - The run stops if the counts differ from the authors' folders.
+
+## DR: APTOS 2019 plus EyePACS (story E3-01)
+
+`build_dr.py` builds `ml/manifests/dr_v1/` from APTOS 2019 and an EyePACS subsample (ADR-26, proposed). **Do not run it on real data until both licences are checked in the licence register (E1-01).**
+
+Expected raw layout (git-ignored; the run stops if the label columns differ):
+
+- `ml/data/raw/aptos2019/train.csv` (`id_code`, `diagnosis`) and `train_images/<id_code>.png`
+- `ml/data/raw/eyepacs/trainLabels.csv` (`image`, `level`) and `train/<image>.jpeg`
+
+```sh
+python3 ml/pipeline/build_dr.py
+python3 -m unittest ml/tests/test_build_dr.py
+```
+
+| Stage | Check | Failure means | Action |
+| --- | --- | --- | --- |
+| Ingest | Name matches the source schema | Unknown patient or eye | Quarantine |
+| Ingest | Grade is 0 to 4 | Bad label | Quarantine |
+| Ingest | File present and decodes | Missing or corrupt | Quarantine |
+| Ingest | Smallest side at least 384 px | Would be upscaled for the model | Quarantine |
+| Fundus | Fundus fills at least 20% of the frame | Blank or not a fundus image | Quarantine |
+| Dedup | No near-identical copy with another grade | Grade cannot be trusted | Quarantine every copy for review |
+| Dedup | SHA-256 unique | Exact copy | Keep the first |
+| Dedup | Same patient or dHash within 12 bits | Related records | Same group, same split |
+| Batch | No patient, group or identical image in two splits | Leakage | Hard fail |
+| Batch | Referable rate per split within 5 points of overall | Biased split | Hard fail |
+| Batch | At least 1,000 records | Too little data | Hard fail |
+
+- **Patients.** EyePACS `<patient>_<eye>` keeps both eyes of a person in one split. APTOS has no patient IDs, so each image is its own patient and near-duplicates are grouped.
+- **Subsample.** About 20,000 EyePACS images, chosen by whole patient with seed 591, keeping the natural grade mix.
+- **Preprocessing `dr-pre-1`.** Crop the black border, pad to a square, resize. Downsized 512 px copies go to `ml/data/interim/dr_v1/images/` (git-ignored); training resizes to 384 (TRD 10.6).
+- **Threshold check.** `run_report.json` gives `nearest_distance_quantiles`. If the 1% quantile is near 12 bits, the threshold is chaining distinct fundus images together (as 8x8 did for Shenzhen); raise the hash size or lower the threshold before training.
+- **Class balance.** `run_report.json` gives grade counts per split and source.

@@ -1,0 +1,45 @@
+file,patient_id,label,stage,check,reason
+CHNCXR_0327_1.png,0327,1,label,label_vs_reading,label 1: reading does not name TB
+CHNCXR_0328_1.png,0328,1,label,label_vs_reading,label 1: reading does not name TB
+CHNCXR_0332_1.png,0332,1,label,label_vs_reading,label 1: reading does not name TB
+CHNCXR_0333_1.png,0333,1,label,label_vs_reading,label 1: reading does not name TB
+CHNCXR_0334_1.png,0334,1,label,label_vs_reading,label 1: reading does not name TB
+CHNCXR_0335_1.png,0335,1,label,label_vs_reading,label 1: reading does not name TB
+CHNCXR_0336_1.png,0336,1,label,label_vs_reading,label 1: reading does not name TB
+CHNCXR_0337_1.png,0337,1,label,label_vs_reading,label 1: reading does not name TB
+CHNCXR_0338_1.png,0338,1,label,label_vs_reading,label 1: reading does not name TB
+CHNCXR_0339_1.png,0339,1,label,label_vs_reading,label 1: reading does not name TB
+CHNCXR_0340_1.png,0340,1,label,label_vs_reading,label 1: reading does not name TB
+CHNCXR_0341_1.png,0341,1,label,label_vs_reading,label 1: reading does not name TB
+CHNCXR_0342_1.png,0342,1,label,label_vs_reading,label 1: reading does not name TB
+CHNCXR_0343_1.png,0343,1,label,label_vs_reading,label 1: reading does not name TB
+CHNCXR_0344_1.png,0344,1,label,label_vs_reading,label 1: reading does not name TB
+CHNCXR_0345_1.png,0345,1,label,label_vs_reading,label 1: reading does not name TB
+CHNCXR_0349_1.png,0349,1,label,label_vs_reading,label 1: reading contains '?'
+CHNCXR_0391_1.png,0391,1,label,label_vs_reading,label 1: reading does not name TB
+CHNCXR_0074_0.png,0074,0,policy,intended_population,below minimum age 15 (TRD 9.1)
+CHNCXR_0075_0.png,0075,0,policy,intended_population,below minimum age 15 (TRD 9.1)
+CHNCXR_0076_0.png,0076,0,policy,intended_population,below minimum age 15 (TRD 9.1)
+CHNCXR_0115_0.png,0115,0,policy,intended_population,below minimum age 15 (TRD 9.1)
+CHNCXR_0155_0.png,0155,0,policy,intended_population,below minimum age 15 (TRD 9.1)
+CHNCXR_0169_0.png,0169,0,policy,intended_population,below minimum age 15 (TRD 9.1)
+CHNCXR_0178_0.png,0178,0,policy,intended_population,below minimum age 15 (TRD 9.1)
+CHNCXR_0201_0.png,0201,0,policy,intended_population,below minimum age 15 (TRD 9.1)
+CHNCXR_0202_0.png,0202,0,policy,intended_population,below minimum age 15 (TRD 9.1)
+CHNCXR_0205_0.png,0205,0,policy,intended_population,below minimum age 15 (TRD 9.1)
+CHNCXR_0206_0.png,0206,0,policy,intended_population,below minimum age 15 (TRD 9.1)
+CHNCXR_0215_0.png,0215,0,policy,intended_population,below minimum age 15 (TRD 9.1)
+CHNCXR_0228_0.png,0228,0,policy,intended_population,below minimum age 15 (TRD 9.1)
+CHNCXR_0248_0.png,0248,0,policy,intended_population,below minimum age 15 (TRD 9.1)
+CHNCXR_0256_0.png,0256,0,policy,intended_population,below minimum age 15 (TRD 9.1)
+CHNCXR_0259_0.png,0259,0,policy,intended_population,below minimum age 15 (TRD 9.1)
+CHNCXR_0265_0.png,0265,0,policy,intended_population,below minimum age 15 (TRD 9.1)
+CHNCXR_0273_0.png,0273,0,policy,intended_population,below minimum age 15 (TRD 9.1)
+CHNCXR_0278_0.png,0278,0,policy,intended_population,below minimum age 15 (TRD 9.1)
+CHNCXR_0297_0.png,0297,0,policy,intended_population,below minimum age 15 (TRD 9.1)
+CHNCXR_0299_0.png,0299,0,policy,intended_population,below minimum age 15 (TRD 9.1)
+CHNCXR_0303_0.png,0303,0,policy,intended_population,below minimum age 15 (TRD 9.1)
+CHNCXR_0313_0.png,0313,0,policy,intended_population,below minimum age 15 (TRD 9.1)
+CHNCXR_0368_1.png,0368,1,policy,intended_population,below minimum age 15 (TRD 9.1)
+CHNCXR_0630_1.png,0630,1,policy,intended_population,below minimum age 15 (TRD 9.1)
+CHNCXR_0018_0.png,0018,0,policy,age_unknown,"age not readable, cannot confirm intended population"

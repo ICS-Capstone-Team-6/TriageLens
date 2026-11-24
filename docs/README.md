@@ -48,8 +48,15 @@ Every document in `docs/`, who owns it and how it changes.
 | [adr/0010-opt-in-image-upload.md](adr/0010-opt-in-image-upload.md) | ADR-10. Image upload | Kweku | Living (supersede with a new ADR) |
 | [adr/0011-ecdsa-p256-signing.md](adr/0011-ecdsa-p256-signing.md) | ADR-11. Model signing | Kweku | Living (supersede with a new ADR) |
 | [adr/0012-react-typescript-vite.md](adr/0012-react-typescript-vite.md) | ADR-12. Web framework | Kweku | Living (supersede with a new ADR) |
+| [adr/0013-modal-gpu-compute.md](adr/0013-modal-gpu-compute.md) | ADR-13. GPU compute on Modal (answers D4) | Chelsea | Living (supersede with a new ADR) |
+| [adr/0014-tb-only-output-m2.md](adr/0014-tb-only-output-m2.md) | ADR-14. TB-only output for the chest X-ray model at M2 | Chelsea | Living (supersede with a new ADR) |
+| [adr/0015-interim-bake-off-criteria.md](adr/0015-interim-bake-off-criteria.md) | ADR-15. Interim bake-off criteria while no external test set exists | Chelsea | Living (supersede with a new ADR) |
+| [adr/0016-stretch-not-pad-preprocessing.md](adr/0016-stretch-not-pad-preprocessing.md) | ADR-16. Stretch chest X-rays to square instead of padding | Chelsea | Living (supersede with a new ADR) |
+| [adr/0017-int8-calibration-from-train.md](adr/0017-int8-calibration-from-train.md) | ADR-17. int8 calibration images come from the train split | Chelsea | Living (supersede with a new ADR) |
+| [adr/0018-efficientnet-lite0-full-precision.md](adr/0018-efficientnet-lite0-full-precision.md) | ADR-18. EfficientNet-Lite0 chosen; shipped at full precision until int8 passes | Chelsea | Living (supersede with a new ADR) |
 | [adr/0019-m2-thin-slice-pulled-forward.md](adr/0019-m2-thin-slice-pulled-forward.md) | ADR-19. M2 thin slice pulled forward (proposed) | Kweku | Living (supersede with a new ADR) |
 | [adr/0020-interim-slice-thresholds.md](adr/0020-interim-slice-thresholds.md) | ADR-20. Interim slice thresholds (proposed) | Kweku | Living (supersede with a new ADR) |
+| [adr/0023-tbx11k-without-age-or-patient-ids.md](adr/0023-tbx11k-without-age-or-patient-ids.md) | ADR-23. TBX11K onboarded without age or patient IDs; not used for training (proposed) | Chelsea | Living (supersede with a new ADR) |
 | [adr/0025-chest-xray-execution-and-distillation.md](adr/0025-chest-xray-execution-and-distillation.md) | ADR-25. Chest X-ray execution and two-teacher distillation (proposed) | Micheal | Living (supersede with a new ADR) |
 
 ## Safety and ethics
@@ -102,3 +109,10 @@ Every document in `docs/`, who owns it and how it changes.
 ## Folder READMEs
 
 Each folder has a `README.md` with its purpose, owner, and what must not go in it: [planning](planning/README.md), [figures](figures/README.md), [adr](adr/README.md), [safety](safety/README.md), [ethics](ethics/README.md), [model-cards](model-cards/README.md), [benchmarks](benchmarks/README.md), [usability](usability/README.md), [sprints](sprints/README.md), [runbook](runbook/README.md), [process](process/README.md).
+
+## Android test distribution
+
+| Document | Description | Owner | Update rule |
+|----------|-------------|-------|-------------|
+| [adr/0021-android-test-apks.md](adr/0021-android-test-apks.md) | Proposed Android test packaging decision | Nana Yaw | Living |
+| [runbook/android-apk.md](runbook/android-apk.md) | Build, download, signing and device checks | Nana Yaw | Living |

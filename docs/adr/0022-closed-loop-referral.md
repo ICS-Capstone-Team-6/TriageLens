@@ -1,4 +1,4 @@
-# ADR-21. Closed-loop referral between the screening and receiving facility
+# ADR-22. Closed-loop referral between the screening and receiving facility
 
 - **Status:** Proposed
 - **Date:** 17 Nov 2026

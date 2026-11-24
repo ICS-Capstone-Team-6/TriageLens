@@ -50,6 +50,7 @@ Every document in `docs/`, who owns it and how it changes.
 | [adr/0012-react-typescript-vite.md](adr/0012-react-typescript-vite.md) | ADR-12. Web framework | Kweku | Living (supersede with a new ADR) |
 | [adr/0019-m2-thin-slice-pulled-forward.md](adr/0019-m2-thin-slice-pulled-forward.md) | ADR-19. M2 thin slice pulled forward (proposed) | Kweku | Living (supersede with a new ADR) |
 | [adr/0020-interim-slice-thresholds.md](adr/0020-interim-slice-thresholds.md) | ADR-20. Interim slice thresholds (proposed) | Kweku | Living (supersede with a new ADR) |
+| [adr/0025-chest-xray-execution-and-distillation.md](adr/0025-chest-xray-execution-and-distillation.md) | ADR-25. Chest X-ray execution and two-teacher distillation (proposed) | Micheal | Living (supersede with a new ADR) |
 
 ## Safety and ethics
 

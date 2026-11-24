@@ -58,6 +58,7 @@ Every document in `docs/`, who owns it and how it changes.
 | [adr/0020-interim-slice-thresholds.md](adr/0020-interim-slice-thresholds.md) | ADR-20. Interim slice thresholds (proposed) | Kweku | Living (supersede with a new ADR) |
 | [adr/0024-india-da-db-external-sets.md](adr/0024-india-da-db-external-sets.md) | ADR-24. India DA and DB external sets without age, scored locally (proposed) | Chelsea | Living (supersede with a new ADR) |
 | [adr/0023-tbx11k-without-age-or-patient-ids.md](adr/0023-tbx11k-without-age-or-patient-ids.md) | ADR-23. TBX11K onboarded without age or patient IDs; not used for training (proposed) | Chelsea | Living (supersede with a new ADR) |
+| [adr/0025-chest-xray-execution-and-distillation.md](adr/0025-chest-xray-execution-and-distillation.md) | ADR-25. Chest X-ray execution and two-teacher distillation (proposed) | Micheal | Living (supersede with a new ADR) |
 
 ## Safety and ethics
 

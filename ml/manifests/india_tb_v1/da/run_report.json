@@ -1,0 +1,62 @@
+{
+  "dataset": "India TB sets DA and DB (Chauhan et al. 2014), Kaggle copy vbookshelf v1: DA",
+  "dataset_version_hash": "f88389fc343acd0b",
+  "pipeline_version": "0.1.0",
+  "role": "locked external test (ML-DATA-04)",
+  "run_utc": "2026-11-24T10:28:57+00:00",
+  "python": "3.13.9",
+  "numpy": "2.3.5",
+  "pandas": "2.3.3",
+  "pillow": "12.0.0",
+  "code_commit": "699b2189b6a915eef936c614af679513f3a3e098",
+  "staging": {
+    "dicom_window_percentiles": [
+      0.5,
+      99.5
+    ],
+    "how": {
+      "copied": 156
+    }
+  },
+  "images_found": 156,
+  "records_kept": 156,
+  "records_quarantined": 0,
+  "quarantine_by_check": {},
+  "label_counts": {
+    "0": 78,
+    "1": 78
+  },
+  "source_split_counts": {
+    "test": {
+      "0": 26,
+      "1": 26
+    },
+    "train": {
+      "0": 52,
+      "1": 52
+    }
+  },
+  "size_counts": {
+    "1024x1024": 110,
+    "2320x2828": 46
+  },
+  "near_duplicate_pairs": 0,
+  "age_check": "not run: no age metadata; accepted and recorded (TRD 9.1 gap)",
+  "batch_checks": [
+    {
+      "check": "source_matches_author_counts",
+      "passed": true,
+      "detail": "found {'images': 156, '1': 78, '0': 78}, authors' folders {'images': 156, '1': 78, '0': 78}"
+    },
+    {
+      "check": "no_overlap_with_training_sources_or_other_set",
+      "passed": true,
+      "detail": "0 image(s) quarantined for overlap"
+    },
+    {
+      "check": "both_classes_present",
+      "passed": true,
+      "detail": "label counts {0: 78, 1: 78}"
+    }
+  ]
+}

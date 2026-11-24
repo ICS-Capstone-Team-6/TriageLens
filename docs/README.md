@@ -56,6 +56,7 @@ Every document in `docs/`, who owns it and how it changes.
 | [adr/0018-efficientnet-lite0-full-precision.md](adr/0018-efficientnet-lite0-full-precision.md) | ADR-18. EfficientNet-Lite0 chosen; shipped at full precision until int8 passes | Chelsea | Living (supersede with a new ADR) |
 | [adr/0019-m2-thin-slice-pulled-forward.md](adr/0019-m2-thin-slice-pulled-forward.md) | ADR-19. M2 thin slice pulled forward (proposed) | Kweku | Living (supersede with a new ADR) |
 | [adr/0020-interim-slice-thresholds.md](adr/0020-interim-slice-thresholds.md) | ADR-20. Interim slice thresholds (proposed) | Kweku | Living (supersede with a new ADR) |
+| [adr/0024-india-da-db-external-sets.md](adr/0024-india-da-db-external-sets.md) | ADR-24. India DA and DB external sets without age, scored locally (proposed) | Chelsea | Living (supersede with a new ADR) |
 | [adr/0023-tbx11k-without-age-or-patient-ids.md](adr/0023-tbx11k-without-age-or-patient-ids.md) | ADR-23. TBX11K onboarded without age or patient IDs; not used for training (proposed) | Chelsea | Living (supersede with a new ADR) |
 
 ## Safety and ethics

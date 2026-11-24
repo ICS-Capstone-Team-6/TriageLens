@@ -155,7 +155,7 @@
   "case_age": "Age band",
   "case_quality": "Quality check",
   "notes_label": "Notes",
-  "notes_hint": "Do not write names or phone numbers.",
+  "notes_hint": "Do not write names, phone numbers, ID numbers, dates of birth or addresses.",
   "notes_save": "Save notes",
   "notes_saved": "Notes saved on this phone.",
   "notes_failed": "Notes were not saved. Try again.",

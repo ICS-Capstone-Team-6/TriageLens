@@ -169,6 +169,9 @@ export function CaseDetail({ db, id, onBack }: DetailProps) {
         <section className="panel panel-big">
           <h1 className="h1">{t(`status_${c.status === 'result' ? 'error' : c.status}` as StringKey)}</h1>
           <p className="lead">{t(`case_no_result_${c.status === 'result' ? 'error' : c.status}` as StringKey)}</p>
+          {c.status === 'retake' && c.result?.quality.reason && (
+            <p className="lead strong">{t(`retake_title_${c.result.quality.reason}` as StringKey)}</p>
+          )}
         </section>
       )}
 

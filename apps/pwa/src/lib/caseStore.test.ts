@@ -8,8 +8,11 @@ import {
 
 const fresh = () => openCaseDb(new IDBFactory());
 const result: CaseResult = {
-  zone: 'unsure', modelVersion: 'm1', thresholdsVersion: 't1', preprocessVersion: 'cxr-pre-2',
-  quality: { passed: true, reason: null },
+  zone: 'unsure', modelVersion: 'm1', modelSha256: 'ab'.repeat(32), thresholdsVersion: 't1', preprocessVersion: 'cxr-pre-2',
+  quality: {
+    version: 'quality-2', passed: true, reason: null, width: 1200, height: 1400, mean: 120, std: 50,
+    colourfulness: 2, sharpness: 30, glare_fraction: 0.01, border_flat: 0.2, interior_std: 40,
+  },
 };
 
 describe('case codes', () => {
@@ -50,6 +53,9 @@ describe('local case log (E8-06, FR-07)', () => {
     const c = await createCase(db, '15-24');
     const r = await finishCase(db, c.id, 'result', result);
     expect(r).toMatchObject({ status: 'result', version: 2, synced: false, result });
+    const stored = (await getCase(db, c.id))?.result;
+    expect(stored?.modelSha256).toBe('ab'.repeat(32));
+    expect(stored?.quality).toEqual(result.quality); // every score and the quality version (NFR-SAFE-03)
   });
 
   it('never rewrites a finished result', async () => {
@@ -63,7 +69,7 @@ describe('local case log (E8-06, FR-07)', () => {
   it('a retake keeps its quality reason and versions but never a zone', async () => {
     const db = await fresh();
     const c = await createCase(db, '15-24');
-    const failed = { ...result, quality: { passed: false, reason: 'too_dark' } };
+    const failed: CaseResult = { ...result, quality: { ...result.quality, passed: false, reason: 'too_dark' } };
     const r = await finishCase(db, c.id, 'retake', failed);
     expect(r.status).toBe('retake');
     expect(r.result).toMatchObject({ zone: 'retake', quality: { passed: false, reason: 'too_dark' }, modelVersion: 'm1' });

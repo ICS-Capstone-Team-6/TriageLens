@@ -122,9 +122,10 @@ export function App({ demo }: { demo?: DemoHooks }) {
     const kept = await finish(zone === 'retake' ? 'retake' : 'result', {
       zone,
       modelVersion: demo ? 'demo-stand-in' : MODEL_RUN,
+      modelSha256: model.modelSha256,
       thresholdsVersion: thresholds.thresholds.version,
       preprocessVersion: r.preprocess,
-      quality: { passed: r.quality.passed, reason: r.quality.reason ?? null },
+      quality: r.quality,
     });
     const caseCode = kept && local ? local.code : null;
     const record = { caseId: local?.id, ageBand: age, screened: r, zone, probability, thresholdsVersion: thresholds.thresholds.version, modelSha256: model.modelSha256, totalMs };

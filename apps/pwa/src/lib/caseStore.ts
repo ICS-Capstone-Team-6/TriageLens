@@ -3,6 +3,7 @@
 // Its UUID is reused for the server record, so a later sync (E9-02) is a safe upsert.
 // No names or phone numbers: a random code like TL-7K3MPQ is the only case label (NFR-PRIV-01).
 // Images are stored only encrypted (imageCrypto.ts); without a key there is no image at all.
+import type { QualityResult } from './quality';
 import type { AgeBand } from './records';
 import type { Zone } from './triage';
 
@@ -15,12 +16,16 @@ export const PAGE_SIZE = 30;
 
 export type CaseStatus = 'captured' | 'result' | 'retake' | 'error';
 
+/** Everything a result needs on its own (NFR-SAFE-03, H7): on an offline phone this is the only record. */
 export interface CaseResult {
   zone: Zone;
   modelVersion: string;
+  /** SHA-256 of the model file that ran, as checked by the worker. */
+  modelSha256: string;
   thresholdsVersion: string;
   preprocessVersion: string;
-  quality: { passed: boolean; reason: string | null };
+  /** The full quality check: its version, every score, pass or fail and the reason. */
+  quality: QualityResult;
 }
 
 export interface LocalCase {

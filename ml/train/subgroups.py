@@ -64,6 +64,9 @@ def subgroups(eval_dir, private=PRIVATE):
     t = report["operating_point"]["probability_threshold"]
     result = {"run": report["run"], "probability_threshold": t, "sets": {}}
     for name in report["sets"]:
+        if name not in private:  # e.g. TBX11K: no sex or age exists (ADR-23)
+            result["sets"][name] = {"skipped": "no private metadata for this set"}
+            continue
         preds = pd.read_csv(eval_dir / f"predictions_{name}.csv")
         meta = pd.read_csv(private[name])
         df = preds.merge(meta[[c for c in meta.columns if c in ("file", "sex", "age", "inactive_or_healed")]],
@@ -95,6 +98,9 @@ def main(argv=None):
     print(f"Threshold (probability, from validation): {r['probability_threshold']:.3f}")
     for name, groups in r["sets"].items():
         print(f"\n{name}")
+        if "skipped" in groups:
+            print(f"  skipped: {groups['skipped']}")
+            continue
         print(f"  {'group':38s} {'n':>4s} {'TB':>4s} {'sens':>6s} {'spec':>6s} {'AUROC':>6s}")
         for g, s in groups.items():
             fmt = lambda k: f"{s[k]:6.3f}" if k in s else f"{'-':>6s}"  # noqa: E731

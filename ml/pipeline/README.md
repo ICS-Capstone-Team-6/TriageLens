@@ -93,6 +93,43 @@ python3 ml/pipeline/build_external.py
 
 It writes `ml/manifests/montgomery_v1/` (committed: `manifest.csv`, `quarantine.csv`, `near_duplicates.csv`, `run_report.json`, `DATA_CARD.md`) and the private metadata to `ml/data/interim/montgomery_v1/`. It reuses the Shenzhen checks, with three differences explained in its docstring and the data card: no split (every record is `external`), a label check that accepts TB findings without the word TB, and patient groups from readings that name another image. It also quarantines any image that matches Shenzhen.
 
+## TBX11K (training source)
+
+TBX11K adds about 8,400 labelled images (800 TB) from another source (TRD Appendix A: train, validate, internal test). It is **not used to train shipped models**: the one combined candidate did worse on Montgomery ([ADR-23](../../docs/adr/0023-tbx11k-without-age-or-patient-ids.md), `ml/train/README.md`). The pipeline stays for later attempts. Download the authors' official archive, linked from [github.com/yun-liu/Tuberculosis](https://github.com/yun-liu/Tuberculosis), and unpack it into `ml/data/raw/tbx11k/` (git-ignored). The pipeline finds `imgs/` and `lists/` there or one level below (for example `ml/data/raw/tbx11k/TBX11K/`). Then, from the repo root:
+
+```sh
+python3 ml/pipeline/build_tbx11k.py
+```
+
+It writes `ml/manifests/tbx11k_v1/` (committed: `manifest.csv`, `quarantine.csv`, `near_duplicates.csv`, `run_report.json`, `DATA_CARD.md`). Its docstring and [ADR-23](../../docs/adr/0023-tbx11k-without-age-or-patient-ids.md) explain how it differs from Shenzhen:
+
+- Labels come from the class folder: health and sick are 0, tb is 1, and latent TB counts as TB.
+- There is no age check, because TBX11K has no age data.
+- Each image is its own patient ID, and near-duplicates are grouped.
+- Official train goes to `train`. Official val is split half and half into `val` and `test`.
+- Images matching Shenzhen or Montgomery are quarantined. Only official train and val list entries under health, sick or tb are read.
+- The run stops if the list counts differ from the official README table.
+
+Manifest `file` values are paths under `imgs/` (for example `tb/tb0003.png`). `run_report.json` gives that folder as `image_root`. Pairwise duplicate search is vectorised (`np.bitwise_count`), because the Shenzhen loop is too slow for 8,400 images.
+
+## India DA and DB (locked external tests)
+
+Two small TB sets from New Delhi ([ADR-24](../../docs/adr/0024-india-da-db-external-sets.md), data card `ml/manifests/india_tb_v1/DATA_CARD.md`). They have no explicit licence, so they stay on the team's machine and never go to Modal. Download the Kaggle copy into `ml/data/raw/india_tb/` (git-ignored), then build:
+
+```sh
+pip install kagglehub==1.0.2
+KAGGLEHUB_CACHE=ml/data/raw/india_tb/_kagglehub python3 -c "import kagglehub; kagglehub.dataset_download('vbookshelf/da-and-db-tb-chest-x-ray-datasets')"
+python3 ml/pipeline/build_india.py
+```
+
+It writes `ml/manifests/india_tb_v1/da/` and `db/` (committed) and the staged images to `ml/data/interim/india_tb_v1/images/` (git-ignored). DB is DICOM, so `pydicom` is needed (pinned in `ml/requirements.txt`). Its docstring and the data card explain the rest:
+
+- Labels come from the file names: `p` = TB, `n` = normal.
+- DB is converted to 8-bit PNG with a fixed display window.
+- There is no age check, because neither set has age data.
+- Duplicates and any overlap with Shenzhen, Montgomery or TBX11K are quarantined.
+- The run stops if the counts differ from the authors' folders.
+
 ## DR: APTOS 2019 plus EyePACS (story E3-01)
 
 `build_dr.py` builds `ml/manifests/dr_v1/` from APTOS 2019 and an EyePACS subsample (ADR-26, proposed). **Do not run it on real data until both licences are checked in the licence register (E1-01).**

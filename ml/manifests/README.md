@@ -15,4 +15,6 @@ Committed split manifests and data cards (ML-DATA-01, ML-DATA-02). The TRD repos
 ## Contents
 
 - `shenzhen_v2/`: Shenzhen TB set, version 2 (`E1-03`), the current version. Start with `shenzhen_v2/DATA_CARD.md`.
+- `india_tb_v1/`: India DA and DB, version 1, two locked external TB test sets (`E11-01`, [ADR-24](../../docs/adr/0024-india-da-db-external-sets.md)). Start with `india_tb_v1/DATA_CARD.md`.
+- `tbx11k_v1/`: TBX11K, version 1, a second training source (`E1-03`, [ADR-23](../../docs/adr/0023-tbx11k-without-age-or-patient-ids.md)). Start with `tbx11k_v1/DATA_CARD.md`.
 - `shenzhen_v1/`: Shenzhen TB set, version 1. Superseded by version 2; kept as the historical record.

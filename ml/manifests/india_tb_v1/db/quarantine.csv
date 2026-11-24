@@ -1,0 +1,9 @@
+file,label,stage,check,reason
+db/db_test_nd652.png,0,dedup,exact_duplicate,byte-identical to an earlier file
+db/db_train_n28.png,0,dedup,exact_duplicate,byte-identical to an earlier file
+db/db_train_n30.png,0,dedup,exact_duplicate,byte-identical to an earlier file
+db/db_train_n33.png,0,dedup,exact_duplicate,byte-identical to an earlier file
+db/db_train_n5.png,0,dedup,exact_duplicate,byte-identical to an earlier file
+db/db_train_n6.png,0,dedup,exact_duplicate,byte-identical to an earlier file
+db/db_train_p5.png,1,dedup,exact_duplicate,byte-identical to an earlier file
+db/db_train_p6.png,1,dedup,exact_duplicate,byte-identical to an earlier file

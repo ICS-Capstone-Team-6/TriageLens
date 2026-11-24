@@ -25,8 +25,11 @@ self.addEventListener('activate', (e) => {
   );
 });
 
+// ignoreVary: servers send "Vary: Origin", and the page loads its module script with an
+// Origin header while install pre-cached it without one, so a Vary-aware match misses and the
+// first offline load breaks. Our cached files are hashed or config, so Vary adds nothing.
 async function fromCache(req: Request | string): Promise<Response | undefined> {
-  return (await caches.open(SHELL)).match(req, { ignoreSearch: true });
+  return (await caches.open(SHELL)).match(req, { ignoreSearch: true, ignoreVary: true });
 }
 
 async function networkFirst(req: Request, fallback: Request | string): Promise<Response> {

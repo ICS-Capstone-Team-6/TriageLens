@@ -36,3 +36,12 @@ export function validThresholds(t: Pick<Thresholds, 'screenOut' | 'refer'>): boo
     t.screenOut > 0 && t.refer < 1 && t.screenOut <= t.refer
   );
 }
+
+// Symptoms (FR-05, TRD 7.2): an optional checklist can raise a zone, never lower it.
+// Any symptom ticked against a low score is a contradiction, so low_risk becomes unsure.
+// Refer now and unsure are never lowered, and a retake stays a retake (no zone without a
+// good image). Which symptoms are on the list is a clinical choice still to confirm (ADR).
+export function withSymptoms(zone: Zone, symptomsTicked: number): Zone {
+  if (zone === 'low_risk' && !(symptomsTicked === 0)) return 'unsure';
+  return zone;
+}

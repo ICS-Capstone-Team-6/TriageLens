@@ -113,4 +113,5 @@ Each folder has a `README.md` with its purpose, owner, and what must not go in i
 | Document | Description | Owner | Update rule |
 |----------|-------------|-------|-------------|
 | [adr/0021-android-test-apks.md](adr/0021-android-test-apks.md) | Proposed Android test packaging decision | Nana Yaw | Living |
+| [adr/0026-dr-data-aptos-eyepacs.md](adr/0026-dr-data-aptos-eyepacs.md) | Proposed DR training data and preprocessing decision | Kweku | Living |
 | [runbook/android-apk.md](runbook/android-apk.md) | Build, download, signing and device checks | Nana Yaw | Living |

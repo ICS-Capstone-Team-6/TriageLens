@@ -142,7 +142,7 @@ The only operating point uses a threshold set on validation (90% sensitivity). `
 
 ## One-time score on the India sets (after E6-01)
 
-DA and DB are scored once, locally (ADR-24), at the three-zone thresholds that `E6-01` writes to `apps/pwa/public/config/thresholds.json`. `evaluate_external.py` refuses the interim ADR-20 file (`v0-uncalibrated`) and any file written for another run. The cuts are read exactly as the app reads them: on the raw sigmoid scale, with any temperature treated as information only. A temperature is applied only if the file says `probability_space: calibrated` (ADR-25, on the E6-01 branch).
+DA and DB are scored once, locally (ADR-24), at the three-zone thresholds that `E6-01` writes to `apps/pwa/public/config/thresholds.json`. `evaluate_external.py` refuses the interim ADR-20 file (`v0-uncalibrated`) and any file written for another run. The cuts are read exactly as the app reads them: on the raw sigmoid scale, with any temperature treated as information only. A temperature is applied only if the file says `probability_space: calibrated` (ADR-27).
 
 ```sh
 modal volume get triagelens-runs /bakeoff/efficientnet_lite0_seed1_20261021T114608Z ml/runs/frozen/   # once
@@ -155,6 +155,39 @@ python3 ml/train/evaluate_external.py                # ONE time, after E6-01 is 
 ```
 
 For each set, it reports AUROC with its 95% CI and the three zones: TB films in low risk, sensitivity of "not low risk", specificity of "not refer", and the share of Unsure. Results go to `ml/runs/eval/<run>_india/`. The zone code is in `zones.py`, which has no torch dependency, so CI tests it.
+
+## Calibration and three-zone thresholds (E6-01)
+
+`calibrate.py` runs the frozen model on Shenzhen validation only, fits a temperature, sets both cuts, and writes the app's `apps/pwa/public/config/thresholds.json` ([ADR-27](../../docs/adr/0027-calibration-v1-thresholds.md)). The maths is in `calibration.py`, which has no torch dependency, so CI tests it.
+
+```sh
+modal volume get triagelens-runs /bakeoff/efficientnet_lite0_seed1_20261021T114608Z ml/runs/frozen/   # once
+python3 ml/train/calibrate.py --check   # compute and print; write nothing
+python3 ml/train/calibrate.py           # report + reliability plot in ml/runs/calibration/<run>/, thresholds v1
+```
+
+**The rules:**
+
+- **Screen-out:** at least 95% of validation TB films must not be Low risk.
+- **Refer:** at least 95% of validation normal films must sit below the refer cut.
+- **Cut placement:** each cut sits halfway between two neighbouring validation scores.
+- **How the app reads them (`triage.ts`):** probability at or above the refer cut gives Refer now. Probability below the screen-out cut gives Low risk. A tie goes toward refer.
+- **Scale:** the cuts are stored on the raw sigmoid scale the app compares against. The temperature and calibrated cuts are stored as information only. Temperature keeps the order of the films, so it never changes a zone.
+
+**Result (24 Nov 2026), frozen run, Shenzhen validation (94 films, 49 TB):**
+
+| Item | Value |
+| --- | --- |
+| Temperature | 1.343 |
+| ECE, 10 bins | 0.098 before, 0.099 after (95% CI 0.075 to 0.181). Target 0.05 missed; floor 0.10 met by the point estimate |
+| ECE, 5 bins | 0.085 before, 0.069 after |
+| Cuts (raw probability) | screen-out 0.088844, refer 0.901772 |
+| Zones | Low risk 29 (2 TB), Unsure 40 (42.6%), Refer now 25 (2 normal). Same as `v0` |
+| Sensitivity of "not low risk" | 47/49 = 0.959 (95% CI 0.863 to 0.989) |
+| Specificity below refer | 43/45 = 0.956 (95% CI 0.852 to 0.988) |
+| Selective prediction (accuracy at a 0.5 cut) | 0.85 on all films; 0.89 with the least certain 20% sent to review; 0.94 with the least certain half sent |
+
+Calibrated probabilities are not shown to health workers (`for_display: false`) until ECE meets the target on a larger validation set.
 
 ## Tests
 

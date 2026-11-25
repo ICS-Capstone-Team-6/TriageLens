@@ -36,7 +36,7 @@ def load_zone_thresholds(path, run_name, allow_interim=False, checkpoint_sha256=
 
     Returns logit cut-offs read exactly as the app reads the file (triage.ts compares
     sigmoid(logit) with the cuts): by default the cuts are on the raw sigmoid scale and any
-    temperature is information only (ADR-25). Only a file that says probability_space
+    temperature is information only (ADR-27). Only a file that says probability_space
     'calibrated' has its cuts applied to sigmoid(logit / T), where p >= q exactly when
     logit >= T * log(q / (1 - q)). An unknown scale is refused. The file must name this run,
     and an interim version is refused unless allow_interim, so the one-time score uses the

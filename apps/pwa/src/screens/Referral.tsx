@@ -3,7 +3,7 @@
 // them (hazard H20). Distances are straight-line estimates (H17); services not confirmed
 // recently say "Check by phone first" (H16). Then a slip shows the referral code.
 import { useEffect, useMemo, useState } from 'react';
-import { formatCode, toInitials, type DirectoryCache, type ReferralDraft, type SentReferral } from '../lib/referral/api';
+import { formatCode, toInitials, type CamForShare, type DirectoryCache, type ReferralDraft, type SentReferral, type ShareResult } from '../lib/referral/api';
 import { distanceBand, distanceKm, matchFacilities, validPoint, type Facility, type Match, type Option, type Point } from '../lib/referral/match';
 import { RULES_V1, type ServiceTag, type Urgency } from '../lib/referral/rules';
 import { t, type StringKey } from '../strings';
@@ -13,20 +13,22 @@ export interface ReferralDeps {
   loadDirectory: () => Promise<DirectoryCache | null>;
   ownFacilityId: () => Promise<string | null>;
   send: (d: ReferralDraft) => Promise<SentReferral | null>;
-  shareImage: (referralId: string, file: Blob) => Promise<boolean>;
+  shareImage: (referralId: string, file: Blob, cam: CamForShare | null, toFacility: string, ownFacility: string | null) => Promise<ShareResult>;
+  canReceiveImages: (facilityId: string) => Promise<boolean>;
 }
 
 interface Props {
   zone: 'refer_now' | 'unsure';
   caseId: string | null; // null when the screening was not saved: cannot be sent yet
   image: Blob | null; // the screened image, kept in memory only; shared only with consent
+  cam: CamForShare | null; // heatmap for the receiving clinician, when the model gives one
   deps: ReferralDeps;
   versions: string;
   onBack: () => void;
   onDone: () => void;
 }
 
-type ImageState = 'none' | 'sending' | 'shared' | 'failed';
+type ImageState = 'none' | 'sending' | 'shared' | 'failed' | 'no_receiver_key';
 type Step = { name: 'choose' } | { name: 'sending' } | { name: 'failed' } | { name: 'sent'; sent: SentReferral; to: Option; image: ImageState };
 
 const svc = (tag: ServiceTag | string) => t(`service_${tag}` as StringKey);
@@ -61,8 +63,9 @@ function FacilityCard({ o, selected, onSelect }: { o: Option; selected: boolean;
   );
 }
 
-export function Referral({ zone, caseId, image, deps, versions, onBack, onDone }: Props) {
+export function Referral({ zone, caseId, image, cam, deps, versions, onBack, onDone }: Props) {
   const [consent, setConsent] = useState(false);
+  const [receives, setReceives] = useState<Record<string, boolean>>({});
   const [directory, setDirectory] = useState<DirectoryCache | null | 'loading'>('loading');
   const [own, setOwn] = useState<string | null>(null);
   const [phoneHere, setPhoneHere] = useState<Point | null>(null);
@@ -113,6 +116,12 @@ export function Referral({ zone, caseId, image, deps, versions, onBack, onDone }
   const shown = showAll ? everyone : suggested;
   const pick = [...suggested, ...everyone].find((o) => o.facility.id === chosen) ?? null;
   const initials = toInitials(initialsInput);
+  useEffect(() => {
+    if (!chosen || chosen in receives) return;
+    let live = true;
+    void deps.canReceiveImages(chosen).then((ok) => { if (live) setReceives((m) => ({ ...m, [chosen]: ok })); });
+    return () => { live = false; };
+  }, [chosen, deps, receives]);
   const urgency: Urgency | null = match.kind === 'matches' || match.kind === 'none_in_reach' ? match.urgency : null;
 
   function locate() {
@@ -133,7 +142,7 @@ export function Referral({ zone, caseId, image, deps, versions, onBack, onDone }
       rulesVersion: RULES_V1.version, distanceBand: here ? pick.distanceBand : null, initials,
     });
     if (!sent) return setStep({ name: 'failed' });
-    const withImage = consent && image !== null;
+    const withImage = consent && image !== null && receives[pick.facility.id] === true;
     setStep({ name: 'sent', sent, to: pick, image: withImage ? 'sending' : 'none' });
     if (withImage) void share(sent, pick);
   }
@@ -141,8 +150,8 @@ export function Referral({ zone, caseId, image, deps, versions, onBack, onDone }
   async function share(sent: SentReferral, to: Option) {
     if (!image) return;
     setStep({ name: 'sent', sent, to, image: 'sending' });
-    const ok = await deps.shareImage(sent.id, image);
-    setStep({ name: 'sent', sent, to, image: ok ? 'shared' : 'failed' });
+    const res = await deps.shareImage(sent.id, image, cam, to.facility.id, own);
+    setStep({ name: 'sent', sent, to, image: res === 'shared' ? 'shared' : res === 'no_receiver_key' ? 'no_receiver_key' : 'failed' });
   }
 
   const bar = (title: string, back: () => void) => (
@@ -239,7 +248,10 @@ export function Referral({ zone, caseId, image, deps, versions, onBack, onDone }
               {initials ? t('initials_preview', { initials }) : t('initials_hint')}
             </span>
           </label>
-          {image && (
+          {image && pick && receives[pick.facility.id] === false && (
+            <p className="small" role="status">{t('image_receiver_no_key')}</p>
+          )}
+          {image && pick && receives[pick.facility.id] === true && (
             <label className="consent">
               <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
               <span>

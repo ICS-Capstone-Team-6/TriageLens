@@ -8,15 +8,15 @@ import { checkQuality, colourfulness } from '../lib/quality';
 import { inputStats } from '../lib/stats';
 import { loadModelBytes } from '../lib/modelCache';
 import { MODEL_CACHE } from '../sw/routes';
-import type { WorkerRequest, WorkerResponse } from './messages';
+import type { Screened, WorkerRequest, WorkerResponse } from './messages';
 
 declare const self: DedicatedWorkerGlobalScope;
 
 let session: ort.InferenceSession | null = null;
 let threads = 1;
 
-function post(msg: WorkerResponse) {
-  self.postMessage(msg);
+function post(msg: WorkerResponse, transfer: Transferable[] = []) {
+  self.postMessage(msg, transfer);
 }
 
 async function sha256Hex(buf: ArrayBuffer): Promise<string> {
@@ -77,10 +77,19 @@ async function screen(file: Blob) {
   if (!session) return post({ type: 'error', code: 'model_not_ready' });
   try {
     const feeds = { [session.inputNames[0]]: new ort.Tensor('float32', tensor, [1, 3, INPUT_SIZE, INPUT_SIZE]) };
-    const out = await session.run(feeds, ['tb_logit']);
+    // The feature map is only fetched when the model has it; the TB logit never depends on it.
+    const wantFeatures = session.outputNames.includes('features');
+    const out = await session.run(feeds, wantFeatures ? ['tb_logit', 'features'] : ['tb_logit']);
     const logit = Number((out.tb_logit.data as Float32Array)[0]);
     const t3 = performance.now();
-    post({ type: 'screened', quality, stats, logit, preprocess: PREPROCESS_VERSION, timings: { decode_ms: t1 - t0, quality_ms: t1b - t1, preprocess_ms: t2 - t1b, model_ms: t3 - t2 }, threads });
+    let features: Screened['features'];
+    const f = wantFeatures ? out.features : undefined;
+    if (f && f.dims.length === 4 && f.dims[0] === 1) {
+      const data = Float32Array.from(f.data as Float32Array);
+      features = { data, dims: [Number(f.dims[1]), Number(f.dims[2]), Number(f.dims[3])] };
+    }
+    post({ type: 'screened', quality, stats, logit, preprocess: PREPROCESS_VERSION, timings: { decode_ms: t1 - t0, quality_ms: t1b - t1, preprocess_ms: t2 - t1b, model_ms: t3 - t2 }, threads, features },
+      features ? [features.data.buffer] : []);
   } catch {
     return post({ type: 'error', code: 'model_run' });
   }

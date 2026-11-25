@@ -1,8 +1,10 @@
 // Development-only demo referral data (`?demo`). FAKE facilities copied from
 // supabase/seed.sql so the referral screens can be clicked through with no backend.
 // Nothing is sent anywhere; the code is made up on the phone.
-import type { DirectoryCache, ReferralDraft, SentReferral } from '../lib/referral/api';
-import type { InboxDeps, Outcome, ReferralDetail, Status } from '../lib/referral/inbox';
+import type { CamForShare, DirectoryCache, ReferralDraft, SentReferral, ShareResult } from '../lib/referral/api';
+import { renderHeatmap } from '../lib/heatmap';
+import type { Screened } from '../inference/messages';
+import type { InboxDeps, KeyStatus, Outcome, ReferralDetail, Status } from '../lib/referral/inbox';
 import type { Zone } from '../lib/triage';
 import type { Facility, OpeningHours } from '../lib/referral/match';
 import type { ReferralDeps } from '../screens/Referral';
@@ -49,18 +51,36 @@ export const demoReferral: ReferralDeps = {
     store.push(rec(sent.id, sent.code, d.initials, DEMO_OWN_ID, to?.id ?? '', 'created', 0, d.urgency ?? null, 'refer_now'));
     return sent;
   },
-  async shareImage(referralId: string, file: Blob): Promise<boolean> {
+  async shareImage(referralId: string, file: Blob, cam: CamForShare | null, toFacility: string): Promise<ShareResult> {
     await wait(700);
+    if (!DEMO_KEYS.has(toFacility)) return 'no_receiver_key';
     const r = store.find((x) => x.detail.referral.id === referralId);
-    if (!r) return false;
-    images.set(referralId, URL.createObjectURL(file));
+    if (!r) return 'failed';
+    const heat = cam ? await renderHeatmap(file, cam.data, cam.h, cam.w) : null;
+    images.set(referralId, { image: URL.createObjectURL(file), heatmap: heat ? URL.createObjectURL(heat) : null });
     r.detail.referral.imageShared = true;
-    return true;
+    return 'shared';
+  },
+  async canReceiveImages(facilityId: string) {
+    await wait(100);
+    return DEMO_KEYS.has(facilityId);
   },
 };
 
-// Demo images stay in this tab's memory as object URLs; nothing is uploaded.
-const images = new Map<string, string>();
+// Demo images stay in this tab's memory as object URLs; nothing is uploaded or encrypted.
+const images = new Map<string, { image: string; heatmap: string | null }>();
+// Facilities that have set up image sharing in the demo. Koforidua has not, to show that path.
+const DEMO_KEYS = new Set([DEMO_OWN_ID, 'demo-accra', 'demo-kumasi', 'demo-ho', 'demo-cape-coast', 'demo-tamale', 'demo-takoradi']);
+let demoUnlocked = false;
+
+/** A made-up heatmap: one warm patch in the upper right lung field. Demo only. */
+export function demoCam(r: Screened): CamForShare | null {
+  if (r.logit === null) return null;
+  const h = 10, w = 10;
+  const data = new Float32Array(h * w);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) data[y * w + x] = Math.max(0, 1 - Math.hypot(x - 3, y - 3) / 3.5);
+  return { data, h, w };
+}
 
 // In-memory referrals for the demo inbox. FAKE people: initials only, made-up symptoms.
 interface DemoRec {
@@ -138,8 +158,19 @@ export const demoInbox: InboxDeps = {
     r.detail.events.push({ status, note: note ?? '', at: new Date().toISOString() });
     return clone(r.detail);
   },
-  async imageUrl(id) {
+  async openImage(id) {
     await wait(200);
-    return images.get(id) ?? null;
+    if (!demoUnlocked) return { kind: 'locked' };
+    const got = images.get(id);
+    return got ? { kind: 'ok', ...got } : { kind: 'failed' };
   },
+  async keyStatus(): Promise<KeyStatus> {
+    return { hasKey: true, unlocked: demoUnlocked, canSetUp: false };
+  },
+  async unlock(passphrase: string) {
+    await wait(400);
+    demoUnlocked = passphrase.trim().length > 0; // demo: any passphrase works
+    return demoUnlocked;
+  },
+  async setUpKey() { return true; },
 };

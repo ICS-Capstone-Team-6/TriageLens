@@ -3,6 +3,8 @@
 // the sender sees the outcome (closed loop). Status only moves forward (H15). Pure
 // helpers are tested in inbox.test.ts.
 import { supabase } from '../supabase';
+import { decryptBlob, isWrappedContentKey, unwrapContentKey } from './crypto';
+import { isFacilityAdmin, ownFacilityKey, setUpFacilityKey, unlock, unlockedKey } from './keys';
 import type { Zone } from '../triage';
 
 export const STATUSES = ['created', 'seen', 'arrived', 'tested', 'closed'] as const;
@@ -41,8 +43,24 @@ export interface InboxDeps {
   lookup: (code: string) => Promise<ReferralDetail | null | 'locked'>;
   open: (id: string) => Promise<ReferralDetail | null>;
   advance: (id: string, status: Exclude<Status, 'created'>, outcome?: Outcome, note?: string) => Promise<ReferralDetail | null>;
-  /** Logs the view first (the bucket refuses reads otherwise), then a short-lived URL. */
-  imageUrl: (id: string) => Promise<string | null>;
+  /** Logs the view (the bucket refuses reads otherwise), downloads and decrypts on this phone. */
+  openImage: (id: string) => Promise<OpenedImage>;
+  /** This facility's image key: set up? can the signed-in person set it up? */
+  keyStatus: () => Promise<KeyStatus>;
+  unlock: (passphrase: string) => Promise<boolean>;
+  setUpKey: (passphrase: string) => Promise<boolean>;
+}
+
+export type OpenedImage =
+  | { kind: 'ok'; image: string; heatmap: string | null } // object URLs
+  | { kind: 'locked' } // passphrase needed on this phone
+  | { kind: 'no_key' } // no key for this facility on this referral
+  | { kind: 'failed' };
+
+export interface KeyStatus {
+  hasKey: boolean;
+  unlocked: boolean;
+  canSetUp: boolean;
 }
 
 const str = (v: unknown, d = ''): string => (typeof v === 'string' ? v : d);
@@ -145,11 +163,34 @@ export const realInbox: InboxDeps = {
     });
     return error ? null : parseDetail(data);
   },
-  async imageUrl(id) {
-    if (!supabase) return null;
-    const { data: ok, error } = await supabase.rpc('record_image_access', { p_id: id });
-    if (error || ok !== true) return null;
-    const signed = await supabase.storage.from('referral-images').createSignedUrl(`${id}/image.jpg`, 120);
-    return signed.error ? null : signed.data.signedUrl;
+  async openImage(id) {
+    if (!supabase) return { kind: 'failed' };
+    const own = await ownFacilityKey();
+    if (!own) return { kind: 'failed' };
+    const key = await unlockedKey(own.facilityId);
+    if (own.hasKey && !key) return { kind: 'locked' };
+    const { data, error } = await supabase.rpc('open_referral_image', { p_id: id });
+    if (error || !data) return { kind: 'failed' };
+    const d = data as { wrapped_key: unknown; heatmap?: boolean };
+    if (!isWrappedContentKey(d.wrapped_key) || !key) return { kind: 'no_key' };
+    try {
+      const ck = await unwrapContentKey(d.wrapped_key, key);
+      const get = async (name: string) => {
+        const dl = await supabase!.storage.from('referral-images').download(`${id}/${name}`);
+        if (dl.error) throw dl.error;
+        return URL.createObjectURL(new Blob([await decryptBlob(await dl.data.arrayBuffer(), ck)], { type: 'image/jpeg' }));
+      };
+      return { kind: 'ok', image: await get('image.enc'), heatmap: d.heatmap ? await get('heatmap.enc').catch(() => null) : null };
+    } catch {
+      return { kind: 'failed' };
+    }
   },
+  async keyStatus() {
+    const own = await ownFacilityKey();
+    if (!own) return { hasKey: false, unlocked: false, canSetUp: false };
+    const unlocked = own.hasKey && (await unlockedKey(own.facilityId)) !== null;
+    return { hasKey: own.hasKey, unlocked, canSetUp: !own.hasKey && (await isFacilityAdmin()) };
+  },
+  unlock,
+  setUpKey: setUpFacilityKey,
 };

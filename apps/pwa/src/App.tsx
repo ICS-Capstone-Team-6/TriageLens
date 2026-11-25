@@ -17,14 +17,17 @@ import { Blocked, Checking, ErrorScreen, Retake, Result } from './screens/Flow';
 import { Referral, type ReferralDeps } from './screens/Referral';
 import { Inbox } from './screens/Inbox';
 import { realInbox, type InboxDeps } from './lib/referral/inbox';
-import { loadDirectory, loadOwnFacilityId, sendReferral, shareImage } from './lib/referral/api';
+import { canReceiveImages, loadDirectory, loadOwnFacilityId, sendReferral, shareImage, type CamForShare } from './lib/referral/api';
+import { computeCam, loadCamHead, normalizeCam, type CamHead } from './lib/heatmap';
+import { forgetKeys } from './lib/referral/keys';
+import type { Screened as ScreenedMsg } from './inference/messages';
 import { t } from './strings';
 
 type View =
   | { name: 'home' }
   | { name: 'checking'; step: 0 | 1 | 2 }
   | { name: 'retake'; reason: RetakeReason }
-  | { name: 'result'; zone: 'refer_now' | 'unsure' | 'low_risk'; saved: boolean | null; probability: number | null; caseId: string; image: Blob }
+  | { name: 'result'; zone: 'refer_now' | 'unsure' | 'low_risk'; saved: boolean | null; probability: number | null; caseId: string; image: Blob; cam: CamForShare | null }
   | { name: 'refer'; zone: 'refer_now' | 'unsure'; caseId: string | null; result: Extract<View, { name: 'result' }> }
   | { name: 'error' };
 
@@ -38,13 +41,23 @@ export interface DemoHooks {
   banner: React.ReactNode;
   referral: ReferralDeps;
   inbox: InboxDeps;
+  /** Demo only: a made-up heatmap so the receiving screen can be clicked through. */
+  cam: (r: Screened) => CamForShare | null;
 }
 
 function routeOf(hash: string): 'monitor' | 'referrals' | 'app' {
   return hash === '#/monitor' ? 'monitor' : hash === '#/referrals' ? 'referrals' : 'app';
 }
 
-const realReferral: ReferralDeps = { loadDirectory, ownFacilityId: loadOwnFacilityId, send: sendReferral, shareImage };
+const realReferral: ReferralDeps = { loadDirectory, ownFacilityId: loadOwnFacilityId, send: sendReferral, shareImage, canReceiveImages };
+
+/** Heatmap for the receiving clinician (ADR-9): only with a CAM head file for this exact model. */
+function camFor(r: ScreenedMsg, head: CamHead | null): CamForShare | null {
+  if (!head || !r.features) return null;
+  const raw = computeCam(r.features.data, r.features.dims, head);
+  const norm = raw && normalizeCam(raw);
+  return norm ? { data: norm, h: r.features.dims[1], w: r.features.dims[2] } : null;
+}
 
 const MODEL_URL = (import.meta.env.VITE_MODEL_URL as string | undefined) ?? '';
 const MODEL_SHA256 = (import.meta.env.VITE_MODEL_SHA256 as string | undefined) ?? '';
@@ -58,6 +71,11 @@ export function App({ demo }: { demo?: DemoHooks }) {
   const [age, setAge] = useState<AgeBand | 'under15' | null>(null);
   const [view, setView] = useState<View>({ name: 'home' });
   const client = useRef<Pick<DemoHooks['client'], 'screen'> | null>(null);
+  const camHead = useRef<CamHead | null>(null);
+  useEffect(() => {
+    if (demo || typeof model !== 'object') return;
+    void loadCamHead(MODEL_RUN, model.modelSha256).then((h) => { camHead.current = h; });
+  }, [model, demo]);
 
   useEffect(() => {
     const onHash = () => setRoute(routeOf(location.hash));
@@ -112,17 +130,18 @@ export function App({ demo }: { demo?: DemoHooks }) {
     const zone = zoneFor(probability ?? Number.NaN, thresholds.thresholds, r.quality.passed);
     const totalMs = performance.now() - started;
     const caseId = crypto.randomUUID();
+    const cam = demo ? demo.cam(r) : camFor(r, camHead.current);
     const record = { ageBand: age, screened: r, zone, probability, thresholdsVersion: thresholds.thresholds.version, modelSha256: model.modelSha256, totalMs };
     if (demo) {
       demo.record(r, zone, probability, totalMs);
-      return setView(zone === 'retake' ? { name: 'retake', reason: r.quality.reason ?? 'blank' } : { name: 'result', zone, saved: null, probability, caseId, image: file });
+      return setView(zone === 'retake' ? { name: 'retake', reason: r.quality.reason ?? 'blank' } : { name: 'result', zone, saved: null, probability, caseId, image: file, cam });
     }
     if (zone === 'retake') {
       setView({ name: 'retake', reason: r.quality.reason ?? 'blank' });
       void saveScreening(record, caseId);
       return;
     }
-    setView({ name: 'result', zone, saved: null, probability, caseId, image: file });
+    setView({ name: 'result', zone, saved: null, probability, caseId, image: file, cam });
     const saved = await saveScreening(record, caseId);
     setView((v) => (v.name === 'result' ? { ...v, saved } : v));
   }
@@ -170,6 +189,7 @@ export function App({ demo }: { demo?: DemoHooks }) {
           zone={view.zone}
           caseId={view.caseId}
           image={view.result.image}
+          cam={view.result.cam}
           deps={demo ? demo.referral : realReferral}
           versions={t('versions', versionsNow())}
           onBack={() => setView(view.result)}
@@ -204,7 +224,7 @@ export function App({ demo }: { demo?: DemoHooks }) {
           modelReady={typeof model === 'object'}
           onMonitor={() => go('#/monitor')}
           onReferrals={demo || backendConfigured ? () => go('#/referrals') : null}
-          onSignOut={supabase && !demo ? () => void supabase!.auth.signOut() : null}
+          onSignOut={supabase && !demo ? () => { void forgetKeys(); void supabase!.auth.signOut(); } : null}
           backendNote={!backendConfigured && !demo}
           demo={Boolean(demo)}
         />

@@ -4,6 +4,9 @@
 // in api.test.ts.
 import { supabase } from '../supabase';
 import { toShareableJpeg } from './image';
+import { encryptBlob, newContentKey, wrapContentKey } from './crypto';
+import { publicKeys } from './keys';
+import { renderHeatmap } from '../heatmap';
 import { parseDirectory, type DistanceBand, type Facility } from './match';
 import type { Condition, Urgency } from './rules';
 
@@ -123,23 +126,60 @@ export async function loadOwnFacilityId(): Promise<string | null> {
   return data?.facility_id ?? null;
 }
 
+export interface CamForShare {
+  data: Float32Array; // normalized 0..1, h*w
+  h: number;
+  w: number;
+}
+
+export type ShareResult = 'shared' | 'no_receiver_key' | 'failed';
+
+// Content keys of referrals shared in this session, so a retry can finish with the same key.
+const sessionKeys = new Map<string, Uint8Array>();
+
+/** Can this facility receive images? Only if it has set up its facility key. */
+export async function canReceiveImages(facilityId: string): Promise<boolean> {
+  return facilityId in (await publicKeys([facilityId]));
+}
+
 /**
- * Shares the X-ray image with the receiving facility, after the person agreed (ADR-28 4).
- * Order matters: consent is recorded first, because the bucket refuses uploads without it.
- * Safe to retry: consent and confirm are replays, and an image already uploaded is kept.
+ * Shares the X-ray image (and the heatmap when there is one) with the receiving facility,
+ * after the person agreed (ADR-28 4). Encrypted on this phone first; the server never
+ * sees either file in the clear. Order matters: consent is recorded first, because the
+ * bucket refuses uploads without it. A retry in the same session reuses the same content
+ * key, so files already uploaded are kept and only the missing steps run. (After a reload
+ * the key is gone and an unconfirmed upload cannot be finished; the referral stays
+ * results-only.)
  */
-export async function shareImage(referralId: string, file: Blob): Promise<boolean> {
-  if (!supabase) return false;
+export async function shareImage(referralId: string, file: Blob, cam: CamForShare | null, toFacility: string, ownFacility: string | null): Promise<ShareResult> {
+  if (!supabase) return 'failed';
   const consent = await supabase.rpc('consent_image_share', { p_id: referralId });
-  if (consent.error) return false;
-  if ((consent.data as { image_shared?: boolean } | null)?.image_shared) return true;
+  if (consent.error) return 'failed';
+  if ((consent.data as { image_shared?: boolean } | null)?.image_shared) return 'shared';
+  const keys = await publicKeys(ownFacility ? [toFacility, ownFacility] : [toFacility]);
+  if (!keys[toFacility]) return 'no_receiver_key';
   const jpeg = await toShareableJpeg(file);
-  if (!jpeg) return false;
-  const up = await supabase.storage.from('referral-images').upload(`${referralId}/image.jpg`, jpeg, { contentType: 'image/jpeg' });
-  // "already exists" means an earlier try uploaded it; confirm still checks the file is there.
-  if (up.error && !/exists|duplicate/i.test(up.error.message)) return false;
-  const done = await supabase.rpc('confirm_image_upload', { p_id: referralId });
-  return !done.error;
+  if (!jpeg) return 'failed';
+  const ck = sessionKeys.get(referralId) ?? newContentKey();
+  sessionKeys.set(referralId, ck);
+  const files: [string, Blob][] = [['image.enc', jpeg]];
+  if (cam) {
+    const heat = await renderHeatmap(jpeg, cam.data, cam.h, cam.w);
+    if (heat) files.push(['heatmap.enc', heat]);
+  }
+  for (const [name, blob] of files) {
+    const sealed = await encryptBlob(await blob.arrayBuffer(), ck);
+    const up = await supabase.storage.from('referral-images')
+      .upload(`${referralId}/${name}`, sealed, { contentType: 'application/octet-stream' });
+    // Already there from an earlier try in this session, under the same key: keep it.
+    if (up.error && !/exists|duplicate/i.test(up.error.message)) return 'failed';
+  }
+  const wrapped: Record<string, unknown> = {};
+  for (const [id, pub] of Object.entries(keys)) wrapped[id] = await wrapContentKey(ck, pub);
+  const done = await supabase.rpc('confirm_image_upload', { p_id: referralId, p_keys: wrapped as never });
+  if (done.error) return 'failed';
+  sessionKeys.delete(referralId);
+  return 'shared';
 }
 
 export async function sendReferral(d: ReferralDraft): Promise<SentReferral | null> {

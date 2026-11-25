@@ -17,6 +17,8 @@ export interface Screened {
   preprocess: string;
   timings: Timings;
   threads: number;
+  /** The model's feature map [C, h, w], for the heatmap (ADR-9). Absent if the model has no such output. */
+  features?: { data: Float32Array; dims: [number, number, number] };
 }
 
 export type WorkerResponse =

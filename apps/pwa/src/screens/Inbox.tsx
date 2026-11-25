@@ -3,7 +3,8 @@
 // The receiving facility records a laboratory or clinician result, never an AI result.
 import { useCallback, useEffect, useState } from 'react';
 import { formatCode } from '../lib/referral/api';
-import { nextActions, notArrived, OUTCOMES, type InboxDeps, type Outcome, type ReferralDetail, type ReferralSummary } from '../lib/referral/inbox';
+import { nextActions, notArrived, OUTCOMES, type InboxDeps, type KeyStatus, type OpenedImage, type Outcome, type ReferralDetail, type ReferralSummary } from '../lib/referral/inbox';
+import { passphraseProblem } from '../lib/referral/crypto';
 import { t, type StringKey } from '../strings';
 import { Back } from '../ui/icons';
 
@@ -31,10 +32,20 @@ function Detail({ d, ownFacility, deps, onBack, onChange }: {
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
   const [askOutcome, setAskOutcome] = useState(false);
-  const [img, setImg] = useState<string | null | 'loading' | 'failed'>(null);
+  const [img, setImg] = useState<OpenedImage | 'loading' | null>(null);
+  const [pass, setPass] = useState('');
+  const [wrongPass, setWrongPass] = useState(false);
   async function showImage() {
     setImg('loading');
-    setImg((await deps.imageUrl(r.id)) ?? 'failed');
+    setImg(await deps.openImage(r.id));
+  }
+  async function unlockAndShow(e: React.FormEvent) {
+    e.preventDefault();
+    setImg('loading');
+    const ok = await deps.unlock(pass);
+    setPass('');
+    setWrongPass(!ok);
+    if (ok) await showImage(); else setImg({ kind: 'locked' });
   }
   const actions = ownFacility === 'receiver' ? nextActions(r.status) : [];
 
@@ -69,11 +80,31 @@ function Detail({ d, ownFacility, deps, onBack, onChange }: {
       <p className="small">{t('detail_screening_note')}</p>
       {!r.imageShared ? (
         <p className="small">{t('image_not_shared')}</p>
-      ) : img && img !== 'loading' && img !== 'failed' ? (
-        <img className="xray-shared" src={img} alt={t('image_alt')} />
+      ) : img && img !== 'loading' && img.kind === 'ok' ? (
+        <div className="stack">
+          <img className="xray-shared" src={img.image} alt={t('image_alt')} />
+          {img.heatmap && (
+            <figure className="stack" style={{ margin: 0 }}>
+              <img className="xray-shared" src={img.heatmap} alt={t('heatmap_alt')} />
+              <figcaption className="small">{t('heatmap_caption')}</figcaption>
+            </figure>
+          )}
+        </div>
+      ) : img && img !== 'loading' && img.kind === 'locked' ? (
+        <form className="stack" onSubmit={(e) => void unlockAndShow(e)}>
+          <label className="field">
+            {t('unlock_label')}
+            <input type="password" value={pass} onChange={(e) => setPass(e.target.value)} autoComplete="off" />
+            <span className="small">{t('unlock_hint')}</span>
+          </label>
+          {wrongPass && <p className="alert" role="alert">{t('unlock_wrong')}</p>}
+          <button className="btn btn-dark" type="submit" disabled={!pass}>{t('unlock_button')}</button>
+        </form>
+      ) : img && img !== 'loading' && img.kind === 'no_key' ? (
+        <p className="small" role="status">{t('image_no_key')}</p>
       ) : (
         <button className="btn btn-secondary" type="button" disabled={img === 'loading'} onClick={() => void showImage()}>
-          {img === 'loading' ? t('image_loading') : img === 'failed' ? t('image_load_failed') : t('image_show')}
+          {img === 'loading' ? t('image_loading') : img?.kind === 'failed' ? t('image_load_failed') : t('image_show')}
         </button>
       )}
 
@@ -132,6 +163,22 @@ export function Inbox({ deps, onBack }: { deps: InboxDeps; onBack: () => void })
   const [lookup, setLookup] = useState<'idle' | 'busy' | 'missing' | 'locked'>('idle');
   const [open, setOpen] = useState<{ d: ReferralDetail; as: 'sender' | 'receiver' } | null>(null);
   const now = new Date();
+  const [keys, setKeys] = useState<KeyStatus | null>(null);
+  const [newPass, setNewPass] = useState('');
+  const [newPass2, setNewPass2] = useState('');
+  const [setupState, setSetupState] = useState<'idle' | 'busy' | 'failed'>('idle');
+  useEffect(() => { void deps.keyStatus().then(setKeys); }, [deps]);
+
+  async function setUp(e: React.FormEvent) {
+    e.preventDefault();
+    if (passphraseProblem(newPass) || newPass !== newPass2) return;
+    setSetupState('busy');
+    const ok = await deps.setUpKey(newPass);
+    setNewPass('');
+    setNewPass2('');
+    setSetupState(ok ? 'idle' : 'failed');
+    if (ok) setKeys(await deps.keyStatus());
+  }
 
   const load = useCallback((which: Tab) => {
     setRows('loading');
@@ -180,6 +227,27 @@ export function Inbox({ deps, onBack }: { deps: InboxDeps; onBack: () => void })
           </label>
         ))}
       </fieldset>
+
+      {keys && !keys.hasKey && (keys.canSetUp ? (
+        <form className="panel" onSubmit={(e) => void setUp(e)}>
+          <h2 className="lead strong">{t('setup_title')}</h2>
+          <p className="small">{t('setup_body')}</p>
+          <label className="field">{t('setup_pass')}
+            <input type="password" value={newPass} onChange={(e) => setNewPass(e.target.value)} autoComplete="new-password" />
+          </label>
+          <label className="field">{t('setup_pass2')}
+            <input type="password" value={newPass2} onChange={(e) => setNewPass2(e.target.value)} autoComplete="new-password" />
+          </label>
+          {newPass && passphraseProblem(newPass) && <p className="small">{t('setup_too_short')}</p>}
+          {newPass2 && newPass !== newPass2 && <p className="small">{t('setup_mismatch')}</p>}
+          {setupState === 'failed' && <p className="alert" role="alert">{t('setup_failed')}</p>}
+          <button className="btn btn-dark" type="submit" disabled={setupState === 'busy' || !!passphraseProblem(newPass) || newPass !== newPass2}>
+            {setupState === 'busy' ? t('setup_busy') : t('setup_button')}
+          </button>
+        </form>
+      ) : (
+        <p className="small">{t('setup_ask_admin')}</p>
+      ))}
 
       {tab === 'received' && (
         <form className="stack" onSubmit={(e) => void find(e)}>

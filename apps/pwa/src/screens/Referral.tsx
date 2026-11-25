@@ -8,8 +8,8 @@ import { distanceBand, distanceKm, isOpenAt, matchFacilities, validPoint, type F
 import { bedState, hoursSince, LOW_BEDS } from '../lib/referral/beds';
 import { RULES_V1, type ServiceTag, type Urgency } from '../lib/referral/rules';
 import { t, type StringKey } from '../strings';
-import { AlertCircle, Bed, Clock, Close, Phone, Pin } from '../ui/icons';
-import { Facts, Foot, Notice, TopBar, ZoneRow } from '../ui/kit';
+import { AlertCircle, Bed, Clock, Close, MapIcon, Phone, Pin, WifiOff } from '../ui/icons';
+import { Empty, Facts, Foot, Notice, TopBar, ZoneRow } from '../ui/kit';
 import { AmbulancePanel } from './Ambulance';
 import type { AmbulanceDeps } from '../lib/referral/ambulance';
 
@@ -202,7 +202,7 @@ export function Referral({ zone, caseId, image, cam, deps, ambulance, versions, 
 
         {!caseId && <Notice tone="danger" role="alert">{t('refer_not_saved')}</Notice>}
         {directory === 'loading' && <p className="t-small" role="status">{t('refer_loading')}</p>}
-        {directory === null && <Notice tone="danger" role="alert">{t('refer_no_directory')}</Notice>}
+        {directory === null && <Empty tone="problem" role="alert" icon={<WifiOff size={26} />} title={t('directory_missing_title')} body={t('refer_no_directory')} />}
 
         {directory && directory !== 'loading' && (
           <>
@@ -211,6 +211,7 @@ export function Referral({ zone, caseId, image, cam, deps, ambulance, versions, 
 
             <fieldset className="stack" style={{ border: 0, padding: 0, margin: 0, gap: 10 }}>
               <legend className="sr">{t('refer_choose_legend')}</legend>
+              {shown.length === 0 && <Empty icon={<MapIcon size={26} />} title={t('directory_empty_title')} body={t('refer_none_listed')} />}
               {shown.map((o) => (
                 <FacilityCard key={o.facility.id} o={o} selected={chosen === o.facility.id} onSelect={() => { setChosen(o.facility.id); setConsent(false); }} />
               ))}

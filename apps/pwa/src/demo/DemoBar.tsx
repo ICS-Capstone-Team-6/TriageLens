@@ -15,7 +15,7 @@ export function DemoBar() {
   useEffect(() => onOutcome(() => setO(getOutcome())), []);
   return (
     <aside className="demo-bar" aria-label="Demo controls">
-      <p className="demo-title">Demo mode: results are made up, not from the TB model. Nothing is saved.</p>
+      <p className="demo-title">Demo mode: results are made up, not from the TB model. Nothing is sent to the team; demo cases are kept apart from real ones.</p>
       <div className="demo-row" role="radiogroup" aria-label="Next outcome">
         <span className="demo-label">Next outcome</span>
         {OPTIONS.map((x) => (

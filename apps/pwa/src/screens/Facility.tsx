@@ -6,7 +6,8 @@ import { useEffect, useState } from 'react';
 import { SERVICE_TAGS } from '../lib/referral/rules';
 import { share, type Count, type FacilityDeps, type FacilityStats, type MyFacility } from '../lib/referral/stats';
 import { t, type StringKey } from '../strings';
-import { Notice, Stepper, TopBar } from '../ui/kit';
+import { Empty, Notice, Stepper, TopBar } from '../ui/kit';
+import { Chart, WifiOff } from '../ui/icons';
 import { hoursSince, LOW_BEDS } from '../lib/referral/beds';
 
 const WEEKS = 8;
@@ -153,7 +154,8 @@ export function Facility({ deps, dock }: { deps: FacilityDeps; onBack?: () => vo
             <h2 className="t-title" id="nums">{t('stats_title', { weeks: WEEKS })}</h2>
             <p className="t-small">{t('stats_note')}</p>
             {rows === 'loading' && <p className="t-small" role="status">{t('inbox_loading')}</p>}
-            {rows === null && <Notice tone="danger" role="alert">{t('inbox_offline')}</Notice>}
+            {rows === null && <Empty tone="problem" role="alert" icon={<WifiOff size={26} />} title={t('stats_offline_title')} body={t('stats_offline')} />}
+            {Array.isArray(rows) && rows.length === 0 && <Empty icon={<Chart size={26} />} title={t('stats_empty_title')} body={t('stats_empty')} />}
             {Array.isArray(rows) && rows.map((f) => <Numbers key={f.facilityId} f={f} />)}
           </section>
         </div>

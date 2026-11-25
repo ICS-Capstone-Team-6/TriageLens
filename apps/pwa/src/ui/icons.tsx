@@ -43,6 +43,9 @@ export const AlertCircle = (p: P) => <Svg {...p}><path d="M3 12a9 9 0 1 0 18 0a9
 export const Question = (p: P) => <Svg {...p}><path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0" /><path d="M12 16v.01" /><path d="M12 13a2 2 0 0 0 .914 -3.782a1.98 1.98 0 0 0 -2.414 .483" /></Svg>;
 export const ArrowDown = (p: P) => <Svg {...p}><path d="M12 5v14" /><path d="M18 13l-6 6" /><path d="M6 13l6 6" /></Svg>;
 export const ArrowUpRight = (p: P) => <Svg {...p}><path d="M7 7h10v10" /><path d="M7 17l10 -10" /></Svg>;
+export const ArrowDownLeft = (p: P) => <Svg {...p}><path d="M17 17h-10v-10" /><path d="M17 7l-10 10" /></Svg>;
+export const Inbox = (p: P) => <Svg {...p}><path d="M4 13h3l2 3h6l2 -3h3" /><path d="M4 13l2.5 -7h11l2.5 7v5a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2z" /></Svg>;
+export const Folder = (p: P) => <Svg {...p}><path d="M5 4h4l3 3h7a2 2 0 0 1 2 2v8a2 2 0 0 1 -2 2h-14a2 2 0 0 1 -2 -2v-11a2 2 0 0 1 2 -2" /></Svg>;
 export const Retake = (p: P) => <Svg {...p}><path d="M20 11a8.1 8.1 0 0 0 -15.5 -2m-.5 -4v4h4" /><path d="M4 13a8.1 8.1 0 0 0 15.5 2m.5 4v-4h-4" /></Svg>;
 export const Pin = (p: P) => <Svg {...p}><path d="M9 11a3 3 0 1 0 6 0a3 3 0 0 0 -6 0" /><path d="M17.657 16.657l-4.243 4.243a2 2 0 0 1 -2.827 0l-4.244 -4.243a8 8 0 1 1 11.314 0z" /></Svg>;
 export const Wifi = (p: P) => <Svg {...p}><path d="M12 18l.01 0" /><path d="M9.172 15.172a4 4 0 0 1 5.656 0" /><path d="M6.343 12.343a8 8 0 0 1 11.314 0" /><path d="M3.515 9.515c4.686 -4.687 12.284 -4.687 17 0" /></Svg>;

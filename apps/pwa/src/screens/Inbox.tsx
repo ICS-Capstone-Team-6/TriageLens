@@ -6,8 +6,8 @@ import { formatCode } from '../lib/referral/api';
 import { nextActions, notArrived, OUTCOMES, type InboxDeps, type KeyStatus, type OpenedImage, type Outcome, type ReferralDetail, type ReferralSummary } from '../lib/referral/inbox';
 import { passphraseProblem } from '../lib/referral/crypto';
 import { t, type StringKey } from '../strings';
-import { ImageIcon, Lock, Phone } from '../ui/icons';
-import { Facts, Foot, Notice, TopBar, ZoneRow } from '../ui/kit';
+import { ArrowDownLeft, ArrowUpRight, ImageIcon, List, Lock, Phone, WifiOff } from '../ui/icons';
+import { Empty, Facts, Foot, Notice, TopBar, useWide, ZoneRow } from '../ui/kit';
 import { AmbulancePanel, AmbulanceQueue } from './Ambulance';
 import type { AmbulanceDeps } from '../lib/referral/ambulance';
 
@@ -19,8 +19,8 @@ const day = (iso: string) => {
 };
 const pretty = (key: string) => key.replace(/_/g, ' ');
 
-function Detail({ d, ownFacility, deps, ambulance, onBack, onChange }: {
-  d: ReferralDetail; ownFacility: 'sender' | 'receiver'; deps: InboxDeps; ambulance: AmbulanceDeps | null; onBack: () => void; onChange: (d: ReferralDetail) => void;
+function Detail({ d, ownFacility, deps, ambulance, onBack, onChange, embedded = false }: {
+  d: ReferralDetail; ownFacility: 'sender' | 'receiver'; deps: InboxDeps; ambulance: AmbulanceDeps | null; onBack: () => void; onChange: (d: ReferralDetail) => void; embedded?: boolean;
 }) {
   const r = d.referral;
   const [busy, setBusy] = useState(false);
@@ -57,10 +57,29 @@ function Detail({ d, ownFacility, deps, ambulance, onBack, onChange }: {
   const notArrivedYet = r.status === 'created' || r.status === 'seen';
   const latest = d.results[d.results.length - 1];
 
-  return (
-    <main className="screen">
-      <TopBar title={ownFacility === 'sender' ? t('sent_referral') : t('referral_detail_header')} onBack={onBack} />
-      <div className="body has-foot pane">
+  const title = ownFacility === 'sender' ? t('sent_referral') : t('referral_detail_header');
+  const actionBlock = actions.length > 0 && !askOutcome ? (
+    <>
+          {actions.includes('arrived') && <button className="btn btn-primary btn-lg btn-full" type="button" disabled={busy} onClick={() => void act('arrived')}>{t('action_arrived')}</button>}
+          {actions.includes('tested') && <button className="btn btn-primary btn-lg btn-full" type="button" disabled={busy} onClick={() => setAskOutcome(true)}>{t('action_tested')}</button>}
+          {actions.includes('closed') && (confirmClose ? (
+            <>
+              <p className="t-small" role="alert" style={{ textAlign: 'center', color: 'var(--ink)', fontWeight: 500 }}>{t('close_confirm')}</p>
+              <div className="grid2">
+                <button className="btn btn-ghost" type="button" onClick={() => setConfirmClose(false)} style={{ background: '#fff' }}>{t('keep_open')}</button>
+                <button className="btn btn-primary" type="button" disabled={busy}
+                  onClick={() => { setConfirmClose(false); void act('closed', undefined, notArrivedYet ? t('note_did_not_arrive') : ''); }}>{t('yes_close')}</button>
+              </div>
+            </>
+          ) : (
+            <button className="btn btn-ghost btn-full" type="button" disabled={busy} onClick={() => setConfirmClose(true)} style={{ background: '#fff' }}>
+              {notArrivedYet ? t('action_close_not_arrived') : t('action_close')}
+            </button>
+          ))}
+    </>
+  ) : null;
+  const content = (
+    <>
         <div className="stack-tight">
           <p className="code-xl">{formatCode(r.code, r.initials)}</p>
           <p className="t-small">{ownFacility === 'sender' ? t('row_to', { name: r.toName }) : t('row_from', { name: r.fromName })}, {day(r.createdAt)}</p>
@@ -123,28 +142,23 @@ function Detail({ d, ownFacility, deps, ambulance, onBack, onChange }: {
           </fieldset>
         )}
         {failed && <Notice tone="danger" role="alert">{t('advance_failed')}</Notice>}
+    </>
+  );
+  if (embedded) {
+    return (
+      <section className="split-detail pane" aria-label={title}>
+        {content}
+        {actionBlock && <div className="stack" style={{ gap: 10, maxWidth: 440 }}><p className="remind" style={{ textAlign: 'left' }}>{t('reminder')}</p>{actionBlock}</div>}
+      </section>
+    );
+  }
+  return (
+    <main className="screen">
+      <TopBar title={title} onBack={onBack} />
+      <div className="body has-foot pane">
+        {content}
       </div>
-
-      {actions.length > 0 && !askOutcome && (
-        <Foot>
-          {actions.includes('arrived') && <button className="btn btn-primary btn-lg btn-full" type="button" disabled={busy} onClick={() => void act('arrived')}>{t('action_arrived')}</button>}
-          {actions.includes('tested') && <button className="btn btn-primary btn-lg btn-full" type="button" disabled={busy} onClick={() => setAskOutcome(true)}>{t('action_tested')}</button>}
-          {actions.includes('closed') && (confirmClose ? (
-            <>
-              <p className="t-small" role="alert" style={{ textAlign: 'center', color: 'var(--ink)', fontWeight: 500 }}>{t('close_confirm')}</p>
-              <div className="grid2">
-                <button className="btn btn-ghost" type="button" onClick={() => setConfirmClose(false)} style={{ background: '#fff' }}>{t('keep_open')}</button>
-                <button className="btn btn-primary" type="button" disabled={busy}
-                  onClick={() => { setConfirmClose(false); void act('closed', undefined, notArrivedYet ? t('note_did_not_arrive') : ''); }}>{t('yes_close')}</button>
-              </div>
-            </>
-          ) : (
-            <button className="btn btn-ghost btn-full" type="button" disabled={busy} onClick={() => setConfirmClose(true)} style={{ background: '#fff' }}>
-              {notArrivedYet ? t('action_close_not_arrived') : t('action_close')}
-            </button>
-          ))}
-        </Foot>
-      )}
+      {actionBlock && <Foot>{actionBlock}</Foot>}
     </main>
   );
 }
@@ -218,14 +232,16 @@ export function Inbox({ deps, ambulance, onBack, dock }: { deps: InboxDeps; ambu
     if (d) setOpen({ d, as: tab === 'received' ? 'receiver' : 'sender' });
   }
 
-  if (open) {
+  const wide = useWide();
+  const close = () => { setOpen(null); load(tab); };
+  if (open && !wide) {
     return (
       <Detail
         d={open.d}
         ownFacility={open.as}
         deps={deps}
         ambulance={ambulance}
-        onBack={() => { setOpen(null); load(tab); }}
+        onBack={close}
         onChange={(d) => setOpen({ d, as: open.as })}
       />
     );
@@ -235,6 +251,8 @@ export function Inbox({ deps, ambulance, onBack, dock }: { deps: InboxDeps; ambu
     <main className="screen">
       <TopBar title={t('inbox_header')} big />
       <div className="body has-dock pane">
+        <div className="split">
+        <div className="split-list">
         {ambulance && <AmbulanceQueue deps={ambulance} />}
         <div className="seg" role="group" aria-label={t('inbox_header')}>
           {(['received', 'sent'] as const).map((x) => (
@@ -254,15 +272,20 @@ export function Inbox({ deps, ambulance, onBack, dock }: { deps: InboxDeps; ambu
         {lookup === 'locked' && <p className="error" role="alert">{t('lookup_locked')}</p>}
 
         {rows === 'loading' && <p className="t-small" role="status">{t('inbox_loading')}</p>}
-        {rows === null && <Notice tone="danger" role="alert">{t('inbox_offline')}</Notice>}
-        {Array.isArray(rows) && rows.length === 0 && <p className="t-small">{t(tab === 'received' ? 'inbox_empty_received' : 'inbox_empty_sent')}</p>}
+        {rows === null && (
+          <Empty tone="problem" role="alert" icon={<WifiOff size={26} />} title={t('inbox_offline_title')} body={t('inbox_offline')}
+            action={<button className="btn btn-ghost" type="button" style={{ background: '#fff' }} onClick={() => load(tab)}>{t('try_again')}</button>} />
+        )}
+        {Array.isArray(rows) && rows.length === 0 && (tab === 'received'
+          ? <Empty icon={<ArrowDownLeft size={26} />} title={t('inbox_empty_received')} body={t('inbox_empty_received_body')} />
+          : <Empty icon={<ArrowUpRight size={26} />} title={t('inbox_empty_sent')} body={t('inbox_empty_sent_body')} />)}
         {Array.isArray(rows) && rows.length > 0 && (
           <ul className="list" aria-label={t(`tab_${tab}` as StringKey)}>
             {rows.map((r) => {
               const late = tab === 'sent' && notArrived(r, now);
               return (
                 <li key={r.id}>
-                  <button className="item" type="button" onClick={() => void openRow(r)}>
+                  <button className="item" type="button" aria-current={wide && open?.d.referral.id === r.id ? true : undefined} onClick={() => void openRow(r)}>
                     <span className="row"><span className={`code${r.status === 'created' && tab === 'received' ? ' t-strong' : ''}`}>{formatCode(r.code, r.initials)}</span><span className="t-small num">{day(r.createdAt)}</span></span>
                     <span className="t-small">{tab === 'received' ? r.fromName : r.toName}</span>
                     <span className="t-small" style={{ color: 'var(--ink)', fontWeight: 500 }}>
@@ -295,6 +318,13 @@ export function Inbox({ deps, ambulance, onBack, dock }: { deps: InboxDeps; ambu
             </button>
           </form>
         ) : <p className="t-small">{t('setup_ask_admin')}</p>)}
+        </div>
+        {wide && (open ? (
+          <Detail key={open.d.referral.id} embedded d={open.d} ownFacility={open.as} deps={deps} ambulance={ambulance} onBack={close} onChange={(d) => setOpen({ d, as: open.as })} />
+        ) : (
+          <section className="split-detail"><Empty icon={<List size={26} />} title={t('inbox_pick_title')} body={t('inbox_pick_body')} /></section>
+        ))}
+        </div>
       </div>
       {dock}
     </main>

@@ -8,8 +8,8 @@ import { bedState, hoursSince } from '../lib/referral/beds';
 import { distanceKm, isOpenAt, type Facility } from '../lib/referral/match';
 import { SERVICE_TAGS } from '../lib/referral/rules';
 import { t, type StringKey } from '../strings';
-import { AlertCircle, Check, Minus, Phone, Plus, Scan, Search } from '../ui/icons';
-import { Facts, Notice, TopBar } from '../ui/kit';
+import { AlertCircle, Check, MapIcon, Minus, Phone, Plus, Scan, Search, WifiOff } from '../ui/icons';
+import { Empty, Facts, Notice, TopBar } from '../ui/kit';
 
 export interface MapDeps {
   loadDirectory: () => Promise<DirectoryCache | null>;
@@ -105,7 +105,8 @@ export function MapScreen({ deps, dock }: { deps: MapDeps; dock?: React.ReactNod
       <TopBar title={t('nav_map')} big />
       <div className="body has-dock pane">
         {dir === 'loading' && <p className="t-small" role="status">{t('refer_loading')}</p>}
-        {dir === null && <Notice tone="danger" role="alert">{t('refer_no_directory')}</Notice>}
+        {dir === null && <Empty tone="problem" role="alert" icon={<WifiOff size={26} />} title={t('directory_missing_title')} body={t('refer_no_directory')} />}
+        {dir && dir !== 'loading' && dir.facilities.length === 0 && <Empty icon={<MapIcon size={26} />} title={t('directory_empty_title')} body={t('directory_empty')} />}
         {dir && dir !== 'loading' && (
           <div className="wide-3 mapgrid">
             <aside className="stack map-find" aria-label={t('map_find')}>
@@ -191,10 +192,8 @@ export function MapScreen({ deps, dock }: { deps: MapDeps; dock?: React.ReactNod
             <section className="stack map-list" aria-label={t('map_results')}>
               <p className="t-cap num" role="status">{t('map_shown', { n: shown.length })}</p>
               {shown.length === 0 && (
-                <div className="cloud">
-                  <p className="t-sub">{t('map_none')}</p>
-                  <button className="btn btn-ghost btn-full" type="button" style={{ background: '#fff' }} onClick={() => { setQ(''); setNeed([]); }}>{t('map_clear')}</button>
-                </div>
+                <Empty icon={<Search size={26} />} title={t('map_none_title')} body={t('map_none')}
+                  action={<button className="btn btn-ghost" type="button" style={{ background: '#fff' }} onClick={() => { setQ(''); setNeed([]); }}>{t('map_clear')}</button>} />
               )}
               <ul className="res" aria-label={t('map_results')}>
                 {shown.map((f) => {

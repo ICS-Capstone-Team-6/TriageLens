@@ -1,6 +1,6 @@
 // Small shared components for the "clinic under open sky" design (ui/sky.css).
 // Plain React with no UI library, so the app shell stays small on low-end phones.
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { t } from '../strings';
 import { AlertCircle, Back, Close, Info, Minus, Plus, ZoneIcon, List, ArrowUpRight, Scan, Building, MapIcon } from './icons';
 
@@ -40,7 +40,7 @@ export function Dock({ current, tabs }: { current: Tab; tabs: { id: Tab; href: s
     <nav className="dock" aria-label={t('nav_label')}>
       {tabs.map((x) => (
         <a key={x.id} href={x.href} aria-current={x.id === current ? 'page' : undefined}>
-          {x.id === current && icon[x.id]}{label[x.id]}
+          {icon[x.id]}<span>{label[x.id]}</span>
         </a>
       ))}
     </nav>
@@ -115,4 +115,35 @@ export function Stepper({ value, max, onChange, label }: { value: number; max: n
       <button className="round" type="button" aria-label={t('beds_more')} onClick={() => onChange(Math.min(max, value + 1))}><Plus size={22} /></button>
     </div>
   );
+}
+
+/**
+ * Empty or nothing-found state: a drawn mark, one plain title, one line on what to do next,
+ * and at most one action (an empty screen is an invitation to act, not a dead end).
+ */
+export function Empty({ icon, title, body, action, tone = 'calm', role }: {
+  icon: ReactNode; title: string; body?: ReactNode; action?: ReactNode; tone?: 'calm' | 'problem'; role?: 'status' | 'alert';
+}) {
+  return (
+    <div className={`empty${tone === 'problem' ? ' empty-problem' : ''}`} role={role}>
+      <span className="empty-mark" aria-hidden="true">{icon}</span>
+      <p className="empty-title">{title}</p>
+      {body && <p className="empty-body">{body}</p>}
+      {action}
+    </div>
+  );
+}
+
+/** True on screens wide enough for list and detail side by side (matches sky.css 1024px). */
+export function useWide() {
+  const q = '(min-width: 1024px)';
+  const [wide, setWide] = useState(() => typeof matchMedia === 'function' && matchMedia(q).matches);
+  useEffect(() => {
+    if (typeof matchMedia !== 'function') return;
+    const m = matchMedia(q);
+    const on = () => setWide(m.matches);
+    m.addEventListener('change', on);
+    return () => m.removeEventListener('change', on);
+  }, []);
+  return wide;
 }

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { InferenceClient, type Ready } from './inference/client';
 import type { Screened } from './inference/messages';
+import { createCase, finishCase, openCaseDb, type CaseResult, type LocalCase } from './lib/caseStore';
 import { loadThresholds, type ThresholdsState } from './lib/config';
 import { PREPROCESS_VERSION } from './lib/preprocess';
 import type { RetakeReason } from './lib/quality';
@@ -16,6 +17,7 @@ import { SignIn } from './screens/SignIn';
 import { Blocked, Checking, ErrorScreen, Retake, Result } from './screens/Flow';
 import { Referral, type ReferralDeps } from './screens/Referral';
 import { MapScreen } from './screens/Map';
+import { Cases } from './screens/Cases';
 import { Inbox } from './screens/Inbox';
 import { realInbox, type InboxDeps } from './lib/referral/inbox';
 import { ambulanceEnabled, realAmbulance, type AmbulanceDeps } from './lib/referral/ambulance';
@@ -33,7 +35,7 @@ type View =
   | { name: 'home' }
   | { name: 'checking'; step: 0 | 1 | 2 }
   | { name: 'retake'; reason: RetakeReason }
-  | { name: 'result'; zone: 'refer_now' | 'unsure' | 'low_risk'; saved: boolean | null; probability: number | null; caseId: string; image: Blob; cam: CamForShare | null }
+  | { name: 'result'; zone: 'refer_now' | 'unsure' | 'low_risk'; saved: boolean | null; probability: number | null; caseId: string; caseCode: string | null; image: Blob; cam: CamForShare | null }
   | { name: 'refer'; zone: 'refer_now' | 'unsure'; caseId: string | null; result: Extract<View, { name: 'result' }> }
   | { name: 'error' };
 
@@ -53,8 +55,8 @@ export interface DemoHooks {
   cam: (r: Screened) => CamForShare | null;
 }
 
-function routeOf(hash: string): 'monitor' | 'referrals' | 'facility' | 'map' | 'app' {
-  return hash === '#/monitor' ? 'monitor' : hash === '#/referrals' ? 'referrals' : hash === '#/facility' ? 'facility' : hash === '#/map' ? 'map' : 'app';
+function routeOf(hash: string): 'monitor' | 'referrals' | 'facility' | 'map' | 'cases' | 'app' {
+  return hash === '#/monitor' ? 'monitor' : hash === '#/referrals' ? 'referrals' : hash === '#/facility' ? 'facility' : hash === '#/map' ? 'map' : hash === '#/cases' ? 'cases' : 'app';
 }
 
 const realReferral: ReferralDeps = { loadDirectory, ownFacilityId: loadOwnFacilityId, send: sendReferral, shareImage, canReceiveImages };
@@ -78,6 +80,13 @@ export function App({ demo }: { demo?: DemoHooks }) {
   const [model, setModel] = useState<Ready | 'loading' | 'failed'>('loading');
   const [age, setAge] = useState<AgeBand | 'under15' | null>(null);
   const [view, setView] = useState<View>({ name: 'home' });
+  // Local case log (E8-06). Demo cases go to their own database, never mixed with real ones.
+  const [db, setDb] = useState<IDBDatabase | null | 'unavailable'>(null);
+  useEffect(() => {
+    let open: IDBDatabase | null = null;
+    openCaseDb(indexedDB, demo ? 'triagelens-demo' : undefined).then((d) => { open = d; setDb(d); }, () => setDb('unavailable'));
+    return () => open?.close();
+  }, [demo]);
   const client = useRef<Pick<DemoHooks['client'], 'screen'> | null>(null);
   const camHead = useRef<CamHead | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -133,28 +142,40 @@ export function App({ demo }: { demo?: DemoHooks }) {
     if (!client.current || typeof model !== 'object' || !thresholds?.ok || !canScreen(true, true, age) || age === null || age === 'under15') return;
     const started = performance.now();
     setView({ name: 'checking', step: 0 });
+    // Write the case before the model runs, so a crash cannot lose it (FR-07, H9).
+    const store = db && db !== 'unavailable' ? db : null;
+    const local: LocalCase | null = store ? await createCase(store, age).catch(() => null) : null;
+    const finish = (status: 'result' | 'retake' | 'error', result: CaseResult | null) =>
+      store && local ? finishCase(store, local.id, status, result).then(() => true, () => false) : Promise.resolve(false);
     let r: Screened;
     try {
       r = await client.current.screen(file, (step) => setView({ name: 'checking', step }));
     } catch {
+      void finish('error', null);
       return setView({ name: 'error' });
     }
     const probability = r.logit == null ? null : sigmoid(r.logit);
     const zone = zoneFor(probability ?? Number.NaN, thresholds.thresholds, r.quality.passed);
     const totalMs = performance.now() - started;
-    const caseId = crypto.randomUUID();
+    // One id for the case on the phone and on the server, so a referral points at both.
+    const caseId = local?.id ?? crypto.randomUUID();
+    const kept = await finish(zone === 'retake' ? 'retake' : 'result', {
+      zone, modelVersion: demo ? 'demo-stand-in' : MODEL_RUN, modelSha256: model.modelSha256,
+      thresholdsVersion: thresholds.thresholds.version, preprocessVersion: r.preprocess, quality: r.quality,
+    });
+    const caseCode = kept && local ? local.code : null;
     const cam = demo ? demo.cam(r) : camFor(r, camHead.current);
     const record = { ageBand: age, screened: r, zone, probability, thresholdsVersion: thresholds.thresholds.version, modelSha256: model.modelSha256, totalMs };
     if (demo) {
       demo.record(r, zone, probability, totalMs);
-      return setView(zone === 'retake' ? { name: 'retake', reason: r.quality.reason ?? 'blank' } : { name: 'result', zone, saved: null, probability, caseId, image: file, cam });
+      return setView(zone === 'retake' ? { name: 'retake', reason: r.quality.reason ?? 'blank' } : { name: 'result', zone, saved: null, probability, caseId, caseCode, image: file, cam });
     }
     if (zone === 'retake') {
       setView({ name: 'retake', reason: r.quality.reason ?? 'blank' });
       void saveScreening(record, caseId);
       return;
     }
-    setView({ name: 'result', zone, saved: null, probability, caseId, image: file, cam });
+    setView({ name: 'result', zone, saved: null, probability, caseId, caseCode, image: file, cam });
     const saved = await saveScreening(record, caseId);
     setView((v) => (v.name === 'result' ? { ...v, saved } : v));
   }
@@ -163,6 +184,7 @@ export function App({ demo }: { demo?: DemoHooks }) {
   // the facility page is for admins and maintainers.
   const tabs: { id: Tab; href: string }[] = [
     { id: 'screen', href: '#/' },
+    { id: 'cases', href: '#/cases' },
     ...(demo || backendConfigured ? [{ id: 'referrals' as Tab, href: '#/referrals' }, { id: 'map' as Tab, href: '#/map' }] : []),
     ...(isAdmin ? [{ id: 'facility' as Tab, href: '#/facility' }] : []),
   ];
@@ -178,6 +200,7 @@ export function App({ demo }: { demo?: DemoHooks }) {
   if (!demo && backendConfigured && !signedIn) return <SignIn onSignIn={signIn} error={signInError} />;
   if (route === 'monitor') return <Monitor onBack={() => go('#/')} rows={demo ? [...demo.rows] : undefined} />;
   if (route === 'facility' && (demo || backendConfigured)) return <Facility deps={demo ? demo.facility : realFacility} onBack={() => go('#/')} dock={<Dock current="facility" tabs={tabs} />} />;
+  if (route === 'cases') return <Cases db={db} onScreen={() => go('#/')} dock={<Dock current="cases" tabs={tabs} />} />;
   if (route === 'map' && (demo || backendConfigured)) return <MapScreen deps={demo ? demo.referral : realReferral} dock={<Dock current="map" tabs={tabs} />} />;
   if (route === 'referrals' && (demo || backendConfigured)) return <Inbox deps={demo ? demo.inbox : realInbox} ambulance={amb} onBack={() => go('#/')} dock={<Dock current="referrals" tabs={tabs} />} />;
 
@@ -227,6 +250,7 @@ export function App({ demo }: { demo?: DemoHooks }) {
         <Result
           zone={view.zone}
           ageBand={age && age !== 'under15' ? age : undefined}
+          caseCode={view.caseCode}
           saved={backendConfigured ? view.saved : null}
           versions={versionsNow()}
           devScore={import.meta.env.DEV && thresholds?.ok && view.probability != null ? { probability: view.probability, screenOut: thresholds.thresholds.screenOut, refer: thresholds.thresholds.refer } : undefined}

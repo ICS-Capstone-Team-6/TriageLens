@@ -68,6 +68,8 @@ export function ErrorScreen({ onBack }: { onBack: () => void }) {
 interface ResultProps {
   zone: 'refer_now' | 'unsure' | 'low_risk';
   ageBand?: string;
+  /** Local case code (E8-06); null when the phone could not save the case; undefined hides it. */
+  caseCode?: string | null;
   versions: { model: string; thresholds: string; preprocess: string };
   saved: boolean | null;
   onDone: () => void;
@@ -80,7 +82,7 @@ interface ResultProps {
   devScore?: { probability: number; screenOut: number; refer: number };
 }
 
-export function Result({ zone, ageBand, versions, saved, onDone, onRetake, onRefer, referBusy = false, devScore }: ResultProps) {
+export function Result({ zone, ageBand, caseCode, versions, saved, onDone, onRetake, onRefer, referBusy = false, devScore }: ResultProps) {
   const [referred, setReferred] = useState(false);
   const refer = () => (onRefer ? onRefer() : setReferred(true));
   const word = t(`zone_${zone}` as StringKey);
@@ -99,11 +101,13 @@ export function Result({ zone, ageBand, versions, saved, onDone, onRetake, onRef
             [t('condition_tb'), <b key="z" style={{ fontWeight: 600 }}>{word}</b>],
             [t('condition_pneumonia'), <span key="p" className="t-small">{t('not_checked')}</span>],
             ...(ageBand ? [[t('age_band'), ageBand] as [string, string]] : []),
+            ...(caseCode ? [[t('case_label'), <span key="c" className="code">{caseCode}</span>] as [string, React.ReactNode]] : []),
           ]} />
           {devScore && (
             <p className="t-cap num">{t('dev_score', { p: devScore.probability.toFixed(3), so: devScore.screenOut.toFixed(4), ref: devScore.refer.toFixed(3) })}</p>
           )}
           {referred && <Notice role="status">{t('refer_confirm')}</Notice>}
+          {caseCode === null && <Notice tone="warn" role="status">{t('result_case_failed')}</Notice>}
           {saved !== null && <p className="t-small" role="status">{saved ? t('saved') : t('not_saved')}</p>}
           <p className="t-cap">{t('versions', versions)}</p>
         </div>

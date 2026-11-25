@@ -105,11 +105,13 @@ The team chose (25 Nov 2026) to start the referral code with the person's initia
 
 **As built (25 Nov 2026, E10-07):**
 
-- Only the image is shared. The app does not compute a heatmap yet (ADR-9 not built).
-- The image is protected in transit by HTTPS and stored in a private bucket. It is not end-to-end encrypted to the receiving facility; that would need key exchange between facilities.
-- Before upload the app re-encodes the image as a smaller JPEG (longest side 1600 px, at most 2 MB). This also removes file metadata such as GPS location.
-- The database enforces the rules: upload only after consent, read only by the two facilities and only within 5 minutes of a logged view, no change or delete through the API, and no reads 60 days after closing.
-- The scheduled job that deletes files 60 days after closing is **not built yet**. The database lists the files due (`referral_images_due_for_deletion`). Owner: Nana Yaw.
+- **End-to-end encrypted.** Each facility has one key pair. Its private key is stored only after being locked with a facility passphrase that the facility admin sets. Staff type the passphrase once per phone. Each referral's image and heatmap are encrypted on the sending phone with a fresh key, which is then locked for the receiving facility (and for the sender, if it has a key). The server stores only encrypted bytes and cannot read them.
+- **Passphrase loss.** If a facility loses its passphrase, images already shared with it cannot be opened. A maintainer can reset the key so new images work again. Results and referrals are not affected.
+- **No key, no image.** A facility that has not set up its key cannot receive images. The app says so before sending, and the referral goes with results only.
+- **Heatmap.** The app draws the heatmap from the model's feature map and the final-layer weights in `apps/pwa/public/config/cam_head.json`, which is tied to the exact model file. That file ships as "pending" until it is written for the frozen model with `ml/export/write_cam_head.py` (owner: Chelsea). Until then no heatmap is sent. Only positive evidence is drawn, with the caption "It is not a finding."
+- **Smaller image.** Before encryption the image is re-encoded as a JPEG (longest side 1600 px). This removes file metadata such as GPS location.
+- **Rules in the database.** Upload only after consent and only as encrypted bytes. Read only by the two facilities, within 5 minutes of a logged view. No change or delete through the API. No reads 60 days after closing.
+- **Deletion.** `scripts/purge_referral_images.py` deletes files 60 days after closing. It runs daily from `.github/workflows/purge-referral-images.yml` once the `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` repository secrets are set (owner: Nana Yaw).
 
 ### 5. Ambulance request (E10-08)
 

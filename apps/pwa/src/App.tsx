@@ -15,6 +15,7 @@ import { Home } from './screens/Home';
 import { SignIn } from './screens/SignIn';
 import { Blocked, Checking, ErrorScreen, Retake, Result } from './screens/Flow';
 import { Referral, type ReferralDeps } from './screens/Referral';
+import { MapScreen } from './screens/Map';
 import { Inbox } from './screens/Inbox';
 import { realInbox, type InboxDeps } from './lib/referral/inbox';
 import { ambulanceEnabled, realAmbulance, type AmbulanceDeps } from './lib/referral/ambulance';
@@ -52,8 +53,8 @@ export interface DemoHooks {
   cam: (r: Screened) => CamForShare | null;
 }
 
-function routeOf(hash: string): 'monitor' | 'referrals' | 'facility' | 'app' {
-  return hash === '#/monitor' ? 'monitor' : hash === '#/referrals' ? 'referrals' : hash === '#/facility' ? 'facility' : 'app';
+function routeOf(hash: string): 'monitor' | 'referrals' | 'facility' | 'map' | 'app' {
+  return hash === '#/monitor' ? 'monitor' : hash === '#/referrals' ? 'referrals' : hash === '#/facility' ? 'facility' : hash === '#/map' ? 'map' : 'app';
 }
 
 const realReferral: ReferralDeps = { loadDirectory, ownFacilityId: loadOwnFacilityId, send: sendReferral, shareImage, canReceiveImages };
@@ -177,6 +178,7 @@ export function App({ demo }: { demo?: DemoHooks }) {
   if (!demo && backendConfigured && !signedIn) return <SignIn onSignIn={signIn} error={signInError} />;
   if (route === 'monitor') return <Monitor onBack={() => go('#/')} rows={demo ? [...demo.rows] : undefined} />;
   if (route === 'facility' && (demo || backendConfigured)) return <Facility deps={demo ? demo.facility : realFacility} onBack={() => go('#/')} dock={<Dock current="facility" tabs={tabs} />} />;
+  if (route === 'map' && (demo || backendConfigured)) return <MapScreen deps={demo ? demo.referral : realReferral} dock={<Dock current="map" tabs={tabs} />} />;
   if (route === 'referrals' && (demo || backendConfigured)) return <Inbox deps={demo ? demo.inbox : realInbox} ambulance={amb} onBack={() => go('#/')} dock={<Dock current="referrals" tabs={tabs} />} />;
 
   if (thresholds && !thresholds.ok) {

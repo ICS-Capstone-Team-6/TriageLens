@@ -13,20 +13,21 @@ import type { ReferralDeps } from '../screens/Referral';
 
 const day = 86_400_000;
 const ago = (d: number) => new Date(Date.now() - d * day).toISOString();
+const hAgo = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString();
 const weekdays = (open: string, close: string): OpeningHours =>
   Object.fromEntries(['mon', 'tue', 'wed', 'thu', 'fri'].map((d) => [d, [[open, close] as [string, string]]]));
 
 export const DEMO_OWN_ID = 'demo-clinic-a';
 
 export const DEMO_FACILITIES: Facility[] = [
-  { id: DEMO_OWN_ID, name: 'FAKE Test Clinic A', district: 'Demo district A', region: 'Demo region', lat: 5.65, lng: -0.19, phone: '+233000000001', openingHours: null, services: ['tb_treatment'], servicesConfirmedAt: ago(10) },
-  { id: 'demo-accra', name: 'FAKE Regional Hospital Accra', district: 'Demo Accra', region: 'Demo Greater Accra', lat: 5.6037, lng: -0.187, phone: '+233000000101', openingHours: { always: true }, services: ['tb_rapid_test', 'tb_treatment', 'chest_xray', 'oxygen', 'inpatient', 'eye_clinic', 'retina_laser', 'retina_injection', 'ambulance'], servicesConfirmedAt: ago(12) },
-  { id: 'demo-koforidua', name: 'FAKE Health Centre Koforidua', district: 'Demo Koforidua', region: 'Demo Eastern', lat: 6.0941, lng: -0.2591, phone: '+233000000104', openingHours: { ...weekdays('08:00', '17:00'), sat: [['09:00', '13:00'] as [string, string]] }, services: ['tb_treatment'], servicesConfirmedAt: ago(20) },
-  { id: 'demo-ho', name: 'FAKE District Hospital Ho', district: 'Demo Ho', region: 'Demo Volta', lat: 6.6008, lng: 0.4713, phone: '+233000000105', openingHours: { always: true }, services: ['tb_rapid_test', 'chest_xray', 'oxygen', 'inpatient'], servicesConfirmedAt: ago(200) },
-  { id: 'demo-cape-coast', name: 'FAKE Polyclinic Cape Coast', district: 'Demo Cape Coast', region: 'Demo Central', lat: 5.1053, lng: -1.2466, phone: '+233000000106', openingHours: weekdays('08:00', '17:00'), services: ['tb_rapid_test', 'tb_treatment', 'eye_clinic'], servicesConfirmedAt: ago(60) },
-  { id: 'demo-kumasi', name: 'FAKE District Hospital Kumasi', district: 'Demo Kumasi', region: 'Demo Ashanti', lat: 6.6885, lng: -1.6244, phone: '+233000000102', openingHours: { always: true }, services: ['tb_rapid_test', 'tb_treatment', 'chest_xray', 'oxygen', 'inpatient', 'ambulance'], servicesConfirmedAt: ago(30) },
-  { id: 'demo-takoradi', name: 'FAKE Hospital Takoradi', district: 'Demo Takoradi', region: 'Demo Western', lat: 4.8845, lng: -1.7554, phone: '+233000000107', openingHours: { always: true }, services: ['chest_xray', 'oxygen', 'inpatient', 'ambulance'], servicesConfirmedAt: ago(15) },
-  { id: 'demo-tamale', name: 'FAKE Teaching Hospital Tamale', district: 'Demo Tamale', region: 'Demo Northern', lat: 9.4008, lng: -0.8393, phone: '+233000000108', openingHours: { always: true }, services: ['tb_rapid_test', 'tb_treatment', 'chest_xray', 'oxygen', 'inpatient', 'eye_clinic', 'retina_laser', 'ambulance'], servicesConfirmedAt: ago(25) },
+  { id: DEMO_OWN_ID, name: 'FAKE Test Clinic A', district: 'Demo district A', region: 'Demo region', lat: 5.65, lng: -0.19, phone: '+233000000001', openingHours: null, services: ['tb_treatment'], servicesConfirmedAt: ago(10), beds: { total: 24, free: 6, updatedAt: hAgo(5) } },
+  { id: 'demo-accra', name: 'FAKE Regional Hospital Accra', district: 'Demo Accra', region: 'Demo Greater Accra', lat: 5.6037, lng: -0.187, phone: '+233000000101', openingHours: { always: true }, services: ['tb_rapid_test', 'tb_treatment', 'chest_xray', 'oxygen', 'inpatient', 'eye_clinic', 'retina_laser', 'retina_injection', 'ambulance'], servicesConfirmedAt: ago(12), beds: { total: 120, free: 34, updatedAt: hAgo(2) } },
+  { id: 'demo-koforidua', name: 'FAKE Health Centre Koforidua', district: 'Demo Koforidua', region: 'Demo Eastern', lat: 6.0941, lng: -0.2591, phone: '+233000000104', openingHours: { ...weekdays('08:00', '17:00'), sat: [['09:00', '13:00'] as [string, string]] }, services: ['tb_treatment'], servicesConfirmedAt: ago(20), beds: { total: 0, free: 0, updatedAt: hAgo(1) } },
+  { id: 'demo-ho', name: 'FAKE District Hospital Ho', district: 'Demo Ho', region: 'Demo Volta', lat: 6.6008, lng: 0.4713, phone: '+233000000105', openingHours: { always: true }, services: ['tb_rapid_test', 'chest_xray', 'oxygen', 'inpatient'], servicesConfirmedAt: ago(200), beds: { total: 40, free: 1, updatedAt: hAgo(3) } },
+  { id: 'demo-cape-coast', name: 'FAKE Polyclinic Cape Coast', district: 'Demo Cape Coast', region: 'Demo Central', lat: 5.1053, lng: -1.2466, phone: '+233000000106', openingHours: weekdays('08:00', '17:00'), services: ['tb_rapid_test', 'tb_treatment', 'eye_clinic'], servicesConfirmedAt: ago(60), beds: { total: 0, free: 0, updatedAt: hAgo(1) } },
+  { id: 'demo-kumasi', name: 'FAKE District Hospital Kumasi', district: 'Demo Kumasi', region: 'Demo Ashanti', lat: 6.6885, lng: -1.6244, phone: '+233000000102', openingHours: { always: true }, services: ['tb_rapid_test', 'tb_treatment', 'chest_xray', 'oxygen', 'inpatient', 'ambulance'], servicesConfirmedAt: ago(30), beds: { total: 80, free: 2, updatedAt: hAgo(1) } },
+  { id: 'demo-takoradi', name: 'FAKE Hospital Takoradi', district: 'Demo Takoradi', region: 'Demo Western', lat: 4.8845, lng: -1.7554, phone: '+233000000107', openingHours: { always: true }, services: ['chest_xray', 'oxygen', 'inpatient', 'ambulance'], servicesConfirmedAt: ago(15), beds: { total: 60, free: 15, updatedAt: hAgo(30) } },
+  { id: 'demo-tamale', name: 'FAKE Teaching Hospital Tamale', district: 'Demo Tamale', region: 'Demo Northern', lat: 9.4008, lng: -0.8393, phone: '+233000000108', openingHours: { always: true }, services: ['tb_rapid_test', 'tb_treatment', 'chest_xray', 'oxygen', 'inpatient', 'eye_clinic', 'retina_laser', 'ambulance'], servicesConfirmedAt: ago(25), beds: { total: 150, free: 41, updatedAt: hAgo(5) } },
 ];
 
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -232,7 +233,7 @@ export const demoAmbulance: AmbulanceDeps = {
 };
 
 // Demo facility page: the demo clinic's admin view with made-up weekly numbers.
-const demoFac: MyFacility = { id: DEMO_OWN_ID, name: 'FAKE Test Clinic A', phone: '+233000000001', services: ['tb_treatment'], servicesConfirmedAt: ago(104) };
+const demoFac: MyFacility = { id: DEMO_OWN_ID, name: 'FAKE Test Clinic A', phone: '+233000000001', services: ['tb_treatment'], servicesConfirmedAt: ago(104), beds: { total: 24, free: 6, updatedAt: hAgo(5) } };
 // Made-up numbers; counts from 1 to 4 are hidden (null) as the server does.
 const hide = (n: number) => (n >= 1 && n <= 4 ? null : n);
 function demoStats(n: number): FacilityStats[] {
@@ -252,6 +253,12 @@ function demoStats(n: number): FacilityStats[] {
 export const demoFacility: FacilityDeps = {
   async role() { return 'admin'; },
   async myFacility() { await wait(150); return { ...demoFac }; },
+  async saveBeds(_id, total, free) {
+    await wait(250);
+    const beds = { total, free, updatedAt: new Date().toISOString() };
+    demoFac.beds = beds;
+    return { ...beds };
+  },
   async saveServices(_id, services, phone) {
     await wait(400);
     Object.assign(demoFac, { services: [...services], phone, servicesConfirmedAt: new Date().toISOString() });

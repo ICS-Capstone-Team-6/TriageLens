@@ -6,7 +6,8 @@ import { useEffect, useState } from 'react';
 import { SERVICE_TAGS } from '../lib/referral/rules';
 import { share, type Count, type FacilityDeps, type FacilityStats, type MyFacility } from '../lib/referral/stats';
 import { t, type StringKey } from '../strings';
-import { Notice, TopBar } from '../ui/kit';
+import { Notice, Stepper, TopBar } from '../ui/kit';
+import { hoursSince, LOW_BEDS } from '../lib/referral/beds';
 
 const WEEKS = 8;
 
@@ -54,6 +55,36 @@ function Numbers({ f }: { f: FacilityStats }) {
   );
 }
 
+/** Bed manager (E10-10): one stepper for free beds, the total behind a small field. */
+function BedManager({ fac, deps }: { fac: MyFacility; deps: FacilityDeps }) {
+  const [total, setTotal] = useState(fac.beds?.total ?? 0);
+  const [free, setFree] = useState(fac.beds?.free ?? 0);
+  const [at, setAt] = useState(fac.beds?.updatedAt ?? null);
+  const [state, setState] = useState<'idle' | 'busy' | 'saved' | 'failed'>('idle');
+  const h = hoursSince(at, new Date());
+  async function save() {
+    setState('busy');
+    const b = await deps.saveBeds(fac.id, total, Math.min(free, total));
+    if (b) { setTotal(b.total); setFree(b.free); setAt(b.updatedAt); setState('saved'); } else setState('failed');
+  }
+  const low = total > 0 && free <= LOW_BEDS;
+  return (
+    <section className="cloud stack" aria-labelledby="beds-h" style={{ gap: 14 }}>
+      <span className="row"><h2 className="t-title" id="beds-h">{t('beds_title')}</h2><span className="t-small">{h === null ? t('beds_not_updated') : t('beds_updated_ago', { h })}</span></span>
+      {total > 0 && <Stepper value={free} max={total} label={t('beds_free_n', { n: free })} onChange={(n) => { setFree(n); setState('idle'); }} />}
+      {low && <Notice tone="danger">{t('beds_low_note', { max: LOW_BEDS })}</Notice>}
+      <label className="field">{t('beds_total_label')}
+        <input className="input num" type="number" inputMode="numeric" min={0} max={5000} value={total}
+          onChange={(e) => { const n = Math.max(0, Math.min(5000, Math.floor(Number(e.target.value) || 0))); setTotal(n); setFree((f) => Math.min(f, n)); setState('idle'); }} />
+        {total === 0 && <span className="hint">{t('beds_none_note')}</span>}
+      </label>
+      <button className="btn btn-primary btn-full" type="button" disabled={state === 'busy'} onClick={() => void save()}>{t('beds_save')}</button>
+      {state === 'saved' && <p className="t-small" role="status" style={{ color: 'var(--ink)' }}>{t('beds_saved')}</p>}
+      {state === 'failed' && <Notice tone="danger" role="alert">{t('beds_save_failed')}</Notice>}
+    </section>
+  );
+}
+
 export function Facility({ deps, dock }: { deps: FacilityDeps; onBack?: () => void; dock?: React.ReactNode }) {
   const [role, setRole] = useState<string | null | 'loading'>('loading');
   const [fac, setFac] = useState<MyFacility | null>(null);
@@ -61,7 +92,6 @@ export function Facility({ deps, dock }: { deps: FacilityDeps; onBack?: () => vo
   const [phone, setPhone] = useState('');
   const [save, setSave] = useState<'idle' | 'busy' | 'saved' | 'failed'>('idle');
   const [rows, setRows] = useState<FacilityStats[] | null | 'loading'>('loading');
-  const beds: React.ReactNode = null; // bed manager (beds phase)
 
   useEffect(() => {
     void deps.role().then(async (r) => {
@@ -84,6 +114,7 @@ export function Facility({ deps, dock }: { deps: FacilityDeps; onBack?: () => vo
   }
 
   const title = fac?.name ?? t('facility_header');
+  const beds = fac ? <BedManager key={fac.id} fac={fac} deps={deps} /> : null;
   if (role === 'loading') return <main className="screen"><TopBar title={t('facility_header')} big /><div className="body"><p className="t-small" role="status">{t('inbox_loading')}</p></div>{dock}</main>;
   if (role !== 'admin' && role !== 'maintainer') {
     return <main className="screen"><TopBar title={t('facility_header')} big /><div className="body"><Notice tone="danger" role="alert">{t('facility_admins_only')}</Notice></div>{dock}</main>;

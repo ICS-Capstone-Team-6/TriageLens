@@ -8,6 +8,7 @@
 // 4. If nothing within reach has every needed service, say so and show the nearest
 //    facility that has some of them, and the nearest full match beyond reach, if any.
 // Straight-line distance is an estimate; the UI must say so (hazard H17).
+import { bedState, parseBeds, type Beds, type BedState } from './beds';
 import { needsFor, type Condition, type ConditionResult, type Rules, type ServiceTag, type Urgency } from './rules';
 
 export interface OpeningHours {
@@ -27,6 +28,7 @@ export interface Facility {
   openingHours: OpeningHours | null;
   services: string[];
   servicesConfirmedAt: string | null; // ISO timestamp
+  beds?: Beds | null; // free beds (E10-10); absent or total 0 = none listed
 }
 
 export interface Point {
@@ -46,6 +48,7 @@ export interface Option {
   openNow: boolean | null; // null = hours unknown
   stale: boolean; // services not confirmed recently, or never: "Check by phone first"
   confirmedDaysAgo: number | null;
+  beds: BedState; // 'low' blocks a new referral (beds.ts)
 }
 
 export type Match =
@@ -136,6 +139,7 @@ function optionFor(f: Facility, here: Point, needs: ServiceTag[], prefers: Servi
     openNow: isOpenAt(f.openingHours, now),
     stale: daysAgo === null || daysAgo > staleAfterDays,
     confirmedDaysAgo: daysAgo,
+    beds: bedState(f.beds, now),
   };
 }
 
@@ -213,6 +217,8 @@ export function parseDirectory(rows: unknown): Facility[] {
       services: Array.isArray(r.services) ? r.services.filter((s): s is string => typeof s === 'string') : [],
       servicesConfirmedAt: typeof r.services_confirmed_at === 'string' ? r.services_confirmed_at : null,
     });
+    const beds = parseBeds(r);
+    if (beds) out[out.length - 1].beds = beds;
   }
   return out;
 }

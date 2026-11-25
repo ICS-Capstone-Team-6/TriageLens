@@ -93,6 +93,7 @@ export function readCache(raw: string | null): DirectoryCache | null {
     const facilities = parseDirectory(c.facilities.map((f: Facility) => ({
       id: f.id, name: f.name, district: f.district, region: f.region, lat: f.lat, lng: f.lng, phone: f.phone,
       opening_hours: f.openingHours, services: f.services, services_confirmed_at: f.servicesConfirmedAt,
+      beds_total: f.beds?.total, beds_free: f.beds?.free, beds_updated_at: f.beds?.updatedAt,
     })));
     return { savedAt: c.savedAt, facilities };
   } catch {

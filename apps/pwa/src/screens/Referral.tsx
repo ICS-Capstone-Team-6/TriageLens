@@ -5,9 +5,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { formatCode, toInitials, type CamForShare, type DirectoryCache, type ReferralDraft, type SentReferral, type ShareResult } from '../lib/referral/api';
 import { distanceBand, distanceKm, isOpenAt, matchFacilities, validPoint, type Facility, type Match, type Option, type Point } from '../lib/referral/match';
+import { bedState, hoursSince, LOW_BEDS } from '../lib/referral/beds';
 import { RULES_V1, type ServiceTag, type Urgency } from '../lib/referral/rules';
 import { t, type StringKey } from '../strings';
-import { AlertCircle, Clock, Close, Phone, Pin } from '../ui/icons';
+import { AlertCircle, Bed, Clock, Close, Phone, Pin } from '../ui/icons';
 import { Facts, Foot, Notice, TopBar, ZoneRow } from '../ui/kit';
 import { AmbulancePanel } from './Ambulance';
 import type { AmbulanceDeps } from '../lib/referral/ambulance';
@@ -47,9 +48,14 @@ function FacilityCard({ o, selected, onSelect }: { o: Option; selected: boolean;
   const hours = o.openNow === true ? t('open_now') : o.openNow === false ? t('closed_now') : t('hours_unknown');
   return (
     <label className="opt">
-      <input type="radio" name="facility" checked={selected} onChange={onSelect} />
+      <input type="radio" name="facility" checked={selected} onChange={onSelect} disabled={o.beds === 'low'} />
       <span className="row"><span className="opt-name">{f.name}</span><span className="km">{Math.max(1, Math.round(o.distanceKm))}<small>km</small></span></span>
       <span className="meta"><Clock size={15} color="#2597d0" />{hours}</span>
+      {o.beds === 'ok' && f.beds && <span className="meta"><Bed size={15} color="#2597d0" />{t('beds_free_n', { n: f.beds.free })}</span>}
+      {o.beds === 'low' && f.beds && <span className="meta meta-danger"><Bed size={15} />{t('beds_low_blocked', { n: f.beds.free, max: LOW_BEDS })}</span>}
+      {o.beds === 'stale' && f.beds && (
+        <span className="meta meta-warn"><Bed size={15} />{hoursSince(f.beds.updatedAt, new Date()) === null ? t('beds_never_updated') : t('beds_stale', { h: hoursSince(f.beds.updatedAt, new Date()) ?? 0 })}</span>
+      )}
       {o.missing.length > 0 && <span className="meta meta-warn"><AlertCircle size={15} />{t('missing_services', { services: list(o.missing) })}</span>}
       {o.stale && (
         <span className="meta meta-warn"><Phone size={15} />{o.confirmedDaysAgo === null ? t('services_never_confirmed') : t('services_stale', { days: o.confirmedDaysAgo })}</span>
@@ -103,7 +109,7 @@ export function Referral({ zone, caseId, image, cam, deps, ambulance, versions, 
         facility: f, distanceKm: d, distanceBand: distanceBand(d),
         has: needs.filter((s) => f.services.includes(s)), missing: needs.filter((s) => !f.services.includes(s)),
         preferredHas: [], openNow: isOpenAt(f.openingHours, now),
-        stale: days === null || days > (RULES_V1?.staleAfterDays ?? 90), confirmedDaysAgo: days,
+        stale: days === null || days > (RULES_V1?.staleAfterDays ?? 90), confirmedDaysAgo: days, beds: bedState(f.beds, now),
       };
     });
     return here ? opts.sort((a, b) => a.distanceKm - b.distanceKm) : opts.sort((a, b) => a.facility.name.localeCompare(b.facility.name));
@@ -237,7 +243,7 @@ export function Referral({ zone, caseId, image, cam, deps, ambulance, versions, 
         {step.name === 'failed' && <Notice tone="danger" role="alert">{t('refer_failed')}</Notice>}
       </div>
       <Foot>
-        <button className="btn btn-primary btn-lg btn-full" type="button" disabled={!pick || !caseId || step.name === 'sending'} onClick={() => void send()}>
+        <button className="btn btn-primary btn-lg btn-full" type="button" disabled={!pick || pick.beds === 'low' || !caseId || step.name === 'sending'} onClick={() => void send()}>
           {step.name === 'sending' ? t('refer_sending') : pick ? t('refer_send', { name: pick.facility.name }) : t('refer_pick_first')}
         </button>
       </Foot>

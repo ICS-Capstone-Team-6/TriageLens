@@ -87,6 +87,16 @@ This is a versioned file like the thresholds file (TRD 7.2). The code reads it a
 
 Only the facility ID and the distance band are saved with the referral. The person's or phone's exact location is not saved.
 
+### 3a. Referral code with the person's initials (E10-03)
+
+The team chose (25 Nov 2026) to start the referral code with the person's initials, so the receiving facility can match the slip to the right person.
+
+- The code is 8 characters. It starts with 0 to 4 initials (the first letter of each name), typed by the health worker. The rest is random, from an alphabet with no look-alike characters.
+- The app turns names into initials on the phone. Names are never kept or sent. Letters such as Ɛ and Ɔ become E and O.
+- This changes ADR-22, where the code held no personal data. Initials are personal data. They are stored on the referral and shown on the slip.
+- With 4 initials, only 4 random characters remain (about 1 million codes per set of initials), so the code is easier to guess for someone who knows the person. Lookup by code must stay limited to the named receiving facility, signed in, with every lookup audited (Phase 3). The team rejected the option of initials plus 8 random characters.
+- Consent wording (FR-13) must mention that initials go on the referral.
+
 ### 4. Case transfer with image (E10-07)
 
 - At referral, the app asks for consent to share the case with the chosen facility. The consent covers the image and the heatmap. It is separate from the ADR-10 research upload consent.

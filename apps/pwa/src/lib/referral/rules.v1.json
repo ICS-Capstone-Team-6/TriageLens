@@ -1,0 +1,38 @@
+{
+  "version": "referral-rules-v1",
+  "status": "demo_draft",
+  "note": "Demo draft from ADR-28. Not a clinical claim. A clinician signs off before any real use; fill signed_off_by and signed_off_on and set status to signed_off.",
+  "signed_off_by": null,
+  "signed_off_on": null,
+  "stale_after_days": 90,
+  "max_distance_km": 100,
+  "rules": [
+    {
+      "condition": "tb",
+      "zones": ["refer_now", "unsure"],
+      "needs": ["tb_rapid_test"],
+      "prefers": ["tb_treatment"],
+      "urgency": "days",
+      "enabled": true,
+      "basis": "WHO consolidated guidelines on TB, Module 3: rapid molecular test as the initial test"
+    },
+    {
+      "condition": "pneumonia",
+      "zones": ["refer_now", "unsure"],
+      "needs": ["chest_xray", "oxygen"],
+      "prefers": ["inpatient"],
+      "urgency": "same_day",
+      "enabled": false,
+      "basis": "Off until the chest X-ray model has a pneumonia output (ADR-14)"
+    },
+    {
+      "condition": "dr",
+      "zones": ["refer_now", "unsure"],
+      "needs": ["eye_clinic"],
+      "prefers": ["retina_laser", "retina_injection"],
+      "urgency": "weeks",
+      "enabled": true,
+      "basis": "Referable DR goes to an eye doctor; published systems use 30 to 90 days (NSW Health) or 49 days (NHS England); Ghana timeframe not verified"
+    }
+  ]
+}

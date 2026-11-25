@@ -99,22 +99,40 @@ export type Database = {
           created_at: string
           district: string
           id: string
+          lat: number | null
+          lng: number | null
           name: string
+          opening_hours: Json | null
+          phone: string
           region: string
+          services: string[]
+          services_confirmed_at: string | null
         }
         Insert: {
           created_at?: string
           district?: string
           id?: string
+          lat?: number | null
+          lng?: number | null
           name: string
+          opening_hours?: Json | null
+          phone?: string
           region?: string
+          services?: string[]
+          services_confirmed_at?: string | null
         }
         Update: {
           created_at?: string
           district?: string
           id?: string
+          lat?: number | null
+          lng?: number | null
           name?: string
+          opening_hours?: Json | null
+          phone?: string
           region?: string
+          services?: string[]
+          services_confirmed_at?: string | null
         }
         Relationships: []
       }
@@ -214,7 +232,17 @@ export type Database = {
         Args: { p_limit?: number; p_offset?: number }
         Returns: Json
       }
+      list_referral_facilities: { Args: never; Returns: Json }
       save_case: { Args: { p_case: Json }; Returns: Json }
+      update_facility_services: {
+        Args: {
+          p_facility_id: string
+          p_opening_hours?: Json
+          p_phone?: string
+          p_services: string[]
+        }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never

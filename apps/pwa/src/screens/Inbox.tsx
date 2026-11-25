@@ -90,7 +90,7 @@ function Detail({ d, ownFacility, deps, ambulance, onBack, onChange, embedded = 
             {r.outcome === 'not_confirmed' && ownFacility === 'sender' && <p className="t-strong">{t('outcome_not_confirmed_note')}</p>}
           </section>
         )}
-        {latest && <ZoneRow zone={latest.zone === 'retake' ? 'unsure' : latest.zone} word={t(`zone_${latest.zone}` as StringKey)} sub={t('needs_confirmation')} />}
+        {latest && latest.zone !== 'retake' && <ZoneRow zone={latest.zone} word={t(`zone_${latest.zone}` as StringKey)} sub={t('needs_confirmation')} />}
         <Facts rows={[
           ...(d.ageBand ? [[t('detail_age'), d.ageBand] as [string, string]] : []),
           [t('detail_symptoms'), d.symptoms.length ? d.symptoms.map(pretty).join(', ') : t('detail_none_recorded')],

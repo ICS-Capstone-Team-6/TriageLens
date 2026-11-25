@@ -171,7 +171,7 @@ export function MapScreen({ deps, dock }: { deps: MapDeps; dock?: React.ReactNod
                   </div>
                 )}
                 {beds === 'low' && chosen.id !== own && <Notice tone="danger">{t('map_low_flag')}</Notice>}
-                {beds === 'stale' && <Notice tone="warn">{t('beds_stale', { h: h ?? 0 })}</Notice>}
+                {beds === 'stale' && <Notice tone="warn">{h === null ? t('beds_never_updated') : t('beds_stale', { h })}</Notice>}
                 <section className="stack-tight" aria-labelledby="eq-h">
                   <h3 className="t-sub" id="eq-h">{t('map_services')}</h3>
                   <ul className="eq">

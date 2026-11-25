@@ -215,3 +215,14 @@ Any one of these:
 - The ethics pathway says cross-facility image sharing cannot be approved before 18 Dec. Fall back to results-only referral (ADR-22).
 - In testing, an ambulance request goes unseen for over 10 minutes more than once in 20 tries. Remove the in-app request and keep the call button only.
 - Real facility data is imported and its licence terms do not allow our use.
+
+## Amendment (proposed, 26 Nov 2026): free beds
+
+Asked for by the product owner on 25 Nov 2026. Not yet signed off by a clinician.
+
+- Each facility keeps a total and a free bed count. Its admin updates them from the facility page; each change is audited.
+- A new referral to a facility is blocked, in the app and by a database trigger, when its count was updated in the last 24 hours and shows 2 or fewer free beds.
+- An older or missing count never blocks; the app says "Call first". A facility with no beds listed (outpatient only) is never blocked. Uncertainty moves toward referring, not away from it (TRD 7.2).
+- A blocked facility shows its phone number. If every suggestion is blocked, the screen says so and offers the full list.
+- Open question for the clinician review: a TB confirmation test is usually outpatient, so inpatient beds may be the wrong gate for TB referrals. The threshold (2) and whether to block at all are decided there. Until then the rule is a demo default.
+- Hazard: H21. Backlog: needs a story through the swap rule (Team Rules) before it counts toward sprint points.

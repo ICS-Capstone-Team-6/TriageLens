@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatCode, parseSent, readCache, referralPayload, toInitials } from './api';
+import { formatCode, isBedsRefusal, parseSent, readCache, referralPayload, toInitials } from './api';
 
 describe('toInitials (made-up names only)', () => {
   it.each([
@@ -65,5 +65,13 @@ describe('readCache', () => {
 
   it.each([[null], ['not json'], ['{}'], ['{"savedAt":1,"facilities":[]}']])('returns null for %s', (raw) => {
     expect(readCache(raw)).toBeNull();
+  });
+});
+
+describe('isBedsRefusal', () => {
+  it('recognises the server bed block, and nothing else', () => {
+    expect(isBedsRefusal('This facility has too few free beds. Call them, or choose another facility.')).toBe(true);
+    expect(isBedsRefusal('Bad referral field')).toBe(false);
+    expect(isBedsRefusal(undefined)).toBe(false);
   });
 });

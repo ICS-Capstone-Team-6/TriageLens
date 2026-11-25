@@ -183,9 +183,14 @@ export async function shareImage(referralId: string, file: Blob, cam: CamForShar
   return 'shared';
 }
 
-export async function sendReferral(d: ReferralDraft): Promise<SentReferral | null> {
+/** The server refused because the facility is nearly full (E10-10 trigger); anything else is a plain failure. */
+export function isBedsRefusal(message: string | undefined): boolean {
+  return /too few free beds/i.test(message ?? '');
+}
+
+export async function sendReferral(d: ReferralDraft): Promise<SentReferral | null | 'no_beds'> {
   if (!supabase) return null;
   const { data, error } = await supabase.rpc('create_referral', { p_referral: referralPayload(d) });
-  if (error) return null;
+  if (error) return isBedsRefusal(error.message) ? 'no_beds' : null;
   return parseSent(data);
 }

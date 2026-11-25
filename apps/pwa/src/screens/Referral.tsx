@@ -16,7 +16,7 @@ import type { AmbulanceDeps } from '../lib/referral/ambulance';
 export interface ReferralDeps {
   loadDirectory: () => Promise<DirectoryCache | null>;
   ownFacilityId: () => Promise<string | null>;
-  send: (d: ReferralDraft) => Promise<SentReferral | null>;
+  send: (d: ReferralDraft) => Promise<SentReferral | null | 'no_beds'>;
   shareImage: (referralId: string, file: Blob, cam: CamForShare | null, toFacility: string, ownFacility: string | null) => Promise<ShareResult>;
   canReceiveImages: (facilityId: string) => Promise<boolean>;
 }
@@ -34,7 +34,7 @@ interface Props {
 }
 
 type ImageState = 'none' | 'sending' | 'shared' | 'failed' | 'no_receiver_key';
-type Step = { name: 'choose' } | { name: 'sending' } | { name: 'failed' } | { name: 'sent'; sent: SentReferral; to: Option; image: ImageState };
+type Step = { name: 'choose' } | { name: 'sending' } | { name: 'failed' } | { name: 'no_beds' } | { name: 'sent'; sent: SentReferral; to: Option; image: ImageState };
 
 const svc = (tag: ServiceTag | string) => t(`service_${tag}` as StringKey);
 const list = (tags: string[]) => tags.map(svc).join(', ');
@@ -53,6 +53,7 @@ function FacilityCard({ o, selected, onSelect }: { o: Option; selected: boolean;
       <span className="meta"><Clock size={15} color="#2597d0" />{hours}</span>
       {o.beds === 'ok' && f.beds && <span className="meta"><Bed size={15} color="#2597d0" />{t('beds_free_n', { n: f.beds.free })}</span>}
       {o.beds === 'low' && f.beds && <span className="meta meta-danger"><Bed size={15} />{t('beds_low_blocked', { n: f.beds.free, max: LOW_BEDS })}</span>}
+      {o.beds === 'low' && f.phone && <a className="link opt-call" href={`tel:${f.phone}`}><Phone size={16} />{t('call_facility', { phone: f.phone })}</a>}
       {o.beds === 'stale' && f.beds && (
         <span className="meta meta-warn"><Bed size={15} />{hoursSince(f.beds.updatedAt, new Date()) === null ? t('beds_never_updated') : t('beds_stale', { h: hoursSince(f.beds.updatedAt, new Date()) ?? 0 })}</span>
       )}
@@ -148,6 +149,7 @@ export function Referral({ zone, caseId, image, cam, deps, ambulance, versions, 
       id: referralId, caseId, toFacility: pick.facility.id, conditions: ['tb'], urgency,
       rulesVersion: RULES_V1.version, distanceBand: here ? pick.distanceBand : null, initials,
     });
+    if (sent === 'no_beds') return setStep({ name: 'no_beds' });
     if (!sent) return setStep({ name: 'failed' });
     const withImage = consent && image !== null && receives[pick.facility.id] === true;
     setStep({ name: 'sent', sent, to: pick, image: withImage ? 'sending' : 'none' });
@@ -209,6 +211,7 @@ export function Referral({ zone, caseId, image, cam, deps, ambulance, versions, 
             {match.kind === 'none_in_reach' && <Notice tone="warn" role="status">{t('none_in_reach', { services: list(match.needs) })}</Notice>}
             {match.kind === 'unfiltered' && <Notice tone="warn" role="status">{t('refer_unfiltered')}</Notice>}
 
+            {shown.length > 0 && shown.every((o) => o.beds === 'low') && <Notice tone="warn" role="status">{t('refer_all_full')}</Notice>}
             <fieldset className="stack" style={{ border: 0, padding: 0, margin: 0, gap: 10 }}>
               <legend className="sr">{t('refer_choose_legend')}</legend>
               {shown.length === 0 && <Empty icon={<MapIcon size={26} />} title={t('directory_empty_title')} body={t('refer_none_listed')} />}
@@ -242,6 +245,7 @@ export function Referral({ zone, caseId, image, cam, deps, ambulance, versions, 
           </>
         )}
         {step.name === 'failed' && <Notice tone="danger" role="alert">{t('refer_failed')}</Notice>}
+        {step.name === 'no_beds' && <Notice tone="danger" role="alert">{t('refer_no_beds', { name: pick?.facility.name ?? t('the_facility') })}</Notice>}
       </div>
       <Foot>
         <button className="btn btn-primary btn-lg btn-full" type="button" disabled={!pick || pick.beds === 'low' || !caseId || step.name === 'sending'} onClick={() => void send()}>

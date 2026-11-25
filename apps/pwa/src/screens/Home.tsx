@@ -59,6 +59,7 @@ export function Home({ age, onAge, onFile, ready, modelReady, onMonitor, onSignO
       <div className="cam-lower">
         {under && <p className="cam-note" role="alert"><b>{t('under15_title')}.</b> {t('under15_body')}</p>}
         {backendNote && <p className="cam-note">{t('backend_missing')}</p>}
+        <p className="cam-use">{t('prototype_note')} {t('reminder')}</p>
         <div className="ages" role="group" aria-label={t('age_question')}>
           {BANDS.map((b) => (
             <button key={b} type="button" aria-pressed={age === b} onClick={() => onAge(b)}>{b}</button>
@@ -67,8 +68,8 @@ export function Home({ age, onAge, onFile, ready, modelReady, onMonitor, onSignO
         </div>
         <div className="shoot-row">
           <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-            <button className="link" type="button" onClick={onMonitor} style={{ color: '#fff', fontSize: 13, minHeight: 44 }}>{t('monitor_link')}</button>
-            {onSignOut && <button className="link" type="button" onClick={onSignOut} style={{ color: '#fff', fontSize: 13, minHeight: 44 }}>{t('sign_out')}</button>}
+            <button className="link" type="button" onClick={onMonitor} style={{ color: '#fff', fontSize: 13, minHeight: 48 }}>{t('monitor_link')}</button>
+            {onSignOut && <button className="link" type="button" onClick={onSignOut} style={{ color: '#fff', fontSize: 13, minHeight: 48 }}>{t('sign_out')}</button>}
           </span>
           <button className="shutter" type="button" aria-label={t('take_photo')} disabled={!ready} onClick={() => camera.current?.click()} />
           <button className="upload" type="button" aria-label={t('upload')} disabled={!ready} onClick={() => upload.current?.click()}>

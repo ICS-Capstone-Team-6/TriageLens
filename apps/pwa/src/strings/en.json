@@ -471,5 +471,7 @@
   "stats_offline_title": "Numbers could not load",
   "stats_offline": "Check the signal, then open this page again.",
   "stats_empty_title": "No referrals in these weeks",
-  "stats_empty": "Numbers show once your clinic sends or receives referrals."
+  "stats_empty": "Numbers show once your clinic sends or receives referrals.",
+  "refer_no_beds": "Not sent: {name} just became nearly full. Call them, or choose another facility.",
+  "refer_all_full": "Every facility shown is nearly full. Call one of them, or show all facilities."
 }

@@ -123,6 +123,11 @@ The team chose (25 Nov 2026) to start the referral code with the person's initia
 - If it is not marked Seen within 10 minutes, the sender gets "Not seen yet: call them". The request stays at the top of the receiving facility's dashboard until it is answered.
 - If the phone is offline, the request cannot be sent. The app says so at once and shows the call button. A request is never queued silently in the outbox.
 
+**As built (25 Nov 2026, E10-08):**
+
+- The request, the receiver queue, the call-first layout, the refusal when offline and the 10-minute "call them" alert work as described above. The reasons are: cannot walk or stand, struggling to breathe, very weak or very ill, confused or hard to wake, or other (a note is required).
+- **Notifications.** The receiving facility sees requests while the app is open: it checks every 15 seconds and shows a phone notification if staff allowed them. **Push to a closed app is not built.** It needs a push service (Web Push with VAPID keys, or Firebase) and a small server function to send it. Until then, the call button is the reliable path, and the wording says so.
+
 ### 6. Dashboards (E10-09, adds to E10-02)
 
 **Sending facility:**

@@ -1,0 +1,49 @@
+# Deletes referral images 60 days after the referral closed (E10-07, ADR-28 section 4).
+# Needs two repository secrets: SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY. Until both are
+# set the job says so and stops without failing. Scheduled runs use the default branch.
+name: Purge referral images
+
+on:
+  schedule:
+    - cron: "30 2 * * *" # daily, 02:30 UTC (02:30 in Ghana)
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Only count what is due"
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: purge-referral-images
+  cancel-in-progress: false
+
+jobs:
+  purge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+    steps:
+      - name: Check secrets
+        id: secrets
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+            echo "SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY not set; nothing to do."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v7
+        if: steps.secrets.outputs.ready == 'true'
+      - name: Delete referral images that are due
+        if: steps.secrets.outputs.ready == 'true'
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.dry_run }}" = "true" ]; then
+            python3 scripts/purge_referral_images.py --dry-run
+          else
+            python3 scripts/purge_referral_images.py
+          fi

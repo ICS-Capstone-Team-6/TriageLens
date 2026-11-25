@@ -1,0 +1,5 @@
+{
+  "version": "cam-head-1",
+  "status": "pending",
+  "note": "No heatmap until this is written for the shipped model: python3 ml/export/write_cam_head.py --run <frozen run> --model <shipped .onnx> --out apps/pwa/public/config/cam_head.json (ADR-9, E10-07)."
+}

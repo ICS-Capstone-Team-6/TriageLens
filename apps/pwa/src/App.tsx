@@ -14,13 +14,25 @@ import { Monitor } from './screens/Monitor';
 import { Home } from './screens/Home';
 import { SignIn } from './screens/SignIn';
 import { Blocked, Checking, ErrorScreen, Retake, Result } from './screens/Flow';
+import { Referral, type ReferralDeps } from './screens/Referral';
+import { Inbox } from './screens/Inbox';
+import { realInbox, type InboxDeps } from './lib/referral/inbox';
+import { ambulanceEnabled, realAmbulance, type AmbulanceDeps } from './lib/referral/ambulance';
+import { AmbulanceAlert } from './screens/Ambulance';
+import { realFacility, type FacilityDeps } from './lib/referral/stats';
+import { Facility } from './screens/Facility';
+import { canReceiveImages, loadDirectory, loadOwnFacilityId, sendReferral, shareImage, type CamForShare } from './lib/referral/api';
+import { computeCam, loadCamHead, normalizeCam, type CamHead } from './lib/heatmap';
+import { forgetKeys } from './lib/referral/keys';
+import type { Screened as ScreenedMsg } from './inference/messages';
 import { t } from './strings';
 
 type View =
   | { name: 'home' }
   | { name: 'checking'; step: 0 | 1 | 2 }
   | { name: 'retake'; reason: RetakeReason }
-  | { name: 'result'; zone: 'refer_now' | 'unsure' | 'low_risk'; saved: boolean | null; probability: number | null }
+  | { name: 'result'; zone: 'refer_now' | 'unsure' | 'low_risk'; saved: boolean | null; probability: number | null; caseId: string; image: Blob; cam: CamForShare | null }
+  | { name: 'refer'; zone: 'refer_now' | 'unsure'; caseId: string | null; result: Extract<View, { name: 'result' }> }
   | { name: 'error' };
 
 /** Development-only demo wiring, injected by main.tsx; production never passes it. */
@@ -31,13 +43,33 @@ export interface DemoHooks {
   record: (s: Screened, zone: Zone, probability: number | null, totalMs: number) => void;
   rows: InferenceRow[];
   banner: React.ReactNode;
+  referral: ReferralDeps;
+  inbox: InboxDeps;
+  ambulance: AmbulanceDeps;
+  facility: FacilityDeps;
+  /** Demo only: a made-up heatmap so the receiving screen can be clicked through. */
+  cam: (r: Screened) => CamForShare | null;
+}
+
+function routeOf(hash: string): 'monitor' | 'referrals' | 'facility' | 'app' {
+  return hash === '#/monitor' ? 'monitor' : hash === '#/referrals' ? 'referrals' : hash === '#/facility' ? 'facility' : 'app';
+}
+
+const realReferral: ReferralDeps = { loadDirectory, ownFacilityId: loadOwnFacilityId, send: sendReferral, shareImage, canReceiveImages };
+
+/** Heatmap for the receiving clinician (ADR-9): only with a CAM head file for this exact model. */
+function camFor(r: ScreenedMsg, head: CamHead | null): CamForShare | null {
+  if (!head || !r.features) return null;
+  const raw = computeCam(r.features.data, r.features.dims, head);
+  const norm = raw && normalizeCam(raw);
+  return norm ? { data: norm, h: r.features.dims[1], w: r.features.dims[2] } : null;
 }
 
 const MODEL_URL = (import.meta.env.VITE_MODEL_URL as string | undefined) ?? '';
 const MODEL_SHA256 = (import.meta.env.VITE_MODEL_SHA256 as string | undefined) ?? '';
 
 export function App({ demo }: { demo?: DemoHooks }) {
-  const [route, setRoute] = useState(location.hash === '#/monitor' ? 'monitor' : 'app');
+  const [route, setRoute] = useState(routeOf(location.hash));
   const [signedIn, setSignedIn] = useState<boolean | null>(backendConfigured && !demo ? null : false);
   const [signInError, setSignInError] = useState<string | null>(null);
   const [thresholds, setThresholds] = useState<ThresholdsState | null>(null);
@@ -45,9 +77,19 @@ export function App({ demo }: { demo?: DemoHooks }) {
   const [age, setAge] = useState<AgeBand | 'under15' | null>(null);
   const [view, setView] = useState<View>({ name: 'home' });
   const client = useRef<Pick<DemoHooks['client'], 'screen'> | null>(null);
+  const camHead = useRef<CamHead | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  useEffect(() => {
+    if (!signedIn && !demo) return setIsAdmin(false);
+    void (demo ? demo.facility : realFacility).role().then((r) => setIsAdmin(r === 'admin' || r === 'maintainer'));
+  }, [signedIn, demo]);
+  useEffect(() => {
+    if (demo || typeof model !== 'object') return;
+    void loadCamHead(MODEL_RUN, model.modelSha256).then((h) => { camHead.current = h; });
+  }, [model, demo]);
 
   useEffect(() => {
-    const onHash = () => setRoute(location.hash === '#/monitor' ? 'monitor' : 'app');
+    const onHash = () => setRoute(routeOf(location.hash));
     addEventListener('hashchange', onHash);
     return () => removeEventListener('hashchange', onHash);
   }, []);
@@ -98,30 +140,36 @@ export function App({ demo }: { demo?: DemoHooks }) {
     const probability = r.logit == null ? null : sigmoid(r.logit);
     const zone = zoneFor(probability ?? Number.NaN, thresholds.thresholds, r.quality.passed);
     const totalMs = performance.now() - started;
+    const caseId = crypto.randomUUID();
+    const cam = demo ? demo.cam(r) : camFor(r, camHead.current);
     const record = { ageBand: age, screened: r, zone, probability, thresholdsVersion: thresholds.thresholds.version, modelSha256: model.modelSha256, totalMs };
     if (demo) {
       demo.record(r, zone, probability, totalMs);
-      return setView(zone === 'retake' ? { name: 'retake', reason: r.quality.reason ?? 'blank' } : { name: 'result', zone, saved: null, probability });
+      return setView(zone === 'retake' ? { name: 'retake', reason: r.quality.reason ?? 'blank' } : { name: 'result', zone, saved: null, probability, caseId, image: file, cam });
     }
     if (zone === 'retake') {
       setView({ name: 'retake', reason: r.quality.reason ?? 'blank' });
-      void saveScreening(record);
+      void saveScreening(record, caseId);
       return;
     }
-    setView({ name: 'result', zone, saved: null, probability });
-    const saved = await saveScreening(record);
+    setView({ name: 'result', zone, saved: null, probability, caseId, image: file, cam });
+    const saved = await saveScreening(record, caseId);
     setView((v) => (v.name === 'result' ? { ...v, saved } : v));
   }
 
+  const amb: AmbulanceDeps | null = ambulanceEnabled(Boolean(demo)) ? (demo ? demo.ambulance : realAmbulance) : null;
   const screenEl = renderScreen();
-  if (demo) return <>{demo.banner}{screenEl}</>;
-  return screenEl;
+  const alert = amb && (demo || signedIn) ? <AmbulanceAlert deps={amb} /> : null;
+  if (demo) return <>{demo.banner}{alert}{screenEl}</>;
+  return <>{alert}{screenEl}</>;
 
   function renderScreen() {
   if (backendRequired(import.meta.env.PROD, backendConfigured)) return <Blocked title={t('not_ready_title')} body={t('backend_required')} />;
   if (!demo && backendConfigured && signedIn === null) return null;
   if (!demo && backendConfigured && !signedIn) return <SignIn onSignIn={signIn} error={signInError} />;
   if (route === 'monitor') return <Monitor onBack={() => go('#/')} rows={demo ? [...demo.rows] : undefined} />;
+  if (route === 'facility' && (demo || backendConfigured)) return <Facility deps={demo ? demo.facility : realFacility} onBack={() => go('#/')} />;
+  if (route === 'referrals' && (demo || backendConfigured)) return <Inbox deps={demo ? demo.inbox : realInbox} ambulance={amb} onBack={() => go('#/')} />;
 
   if (age === 'under15') {
     return <Blocked title={t('under15_title')} body={t('under15_body')} action={t('under15_back')} onAction={() => setAge(null)} />;
@@ -135,6 +183,9 @@ export function App({ demo }: { demo?: DemoHooks }) {
     return <Blocked title={t('not_ready_title')} body={t('not_ready_invalid')} />;
   }
 
+  function versionsNow() {
+    return { model: demo ? 'demo-stand-in' : MODEL_RUN, thresholds: thresholds?.ok ? thresholds.thresholds.version : '–', preprocess: PREPROCESS_VERSION };
+  }
   const end = (action: EndAction) => {
     setAge((a) => ageAfter(action, a));
     setView({ name: 'home' });
@@ -146,17 +197,40 @@ export function App({ demo }: { demo?: DemoHooks }) {
       return <Retake reason={view.reason} onRetake={() => end('retake')} onCancel={() => end('cancel')} />;
     case 'error':
       return <ErrorScreen onBack={() => end('error')} />;
-    case 'result':
+    case 'refer':
+      return (
+        <Referral
+          zone={view.zone}
+          caseId={view.caseId}
+          image={view.result.image}
+          cam={view.result.cam}
+          deps={demo ? demo.referral : realReferral}
+          ambulance={amb}
+          versions={t('versions', versionsNow())}
+          onBack={() => setView(view.result)}
+          onDone={() => end('done')}
+        />
+      );
+    case 'result': {
+      // A referral needs the case saved first (no outbox until E9-02). In demo mode nothing is saved.
+      // The Refer button shows at once (no button that moves under the finger) and waits for the save.
+      const canRefer = view.zone !== 'low_risk' && (demo ? true : backendConfigured);
+      const result = view;
       return (
         <Result
           zone={view.zone}
           saved={backendConfigured ? view.saved : null}
-          versions={{ model: demo ? 'demo-stand-in' : MODEL_RUN, thresholds: thresholds?.ok ? thresholds.thresholds.version : '–', preprocess: PREPROCESS_VERSION }}
+          versions={versionsNow()}
           devScore={import.meta.env.DEV && thresholds?.ok && view.probability != null ? { probability: view.probability, screenOut: thresholds.thresholds.screenOut, refer: thresholds.thresholds.refer } : undefined}
           onDone={() => end('done')}
           onRetake={() => end('retake')}
+          referBusy={!demo && view.saved === null}
+          onRefer={canRefer && result.zone !== 'low_risk'
+            ? () => setView({ name: 'refer', zone: result.zone as 'refer_now' | 'unsure', caseId: demo || result.saved ? result.caseId : null, result })
+            : undefined}
         />
       );
+    }
     default:
       return (
         <Home
@@ -166,7 +240,9 @@ export function App({ demo }: { demo?: DemoHooks }) {
           ready={canScreen(typeof model === 'object', Boolean(thresholds?.ok), age)}
           modelReady={typeof model === 'object'}
           onMonitor={() => go('#/monitor')}
-          onSignOut={supabase && !demo ? () => void supabase!.auth.signOut() : null}
+          onReferrals={demo || backendConfigured ? () => go('#/referrals') : null}
+          onFacility={isAdmin ? () => go('#/facility') : null}
+          onSignOut={supabase && !demo ? () => { void forgetKeys(); void supabase!.auth.signOut(); } : null}
           backendNote={!backendConfigured && !demo}
           demo={Boolean(demo)}
         />

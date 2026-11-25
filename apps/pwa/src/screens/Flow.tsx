@@ -83,12 +83,17 @@ interface ResultProps {
   saved: boolean | null;
   onDone: () => void;
   onRetake: () => void;
+  /** Opens "Choose where to refer" (E10-03). Without it, the old advice text is shown. */
+  onRefer?: () => void;
+  /** True while the result is still being saved; the Refer button waits for it. */
+  referBusy?: boolean;
   /** Development builds only: the raw score, for the team (TRD 7.3 keeps it off real screens). */
   devScore?: { probability: number; screenOut: number; refer: number };
 }
 
-export function Result({ zone, versions, saved, onDone, onRetake, devScore }: ResultProps) {
+export function Result({ zone, versions, saved, onDone, onRetake, onRefer, referBusy = false, devScore }: ResultProps) {
   const [referred, setReferred] = useState(false);
+  const refer = () => (onRefer ? onRefer() : setReferred(true));
   return (
     <main className="screen">
       <Bar title={t('result_header')} onBack={onDone} />
@@ -115,7 +120,12 @@ export function Result({ zone, versions, saved, onDone, onRetake, devScore }: Re
       {zone === 'unsure' ? (
         <div className="row2">
           <button className="btn btn-primary" type="button" onClick={onRetake}>{t('retake')}</button>
-          <button className="btn btn-dark" type="button" onClick={() => setReferred(true)}>{t('refer')}</button>
+          <button className="btn btn-dark" type="button" onClick={refer} disabled={referBusy}>{t('refer')}</button>
+        </div>
+      ) : zone === 'refer_now' && onRefer ? (
+        <div className="stack">
+          <button className="btn btn-primary" type="button" onClick={onRefer} disabled={referBusy}>{referBusy ? t('refer_saving') : t('refer_to_facility')}</button>
+          <button className="btn btn-secondary" type="button" onClick={onDone}>{t('done_new')}</button>
         </div>
       ) : (
         <button className="btn btn-primary" type="button" onClick={onDone}>{t('done_new')}</button>

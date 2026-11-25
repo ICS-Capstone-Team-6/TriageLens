@@ -12,12 +12,14 @@ interface Props {
   ready: boolean;
   modelReady: boolean;
   onMonitor: () => void;
+  onReferrals: (() => void) | null;
+  onFacility?: (() => void) | null;
   onSignOut: (() => void) | null;
   backendNote: boolean;
   demo?: boolean;
 }
 
-export function Home({ age, onAge, onFile, ready, modelReady, onMonitor, onSignOut, backendNote, demo = false }: Props) {
+export function Home({ age, onAge, onFile, ready, modelReady, onMonitor, onReferrals, onFacility = null, onSignOut, backendNote, demo = false }: Props) {
   const camera = useRef<HTMLInputElement>(null);
   const upload = useRef<HTMLInputElement>(null);
   const canStart = ready;
@@ -32,6 +34,8 @@ export function Home({ age, onAge, onFile, ready, modelReady, onMonitor, onSignO
       <header className="bar">
         <span className="brand"><Mark />{t('app_name')}</span>
         <button className="link" type="button" onClick={onMonitor}>{t('monitor_link')}</button>
+        {onReferrals && <button className="link" type="button" onClick={onReferrals}>{t('referrals_link')}</button>}
+        {onFacility && <button className="link" type="button" onClick={onFacility}>{t('facility_link')}</button>}
         {onSignOut && <button className="link" type="button" onClick={onSignOut}>{t('sign_out')}</button>}
       </header>
 

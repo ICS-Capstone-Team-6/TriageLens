@@ -14,6 +14,79 @@ export type Database = {
   }
   public: {
     Tables: {
+      ambulance_requests: {
+        Row: {
+          answer_note: string
+          answered_at: string | null
+          answered_by: string | null
+          created_at: string
+          created_by: string
+          eta_minutes: number | null
+          from_facility: string
+          id: string
+          note: string
+          reason: string
+          referral_id: string
+          seen_at: string | null
+          status: string
+          to_facility: string
+        }
+        Insert: {
+          answer_note?: string
+          answered_at?: string | null
+          answered_by?: string | null
+          created_at?: string
+          created_by: string
+          eta_minutes?: number | null
+          from_facility: string
+          id: string
+          note?: string
+          reason: string
+          referral_id: string
+          seen_at?: string | null
+          status?: string
+          to_facility: string
+        }
+        Update: {
+          answer_note?: string
+          answered_at?: string | null
+          answered_by?: string | null
+          created_at?: string
+          created_by?: string
+          eta_minutes?: number | null
+          from_facility?: string
+          id?: string
+          note?: string
+          reason?: string
+          referral_id?: string
+          seen_at?: string | null
+          status?: string
+          to_facility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ambulance_requests_from_facility_fkey"
+            columns: ["from_facility"]
+            isOneToOne: false
+            referencedRelation: "facilities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ambulance_requests_referral_id_fkey"
+            columns: ["referral_id"]
+            isOneToOne: false
+            referencedRelation: "referrals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ambulance_requests_to_facility_fkey"
+            columns: ["to_facility"]
+            isOneToOne: false
+            referencedRelation: "facilities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_log: {
         Row: {
           action: string
@@ -99,24 +172,74 @@ export type Database = {
           created_at: string
           district: string
           id: string
+          lat: number | null
+          lng: number | null
           name: string
+          opening_hours: Json | null
+          phone: string
           region: string
+          services: string[]
+          services_confirmed_at: string | null
         }
         Insert: {
           created_at?: string
           district?: string
           id?: string
+          lat?: number | null
+          lng?: number | null
           name: string
+          opening_hours?: Json | null
+          phone?: string
           region?: string
+          services?: string[]
+          services_confirmed_at?: string | null
         }
         Update: {
           created_at?: string
           district?: string
           id?: string
+          lat?: number | null
+          lng?: number | null
           name?: string
+          opening_hours?: Json | null
+          phone?: string
           region?: string
+          services?: string[]
+          services_confirmed_at?: string | null
         }
         Relationships: []
+      }
+      facility_keys: {
+        Row: {
+          created_at: string
+          created_by: string
+          facility_id: string
+          public_key: Json
+          wrapped_private_key: Json
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          facility_id: string
+          public_key: Json
+          wrapped_private_key: Json
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          facility_id?: string
+          public_key?: Json
+          wrapped_private_key?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "facility_keys_facility_id_fkey"
+            columns: ["facility_id"]
+            isOneToOne: true
+            referencedRelation: "facilities"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       inferences: {
         Row: {
@@ -203,18 +326,244 @@ export type Database = {
           },
         ]
       }
+      referral_events: {
+        Row: {
+          actor: string | null
+          id: string
+          note: string
+          occurred_at: string
+          referral_id: string
+          status: string
+        }
+        Insert: {
+          actor?: string | null
+          id?: string
+          note?: string
+          occurred_at?: string
+          referral_id: string
+          status: string
+        }
+        Update: {
+          actor?: string | null
+          id?: string
+          note?: string
+          occurred_at?: string
+          referral_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referral_events_referral_id_fkey"
+            columns: ["referral_id"]
+            isOneToOne: false
+            referencedRelation: "referrals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      referral_image_keys: {
+        Row: {
+          created_at: string
+          facility_id: string
+          referral_id: string
+          wrapped_key: Json
+        }
+        Insert: {
+          created_at?: string
+          facility_id: string
+          referral_id: string
+          wrapped_key: Json
+        }
+        Update: {
+          created_at?: string
+          facility_id?: string
+          referral_id?: string
+          wrapped_key?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referral_image_keys_facility_id_fkey"
+            columns: ["facility_id"]
+            isOneToOne: false
+            referencedRelation: "facilities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referral_image_keys_referral_id_fkey"
+            columns: ["referral_id"]
+            isOneToOne: false
+            referencedRelation: "referrals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      referrals: {
+        Row: {
+          case_id: string
+          code: string
+          conditions: string[]
+          created_at: string
+          created_by: string
+          distance_band: string | null
+          expires_at: string
+          from_facility: string
+          heatmap_shared: boolean
+          id: string
+          image_consent: boolean
+          image_consented_at: string | null
+          image_shared: boolean
+          initials: string
+          outcome: string | null
+          outcome_at: string | null
+          rules_version: string
+          status: string
+          to_facility: string
+          updated_at: string
+          urgency: string | null
+        }
+        Insert: {
+          case_id: string
+          code: string
+          conditions: string[]
+          created_at?: string
+          created_by: string
+          distance_band?: string | null
+          expires_at?: string
+          from_facility: string
+          heatmap_shared?: boolean
+          id: string
+          image_consent?: boolean
+          image_consented_at?: string | null
+          image_shared?: boolean
+          initials?: string
+          outcome?: string | null
+          outcome_at?: string | null
+          rules_version: string
+          status?: string
+          to_facility: string
+          updated_at?: string
+          urgency?: string | null
+        }
+        Update: {
+          case_id?: string
+          code?: string
+          conditions?: string[]
+          created_at?: string
+          created_by?: string
+          distance_band?: string | null
+          expires_at?: string
+          from_facility?: string
+          heatmap_shared?: boolean
+          id?: string
+          image_consent?: boolean
+          image_consented_at?: string | null
+          image_shared?: boolean
+          initials?: string
+          outcome?: string | null
+          outcome_at?: string | null
+          rules_version?: string
+          status?: string
+          to_facility?: string
+          updated_at?: string
+          urgency?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referrals_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referrals_from_facility_fkey"
+            columns: ["from_facility"]
+            isOneToOne: false
+            referencedRelation: "facilities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referrals_to_facility_fkey"
+            columns: ["to_facility"]
+            isOneToOne: false
+            referencedRelation: "facilities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      advance_referral: {
+        Args: {
+          p_id: string
+          p_note?: string
+          p_outcome?: string
+          p_status: string
+        }
+        Returns: Json
+      }
+      answer_ambulance: {
+        Args: {
+          p_eta?: number
+          p_id: string
+          p_note?: string
+          p_status: string
+        }
+        Returns: Json
+      }
       append_inference: { Args: { p_inference: Json }; Returns: Json }
+      cancel_ambulance: { Args: { p_id: string }; Returns: Json }
+      confirm_image_upload: {
+        Args: { p_id: string; p_keys: Json }
+        Returns: Json
+      }
+      consent_image_share: { Args: { p_id: string }; Returns: Json }
+      create_referral: { Args: { p_referral: Json }; Returns: Json }
+      facility_public_keys: { Args: { p_ids: string[] }; Returns: Json }
       get_case: { Args: { p_case_id: string }; Returns: Json }
+      get_referral: { Args: { p_id: string }; Returns: Json }
+      list_ambulance_requests: {
+        Args: { p_direction: string; p_limit?: number }
+        Returns: Json
+      }
       list_cases: {
         Args: { p_limit?: number; p_offset?: number }
         Returns: Json
       }
+      list_referral_facilities: { Args: never; Returns: Json }
+      list_referrals: {
+        Args: { p_direction: string; p_limit?: number; p_offset?: number }
+        Returns: Json
+      }
+      lookup_referral: { Args: { p_code: string }; Returns: Json }
+      my_facility: { Args: never; Returns: Json }
+      my_role: { Args: never; Returns: Json }
+      open_referral_image: { Args: { p_id: string }; Returns: Json }
+      own_facility_key: { Args: never; Returns: Json }
+      referral_images_due_for_deletion: { Args: never; Returns: string[] }
+      referral_stats: { Args: { p_weeks?: number }; Returns: Json }
+      request_ambulance: { Args: { p: Json }; Returns: Json }
+      reset_facility_key: {
+        Args: { p_facility_id: string }
+        Returns: undefined
+      }
       save_case: { Args: { p_case: Json }; Returns: Json }
+      set_facility_key: {
+        Args: { p_public: Json; p_wrapped: Json }
+        Returns: Json
+      }
+      update_facility_services: {
+        Args: {
+          p_facility_id: string
+          p_opening_hours?: Json
+          p_phone?: string
+          p_services: string[]
+        }
+        Returns: Json
+      }
     }
     Enums: {
       [_ in never]: never

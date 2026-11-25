@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isOpen, minutesSince, newOpenIds, notSeenTooLong, parseRequest, type AmbulanceRequest } from './ambulance';
+import { ambulanceEnabled, isOpen, minutesSince, newOpenIds, notSeenTooLong, parseRequest, URGENT_REASONS, type AmbulanceRequest } from './ambulance';
 
 // FAKE rows shaped like the RPC output.
 const row = {
@@ -44,5 +44,18 @@ describe('helpers', () => {
     const b = { ...a, id: 'a2' };
     const c = { ...a, id: 'a3', status: 'seen' as const };
     expect(newOpenIds(new Set(['a1']), [a, b, c])).toEqual(['a2']);
+  });
+});
+
+describe('ambulanceEnabled (off until ADR-28 and intended use are signed off, H19)', () => {
+  it('is off in a real build when VITE_FEATURE_AMBULANCE is not set', () => {
+    expect(import.meta.env.VITE_FEATURE_AMBULANCE).toBeUndefined();
+    expect(ambulanceEnabled(false)).toBe(false);
+  });
+  it('is on in the dev demo', () => {
+    expect(ambulanceEnabled(true)).toBe(true);
+  });
+  it('treats struggling to breathe and confusion as call-now reasons', () => {
+    expect([...URGENT_REASONS].sort()).toEqual(['breathing_hard', 'confused']);
   });
 });

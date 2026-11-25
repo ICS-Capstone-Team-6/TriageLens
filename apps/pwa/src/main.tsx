@@ -28,6 +28,7 @@ if (import.meta.env.DEV && params.has('preview')) {
           inbox: r.demoInbox,
           cam: r.demoCam,
           ambulance: r.demoAmbulance,
+          facility: r.demoFacility,
         }}
       />,
     ),

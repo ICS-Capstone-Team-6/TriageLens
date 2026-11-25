@@ -6,6 +6,7 @@ import { renderHeatmap } from '../lib/heatmap';
 import type { Screened } from '../inference/messages';
 import type { InboxDeps, KeyStatus, Outcome, ReferralDetail, Status } from '../lib/referral/inbox';
 import type { AmbulanceDeps, AmbulanceRequest } from '../lib/referral/ambulance';
+import type { FacilityDeps, MyFacility, WeekRow } from '../lib/referral/stats';
 import type { Zone } from '../lib/triage';
 import type { Facility, OpeningHours } from '../lib/referral/match';
 import type { ReferralDeps } from '../screens/Referral';
@@ -228,4 +229,32 @@ export const demoAmbulance: AmbulanceDeps = {
     a.status = 'cancelled';
     return { ...a };
   },
+};
+
+// Demo facility page: the demo clinic's admin view with made-up weekly numbers.
+const demoFac: MyFacility = { id: DEMO_OWN_ID, name: 'FAKE Test Clinic A', phone: '+233000000001', services: ['tb_treatment'], servicesConfirmedAt: ago(104) };
+function demoWeeks(n: number): WeekRow[] {
+  const monday = new Date();
+  monday.setUTCHours(0, 0, 0, 0);
+  monday.setUTCDate(monday.getUTCDate() - ((monday.getUTCDay() + 6) % 7));
+  const made = [[6, 5, 3, 2, 1, 2, 1, 1, 1], [9, 7, 6, 4, 1, 3, 2, 2, 1], [4, 4, 4, 1, 0, 1, 0, 0, 0], [7, 5, 4, 3, 2, 2, 1, 0, 1],
+    [5, 4, 3, 2, 1, 0, 0, 0, 0], [8, 6, 5, 3, 1, 4, 2, 2, 2], [3, 3, 2, 1, 0, 1, 0, 0, 0], [6, 4, 4, 2, 1, 2, 1, 1, 1]];
+  return Array.from({ length: n }, (_, i) => {
+    const w = new Date(monday.getTime() - i * 7 * day);
+    const [sent, arrived, tested, confirmed, notArrived7d, received, ambRequests, ambSeen10min, ambDispatched] = made[i % made.length];
+    return { week: w.toISOString().slice(0, 10), facilityId: DEMO_OWN_ID, facilityName: demoFac.name, sent, arrived, tested, confirmed,
+      notArrived7d: i === 0 ? 0 : notArrived7d, received, ambRequests, ambSeen10min, ambDispatched };
+  });
+}
+export const demoFacility: FacilityDeps = {
+  async role() { return 'admin'; },
+  async myFacility() { await wait(150); return { ...demoFac }; },
+  async saveServices(_id, services, phone) {
+    await wait(400);
+    Object.assign(demoFac, { services: [...services], phone, servicesConfirmedAt: new Date().toISOString() });
+    const own = DEMO_FACILITIES.find((f) => f.id === DEMO_OWN_ID);
+    if (own) Object.assign(own, { services: [...services], phone, servicesConfirmedAt: demoFac.servicesConfirmedAt });
+    return { ...demoFac };
+  },
+  async stats(weeks) { await wait(200); return demoWeeks(weeks); },
 };

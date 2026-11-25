@@ -539,9 +539,12 @@ export type Database = {
         Returns: Json
       }
       lookup_referral: { Args: { p_code: string }; Returns: Json }
+      my_facility: { Args: never; Returns: Json }
+      my_role: { Args: never; Returns: Json }
       open_referral_image: { Args: { p_id: string }; Returns: Json }
       own_facility_key: { Args: never; Returns: Json }
       referral_images_due_for_deletion: { Args: never; Returns: string[] }
+      referral_stats: { Args: { p_weeks?: number }; Returns: Json }
       request_ambulance: { Args: { p: Json }; Returns: Json }
       reset_facility_key: {
         Args: { p_facility_id: string }

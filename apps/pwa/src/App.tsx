@@ -18,6 +18,8 @@ import { Referral, type ReferralDeps } from './screens/Referral';
 import { Inbox } from './screens/Inbox';
 import { realInbox, type InboxDeps } from './lib/referral/inbox';
 import { realAmbulance, type AmbulanceDeps } from './lib/referral/ambulance';
+import { realFacility, type FacilityDeps } from './lib/referral/stats';
+import { Facility } from './screens/Facility';
 import { canReceiveImages, loadDirectory, loadOwnFacilityId, sendReferral, shareImage, type CamForShare } from './lib/referral/api';
 import { computeCam, loadCamHead, normalizeCam, type CamHead } from './lib/heatmap';
 import { forgetKeys } from './lib/referral/keys';
@@ -43,12 +45,13 @@ export interface DemoHooks {
   referral: ReferralDeps;
   inbox: InboxDeps;
   ambulance: AmbulanceDeps;
+  facility: FacilityDeps;
   /** Demo only: a made-up heatmap so the receiving screen can be clicked through. */
   cam: (r: Screened) => CamForShare | null;
 }
 
-function routeOf(hash: string): 'monitor' | 'referrals' | 'app' {
-  return hash === '#/monitor' ? 'monitor' : hash === '#/referrals' ? 'referrals' : 'app';
+function routeOf(hash: string): 'monitor' | 'referrals' | 'facility' | 'app' {
+  return hash === '#/monitor' ? 'monitor' : hash === '#/referrals' ? 'referrals' : hash === '#/facility' ? 'facility' : 'app';
 }
 
 const realReferral: ReferralDeps = { loadDirectory, ownFacilityId: loadOwnFacilityId, send: sendReferral, shareImage, canReceiveImages };
@@ -74,6 +77,11 @@ export function App({ demo }: { demo?: DemoHooks }) {
   const [view, setView] = useState<View>({ name: 'home' });
   const client = useRef<Pick<DemoHooks['client'], 'screen'> | null>(null);
   const camHead = useRef<CamHead | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  useEffect(() => {
+    if (!signedIn && !demo) return setIsAdmin(false);
+    void (demo ? demo.facility : realFacility).role().then((r) => setIsAdmin(r === 'admin' || r === 'maintainer'));
+  }, [signedIn, demo]);
   useEffect(() => {
     if (demo || typeof model !== 'object') return;
     void loadCamHead(MODEL_RUN, model.modelSha256).then((h) => { camHead.current = h; });
@@ -157,6 +165,7 @@ export function App({ demo }: { demo?: DemoHooks }) {
   if (!demo && backendConfigured && signedIn === null) return null;
   if (!demo && backendConfigured && !signedIn) return <SignIn onSignIn={signIn} error={signInError} />;
   if (route === 'monitor') return <Monitor onBack={() => go('#/')} rows={demo ? [...demo.rows] : undefined} />;
+  if (route === 'facility' && (demo || backendConfigured)) return <Facility deps={demo ? demo.facility : realFacility} onBack={() => go('#/')} />;
   if (route === 'referrals' && (demo || backendConfigured)) return <Inbox deps={demo ? demo.inbox : realInbox} ambulance={demo ? demo.ambulance : realAmbulance} onBack={() => go('#/')} />;
 
   if (age === 'under15') {
@@ -227,6 +236,7 @@ export function App({ demo }: { demo?: DemoHooks }) {
           modelReady={typeof model === 'object'}
           onMonitor={() => go('#/monitor')}
           onReferrals={demo || backendConfigured ? () => go('#/referrals') : null}
+          onFacility={isAdmin ? () => go('#/facility') : null}
           onSignOut={supabase && !demo ? () => { void forgetKeys(); void supabase!.auth.signOut(); } : null}
           backendNote={!backendConfigured && !demo}
           demo={Boolean(demo)}

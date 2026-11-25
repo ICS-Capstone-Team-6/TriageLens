@@ -45,23 +45,23 @@ export function Monitor({ onBack, rows: given }: { onBack: () => void; rows?: In
           <button className="btn btn-primary" type="button" onClick={download} disabled={!s || !s.total} style={{ minHeight: 48, fontSize: 15 }}>{t('download_csv')}</button>
         </div>
 
-        {rows === 'loading' && <p className="lead" role="status">{t('monitor_loading')}</p>}
-        {rows === null && <p className="alert" role="alert">{t('monitor_failed')}</p>}
+        {rows === 'loading' && <p className="t-lead" role="status">{t('monitor_loading')}</p>}
+        {rows === null && <p className="notice notice-danger" role="alert">{t('monitor_failed')}</p>}
 
         {s && (
           <>
             <dl className="kpis">
-              <div><dt>{t('kpi_screenings')}</dt><dd className="value num">{s.total}</dd><dd className="small">{t('kpi_screenings_note')}</dd></div>
-              <div><dt>{t('kpi_quality')}</dt><dd className="value num">{s.total ? `${Math.round((100 * s.qualityFailed) / s.total)}%` : '–'}</dd><dd className="small">{t('kpi_quality_note')}</dd></div>
-              <div><dt>{t('kpi_latency')}</dt><dd className="value num">{s.latencyP95 == null ? '–' : `${(s.latencyP95 / 1000).toFixed(1)} s`}</dd><dd className="small">{t('kpi_latency_note')}</dd></div>
-              <div><dt>{t('kpi_mismatch')}</dt><dd className="value num">{s.mismatches}</dd><dd className="small">{t('kpi_mismatch_note')}</dd></div>
-              <div><dt>{t('kpi_last')}</dt><dd className="value num">{s.last ? new Date(s.last).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '–'}</dd><dd className="small">{t('kpi_last_note')}</dd></div>
+              <div><dt>{t('kpi_screenings')}</dt><dd className="value num">{s.total}</dd><dd className="t-small">{t('kpi_screenings_note')}</dd></div>
+              <div><dt>{t('kpi_quality')}</dt><dd className="value num">{s.total ? `${Math.round((100 * s.qualityFailed) / s.total)}%` : '–'}</dd><dd className="t-small">{t('kpi_quality_note')}</dd></div>
+              <div><dt>{t('kpi_latency')}</dt><dd className="value num">{s.latencyP95 == null ? '–' : `${(s.latencyP95 / 1000).toFixed(1)} s`}</dd><dd className="t-small">{t('kpi_latency_note')}</dd></div>
+              <div><dt>{t('kpi_mismatch')}</dt><dd className="value num">{s.mismatches}</dd><dd className="t-small">{t('kpi_mismatch_note')}</dd></div>
+              <div><dt>{t('kpi_last')}</dt><dd className="value num">{s.last ? new Date(s.last).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '–'}</dd><dd className="t-small">{t('kpi_last_note')}</dd></div>
             </dl>
 
             <div className="grid2">
               <section className="card wide">
                 <h2>{t('score_title')}</h2>
-                {!s.refHist && <p className="small">{t('score_ref_pending')}</p>}
+                {!s.refHist && <p className="t-small">{t('score_ref_pending')}</p>}
                 <div className="hist" role="img" aria-label={t('score_title')}>
                   {s.scoreHist.map((v, i) => (
                     <div key={i}>
@@ -70,7 +70,7 @@ export function Monitor({ onBack, rows: given }: { onBack: () => void; rows?: In
                     </div>
                   ))}
                 </div>
-                <div className="small num" style={{ display: 'flex', justifyContent: 'space-between' }}><span>0</span><span>1</span></div>
+                <div className="t-small num" style={{ display: 'flex', justifyContent: 'space-between' }}><span>0</span><span>1</span></div>
                 <div className="legend">
                   <span><i className="swatch bar-live" />{t('score_live')}</span>
                   {s.refHist && <span><i className="swatch bar-ref" />{t('score_ref')}</span>}
@@ -79,7 +79,7 @@ export function Monitor({ onBack, rows: given }: { onBack: () => void; rows?: In
 
               <section className="card">
                 <h2>{t('drift_title')}</h2>
-                {s.drift.every((d) => d.psi === null) && <p className="small">{t('drift_pending')}</p>}
+                {s.drift.every((d) => d.psi === null) && <p className="t-small">{t('drift_pending')}</p>}
                 {s.drift.map((d) => (
                   <div key={d.stat} className="stack" style={{ gap: 6 }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 15 }}>
@@ -89,10 +89,10 @@ export function Monitor({ onBack, rows: given }: { onBack: () => void; rows?: In
                     {d.psi != null && (
                       <div className="track"><div className="fill" style={{ width: `${Math.min(100, (d.psi / 0.4) * 100)}%` }} /><div className="mark" /></div>
                     )}
-                    <span className="small">{t(`drift_${d.stat}_why` as StringKey)}</span>
+                    <span className="t-small">{t(`drift_${d.stat}_why` as StringKey)}</span>
                   </div>
                 ))}
-                <span className="small">{t('drift_formula')}</span>
+                <span className="t-small">{t('drift_formula')}</span>
               </section>
             </div>
 
@@ -105,16 +105,16 @@ export function Monitor({ onBack, rows: given }: { onBack: () => void; rows?: In
                   ))}
                 </div>
                 <dl className="mix-grid num">
-                  <div><dt className="small">{t('zone_refer_now')}</dt><dd>{s.zones.refer_now}</dd></div>
-                  <div><dt className="small">{t('zone_unsure')}</dt><dd>{s.zones.unsure}</dd></div>
-                  <div><dt className="small">{t('zone_low_risk')}</dt><dd>{s.zones.low_risk}</dd></div>
-                  <div><dt className="small">{t('no_result')}</dt><dd>{s.zones.retake}</dd></div>
+                  <div><dt className="t-small">{t('zone_refer_now')}</dt><dd>{s.zones.refer_now}</dd></div>
+                  <div><dt className="t-small">{t('zone_unsure')}</dt><dd>{s.zones.unsure}</dd></div>
+                  <div><dt className="t-small">{t('zone_low_risk')}</dt><dd>{s.zones.low_risk}</dd></div>
+                  <div><dt className="t-small">{t('no_result')}</dt><dd>{s.zones.retake}</dd></div>
                 </dl>
-                <span className="small">{t('zone_mix_note')}</span>
+                <span className="t-small">{t('zone_mix_note')}</span>
               </section>
               <section className="card">
                 <h2>{t('versions_title')}</h2>
-                <dl className="kv">
+                <dl className="facts">
                   <div><dt>{t('v_model')}</dt><dd>{s.versions.model.join(', ') || '–'}</dd></div>
                   <div><dt>{t('v_thresholds')}</dt><dd>{s.versions.thresholds.join(', ') || '–'}</dd></div>
                   <div><dt>{t('v_preprocess')}</dt><dd>{s.versions.preprocess.join(', ') || '–'}</dd></div>
@@ -132,7 +132,7 @@ export function Monitor({ onBack, rows: given }: { onBack: () => void; rows?: In
                     {(['col_bin', 'col_aspect', 'col_brightness', 'col_edges', 'col_time_ms'] as const).map((k) => <th key={k} className="right">{t(k)}</th>)}
                   </tr></thead>
                   <tbody>
-                    {Array.isArray(rows) && rows.length === 0 && <tr><td colSpan={8} className="muted" style={{ padding: '28px 8px' }}>{t('monitor_none')}</td></tr>}
+                    {Array.isArray(rows) && rows.length === 0 && <tr><td colSpan={8} className="t-small" style={{ padding: '28px 8px' }}>{t('monitor_none')}</td></tr>}
                     {Array.isArray(rows) && rows.slice(0, 10).map((r) => {
                       const st = r.outputs.input_stats ?? {};
                       const p = r.outputs.tb_probability;

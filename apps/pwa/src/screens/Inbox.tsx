@@ -6,7 +6,8 @@ import { formatCode } from '../lib/referral/api';
 import { nextActions, notArrived, OUTCOMES, type InboxDeps, type KeyStatus, type OpenedImage, type Outcome, type ReferralDetail, type ReferralSummary } from '../lib/referral/inbox';
 import { passphraseProblem } from '../lib/referral/crypto';
 import { t, type StringKey } from '../strings';
-import { Back } from '../ui/icons';
+import { ArrowDownLeft, ArrowUpRight, ImageIcon, List, Lock, Phone, WifiOff } from '../ui/icons';
+import { Empty, Facts, Foot, Notice, TopBar, useWide, ZoneRow } from '../ui/kit';
 import { AmbulancePanel, AmbulanceQueue } from './Ambulance';
 import type { AmbulanceDeps } from '../lib/referral/ambulance';
 
@@ -18,17 +19,8 @@ const day = (iso: string) => {
 };
 const pretty = (key: string) => key.replace(/_/g, ' ');
 
-function Bar({ title, onBack }: { title: string; onBack: () => void }) {
-  return (
-    <header className="bar">
-      <button className="btn btn-round" type="button" aria-label={t('back')} onClick={onBack}><Back /></button>
-      <span className="bar-title">{title}</span>
-    </header>
-  );
-}
-
-function Detail({ d, ownFacility, deps, ambulance, onBack, onChange }: {
-  d: ReferralDetail; ownFacility: 'sender' | 'receiver'; deps: InboxDeps; ambulance: AmbulanceDeps | null; onBack: () => void; onChange: (d: ReferralDetail) => void;
+function Detail({ d, ownFacility, deps, ambulance, onBack, onChange, embedded = false }: {
+  d: ReferralDetail; ownFacility: 'sender' | 'receiver'; deps: InboxDeps; ambulance: AmbulanceDeps | null; onBack: () => void; onChange: (d: ReferralDetail) => void; embedded?: boolean;
 }) {
   const r = d.referral;
   const [busy, setBusy] = useState(false);
@@ -60,111 +52,140 @@ function Detail({ d, ownFacility, deps, ambulance, onBack, onChange }: {
     if (next) onChange(next); else setFailed(true);
   }
 
-  return (
-    <main className="screen">
-      <Bar title={t('referral_detail_header')} onBack={onBack} />
-      <section className="panel panel-big">
-        <p className="slip-code num">{formatCode(r.code, r.initials)}</p>
-        <p className="lead strong">{t(`status_${r.status}` as StringKey)}</p>
-        {r.outcome && <p className="lead">{t(`outcome_${r.outcome}` as StringKey)}</p>}
-        {r.outcome === 'not_confirmed' && ownFacility === 'sender' && <p className="small strong">{t('outcome_not_confirmed_note')}</p>}
-      </section>
-      <dl className="kv">
-        <div><dt>{t('detail_from')}</dt><dd>{r.fromName}</dd></div>
-        <div><dt>{t('detail_to')}</dt><dd>{r.toName}</dd></div>
-        <div><dt>{t('detail_sent')}</dt><dd>{day(r.createdAt)}</dd></div>
-        {r.urgency && <div><dt>{t('slip_when')}</dt><dd>{t(`urgency_${r.urgency}` as StringKey)}</dd></div>}
-        {d.results.map((x) => (
-          <div key={x.createdAt}><dt>{t('condition_tb')}</dt><dd>{t(`zone_${x.zone}` as StringKey)}</dd></div>
-        ))}
-        {d.results.length > 0 && (
-          <div><dt>{t('detail_versions')}</dt><dd className="small">{d.results[d.results.length - 1].modelVersion} · {d.results[d.results.length - 1].thresholdsVersion}</dd></div>
-        )}
-        {d.ageBand && <div><dt>{t('detail_age')}</dt><dd>{d.ageBand}</dd></div>}
-        <div><dt>{t('detail_symptoms')}</dt><dd>{d.symptoms.length ? d.symptoms.map(pretty).join(', ') : t('detail_none_recorded')}</dd></div>
-      </dl>
-      <p className="small">{t('detail_screening_note')}</p>
-      {!r.imageShared ? (
-        <p className="small">{t('image_not_shared')}</p>
-      ) : img && img !== 'loading' && img.kind === 'ok' ? (
-        <div className="stack">
-          <img className="xray-shared" src={img.image} alt={t('image_alt')} />
-          {img.heatmap && (
-            <figure className="stack" style={{ margin: 0 }}>
-              <img className="xray-shared" src={img.heatmap} alt={t('heatmap_alt')} />
-              <figcaption className="small">{t('heatmap_caption')}</figcaption>
-            </figure>
-          )}
-        </div>
-      ) : img && img !== 'loading' && img.kind === 'locked' ? (
-        <form className="stack" onSubmit={(e) => void unlockAndShow(e)}>
-          <label className="field">
-            {t('unlock_label')}
-            <input type="password" value={pass} onChange={(e) => setPass(e.target.value)} autoComplete="off" />
-            <span className="small">{t('unlock_hint')}</span>
-          </label>
-          {wrongPass && <p className="alert" role="alert">{t('unlock_wrong')}</p>}
-          <button className="btn btn-dark" type="submit" disabled={!pass}>{t('unlock_button')}</button>
-        </form>
-      ) : img && img !== 'loading' && img.kind === 'no_key' ? (
-        <p className="small" role="status">{t('image_no_key')}</p>
-      ) : (
-        <button className="btn btn-secondary" type="button" disabled={img === 'loading'} onClick={() => void showImage()}>
-          {img === 'loading' ? t('image_loading') : img?.kind === 'failed' ? t('image_load_failed') : t('image_show')}
-        </button>
-      )}
+  const [confirmClose, setConfirmClose] = useState(false);
+  const phone = ownFacility === 'sender' ? r.toPhone : r.fromPhone;
+  const notArrivedYet = r.status === 'created' || r.status === 'seen';
+  const latest = d.results[d.results.length - 1];
 
-      <ol className="steps" aria-label={t('detail_history')}>
-        {d.events.map((e, i) => (
-          <li key={`${e.status}-${i}`}>
-            <span className="step-name"><span className="dot" aria-hidden="true" />{t(`status_${e.status}` as StringKey)}</span>
-            <span className="small">{day(e.at)}{e.note ? ` · ${e.note}` : ''}</span>
-          </li>
-        ))}
-      </ol>
-
-      {ambulance && ownFacility === 'sender' && r.status !== 'closed' ? (
-        <AmbulancePanel referralId={r.id} toName={r.toName} toPhone={r.toPhone} deps={ambulance} />
-      ) : (() => {
-        // Each side can call the other facility.
-        const phone = ownFacility === 'sender' ? r.toPhone : r.fromPhone;
-        return phone ? <a className="link" href={`tel:${phone}`}>{t('call_facility', { phone })}</a> : null;
-      })()}
-      {failed && <p className="alert" role="alert">{t('advance_failed')}</p>}
-      <div className="spacer" />
-      <p className="lead strong center">{t('reminder')}</p>
-
-      {askOutcome ? (
-        <fieldset className="stack" style={{ border: 0, padding: 0, margin: 0 }}>
-          <legend className="lead strong" style={{ marginBottom: 10 }}>{t('outcome_question')}</legend>
-          {OUTCOMES.map((o) => (
-            <button key={o} className="btn btn-secondary" type="button" disabled={busy} onClick={() => void act('tested', o)}>
-              {t(`outcome_${o}` as StringKey)}
+  const title = ownFacility === 'sender' ? t('sent_referral') : t('referral_detail_header');
+  const actionBlock = actions.length > 0 && !askOutcome ? (
+    <>
+          {actions.includes('arrived') && <button className="btn btn-primary btn-lg btn-full" type="button" disabled={busy} onClick={() => void act('arrived')}>{t('action_arrived')}</button>}
+          {actions.includes('tested') && <button className="btn btn-primary btn-lg btn-full" type="button" disabled={busy} onClick={() => setAskOutcome(true)}>{t('action_tested')}</button>}
+          {actions.includes('closed') && (confirmClose ? (
+            <>
+              <p className="t-small" role="alert" style={{ textAlign: 'center', color: 'var(--ink)', fontWeight: 500 }}>{t('close_confirm')}</p>
+              <div className="grid2">
+                <button className="btn btn-ghost" type="button" onClick={() => setConfirmClose(false)} style={{ background: '#fff' }}>{t('keep_open')}</button>
+                <button className="btn btn-primary" type="button" disabled={busy}
+                  onClick={() => { setConfirmClose(false); void act('closed', undefined, notArrivedYet ? t('note_did_not_arrive') : ''); }}>{t('yes_close')}</button>
+              </div>
+            </>
+          ) : (
+            <button className="btn btn-ghost btn-full" type="button" disabled={busy} onClick={() => setConfirmClose(true)} style={{ background: '#fff' }}>
+              {notArrivedYet ? t('action_close_not_arrived') : t('action_close')}
             </button>
           ))}
-          <button className="link" type="button" onClick={() => setAskOutcome(false)}>{t('cancel')}</button>
-        </fieldset>
-      ) : (
-        <div className="stack">
-          {actions.includes('arrived') && (
-            <button className="btn btn-primary" type="button" disabled={busy} onClick={() => void act('arrived')}>{t('action_arrived')}</button>
-          )}
-          {actions.includes('tested') && (
-            <button className="btn btn-primary" type="button" disabled={busy} onClick={() => setAskOutcome(true)}>{t('action_tested')}</button>
-          )}
-          {actions.includes('closed') && (
-            <button className="btn btn-secondary" type="button" disabled={busy}
-              onClick={() => void act('closed', undefined, r.status === 'created' || r.status === 'seen' ? t('note_did_not_arrive') : '')}>
-              {r.status === 'created' || r.status === 'seen' ? t('action_close_not_arrived') : t('action_close')}
-            </button>
-          )}
+    </>
+  ) : null;
+  const content = (
+    <>
+        <div className="stack-tight">
+          <p className="code-xl">{formatCode(r.code, r.initials)}</p>
+          <p className="t-small">{ownFacility === 'sender' ? t('row_to', { name: r.toName }) : t('row_from', { name: r.fromName })}, {day(r.createdAt)}</p>
         </div>
-      )}
+        {r.outcome && (
+          <section className="card" aria-labelledby="oc">
+            <h2 className="t-title" id="oc">{t(`outcome_${r.outcome}` as StringKey)}</h2>
+            {r.outcome === 'not_confirmed' && ownFacility === 'sender' && <p className="t-strong">{t('outcome_not_confirmed_note')}</p>}
+          </section>
+        )}
+        {latest && latest.zone !== 'retake' && <ZoneRow zone={latest.zone} word={t(`zone_${latest.zone}` as StringKey)} sub={t('needs_confirmation')} />}
+        <Facts rows={[
+          ...(d.ageBand ? [[t('detail_age'), d.ageBand] as [string, string]] : []),
+          [t('detail_symptoms'), d.symptoms.length ? d.symptoms.map(pretty).join(', ') : t('detail_none_recorded')],
+          ...(r.urgency ? [[t('slip_when'), t(`urgency_${r.urgency}` as StringKey)] as [string, string]] : []),
+        ]} />
+        {latest && <p className="t-cap">{t('model_line', { model: latest.modelVersion, thresholds: latest.thresholdsVersion })}</p>}
+
+        {!r.imageShared ? (
+          <p className="t-small">{t('image_not_shared')}</p>
+        ) : img && img !== 'loading' && img.kind === 'ok' ? (
+          <ImageViewer image={img.image} heatmap={img.heatmap} />
+        ) : img && img !== 'loading' && img.kind === 'locked' ? (
+          <form className="cloud" onSubmit={(e) => void unlockAndShow(e)}>
+            <h2 className="t-sub"><Lock size={18} /> {t('unlock_title')}</h2>
+            <label className="field">{t('unlock_label')}
+              <input className="input" type="password" value={pass} onChange={(e) => setPass(e.target.value)} autoComplete="off" aria-invalid={wrongPass} />
+              <span className="hint">{t('unlock_hint')}</span>
+            </label>
+            {wrongPass && <p className="error" role="alert">{t('unlock_wrong')}</p>}
+            <button className="btn btn-primary btn-full" type="submit" disabled={!pass}>{t('unlock_button')}</button>
+          </form>
+        ) : img && img !== 'loading' && img.kind === 'no_key' ? (
+          <p className="t-small" role="status">{t('image_no_key')}</p>
+        ) : (
+          <button className="btn btn-ghost btn-full" type="button" disabled={img === 'loading'} onClick={() => void showImage()}>
+            <ImageIcon color="#2597d0" />{img === 'loading' ? t('image_loading') : img?.kind === 'failed' ? t('image_load_failed') : t('image_show')}
+          </button>
+        )}
+
+        <section className="stack" aria-labelledby="hist">
+          <h2 className="t-title" id="hist">{t('detail_history')}</h2>
+          <ol className="tl">
+            {d.events.map((e, i) => <li key={`${e.status}-${i}`}>{t(`status_${e.status}` as StringKey)}<span className="when">{day(e.at)}{e.note ? `, ${e.note}` : ''}</span></li>)}
+            {actions.length > 0 && <li className="next">{notArrivedYet ? t('waiting_for_person') : t('record_test_next')}</li>}
+          </ol>
+        </section>
+
+        {ambulance && ownFacility === 'sender' && r.status !== 'closed'
+          ? <AmbulancePanel referralId={r.id} toName={r.toName} toPhone={r.toPhone} deps={ambulance} />
+          : phone && <a className="link" href={`tel:${phone}`}><Phone size={16} />{t('call_facility', { phone })}</a>}
+
+        {askOutcome && (
+          <fieldset className="stack" style={{ border: 0, padding: 0, margin: 0, gap: 8 }}>
+            <legend className="t-title" style={{ marginBottom: 10 }}>{t('outcome_question')}</legend>
+            {OUTCOMES.map((o) => (
+              <button key={o} className="choice" type="button" disabled={busy} onClick={() => void act('tested', o)} style={{ border: 0, textAlign: 'left' }}>{t(`outcome_${o}` as StringKey)}</button>
+            ))}
+            <button className="link" type="button" onClick={() => setAskOutcome(false)}>{t('cancel')}</button>
+          </fieldset>
+        )}
+        {failed && <Notice tone="danger" role="alert">{t('advance_failed')}</Notice>}
+    </>
+  );
+  if (embedded) {
+    return (
+      <section className="split-detail pane" aria-label={title}>
+        {content}
+        {actionBlock && <div className="stack" style={{ gap: 10, maxWidth: 440 }}><p className="remind" style={{ textAlign: 'left' }}>{t('reminder')}</p>{actionBlock}</div>}
+      </section>
+    );
+  }
+  return (
+    <main className="screen">
+      <TopBar title={title} onBack={onBack} />
+      <div className="body has-foot pane">
+        {content}
+      </div>
+      {actionBlock && <Foot>{actionBlock}</Foot>}
     </main>
   );
 }
 
-export function Inbox({ deps, ambulance, onBack }: { deps: InboxDeps; ambulance: AmbulanceDeps | null; onBack: () => void }) {
+/** Shared X-ray and heatmap, side by side on wide screens, toggled on a phone. */
+function ImageViewer({ image, heatmap }: { image: string; heatmap: string | null }) {
+  const [heat, setHeat] = useState(Boolean(heatmap));
+  return (
+    <figure className="stack" style={{ margin: 0 }}>
+      {heatmap && (
+        <div className="seg" role="group" aria-label={t('image_view')}>
+          <button type="button" aria-pressed={!heat} onClick={() => setHeat(false)}>{t('view_xray')}</button>
+          <button type="button" aria-pressed={heat} onClick={() => setHeat(true)}>{t('view_heatmap')}</button>
+        </div>
+      )}
+      <div className="film" style={{ aspectRatio: '4 / 5' }}>
+        <img src={heat && heatmap ? heatmap : image} alt={heat && heatmap ? t('heatmap_alt') : t('image_alt')} />
+      </div>
+      <figcaption className="t-small">{heat && heatmap ? t('heatmap_caption') : t('xray_caption')}</figcaption>
+      <p className="t-small"><Lock size={14} color="#2597d0" /> {t('viewing_logged')}</p>
+    </figure>
+  );
+}
+
+export function Inbox({ deps, ambulance, onBack, dock }: { deps: InboxDeps; ambulance: AmbulanceDeps | null; onBack: () => void; dock?: React.ReactNode }) {
+  void onBack;
+  const [showPass, setShowPass] = useState(false);
   const [tab, setTab] = useState<Tab>('received');
   const [rows, setRows] = useState<ReferralSummary[] | null | 'loading'>('loading');
   const [code, setCode] = useState('');
@@ -211,14 +232,16 @@ export function Inbox({ deps, ambulance, onBack }: { deps: InboxDeps; ambulance:
     if (d) setOpen({ d, as: tab === 'received' ? 'receiver' : 'sender' });
   }
 
-  if (open) {
+  const wide = useWide();
+  const close = () => { setOpen(null); load(tab); };
+  if (open && !wide) {
     return (
       <Detail
         d={open.d}
         ownFacility={open.as}
         deps={deps}
         ambulance={ambulance}
-        onBack={() => { setOpen(null); load(tab); }}
+        onBack={close}
         onChange={(d) => setOpen({ d, as: open.as })}
       />
     );
@@ -226,80 +249,84 @@ export function Inbox({ deps, ambulance, onBack }: { deps: InboxDeps; ambulance:
 
   return (
     <main className="screen">
-      <Bar title={t('inbox_header')} onBack={onBack} />
-      {ambulance && <AmbulanceQueue deps={ambulance} />}
-      <fieldset className="choices" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
-        <legend className="sr">{t('inbox_header')}</legend>
-        {(['received', 'sent'] as const).map((x) => (
-          <label className="choice" key={x}>
-            <input type="radio" name="tab" checked={tab === x} onChange={() => setTab(x)} />
-            <span>{t(`tab_${x}` as StringKey)}</span>
-          </label>
+      <TopBar title={t('inbox_header')} big />
+      <div className="body has-dock pane">
+        <div className="split">
+        <div className="split-list">
+        {ambulance && <AmbulanceQueue deps={ambulance} />}
+        <div className="seg" role="group" aria-label={t('inbox_header')}>
+          {(['received', 'sent'] as const).map((x) => (
+            <button key={x} type="button" aria-pressed={tab === x} onClick={() => setTab(x)}>{t(`tab_${x}` as StringKey)}</button>
+          ))}
+        </div>
+
+        {tab === 'received' && (
+          <form style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }} onSubmit={(e) => void find(e)}>
+            <label className="field" style={{ flex: 1 }}>{t('lookup_label')}
+              <input className="input code" value={code} onChange={(e) => { setCode(e.target.value); setLookup('idle'); }} autoComplete="off" autoCapitalize="characters" spellCheck={false} maxLength={12} placeholder="KAM 7QM4X" aria-invalid={lookup === 'missing'} />
+            </label>
+            <button className="btn btn-primary" type="submit" disabled={!code.trim() || lookup === 'busy'}>{lookup === 'busy' ? t('lookup_busy') : t('lookup_button_short')}</button>
+          </form>
+        )}
+        {lookup === 'missing' && <p className="error" role="alert">{t('lookup_missing')}</p>}
+        {lookup === 'locked' && <p className="error" role="alert">{t('lookup_locked')}</p>}
+
+        {rows === 'loading' && <p className="t-small" role="status">{t('inbox_loading')}</p>}
+        {rows === null && (
+          <Empty tone="problem" role="alert" icon={<WifiOff size={26} />} title={t('inbox_offline_title')} body={t('inbox_offline')}
+            action={<button className="btn btn-ghost" type="button" style={{ background: '#fff' }} onClick={() => load(tab)}>{t('try_again')}</button>} />
+        )}
+        {Array.isArray(rows) && rows.length === 0 && (tab === 'received'
+          ? <Empty icon={<ArrowDownLeft size={26} />} title={t('inbox_empty_received')} body={t('inbox_empty_received_body')} />
+          : <Empty icon={<ArrowUpRight size={26} />} title={t('inbox_empty_sent')} body={t('inbox_empty_sent_body')} />)}
+        {Array.isArray(rows) && rows.length > 0 && (
+          <ul className="list" aria-label={t(`tab_${tab}` as StringKey)}>
+            {rows.map((r) => {
+              const late = tab === 'sent' && notArrived(r, now);
+              return (
+                <li key={r.id}>
+                  <button className="item" type="button" aria-current={wide && open?.d.referral.id === r.id ? true : undefined} onClick={() => void openRow(r)}>
+                    <span className="row"><span className={`code${r.status === 'created' && tab === 'received' ? ' t-strong' : ''}`}>{formatCode(r.code, r.initials)}</span><span className="t-small num">{day(r.createdAt)}</span></span>
+                    <span className="t-small">{tab === 'received' ? r.fromName : r.toName}</span>
+                    <span className="t-small" style={{ color: 'var(--ink)', fontWeight: 500 }}>
+                      {t(`status_${r.status}` as StringKey)}{r.outcome ? `, ${t(`outcome_${r.outcome}` as StringKey).toLowerCase()}` : ''}
+                    </span>
+                    {late && <span className="meta meta-warn">{t('row_not_arrived')}</span>}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+
+        {keys && !keys.hasKey && (keys.canSetUp ? (
+          <form className="cloud" onSubmit={(e) => void setUp(e)}>
+            <h2 className="t-title">{t('setup_title')}</h2>
+            <p className="t-small">{t('setup_body')}</p>
+            <label className="field"><span className="field-row">{t('setup_pass')}<button className="link" type="button" onClick={() => setShowPass(!showPass)}>{showPass ? t('hide') : t('show')}</button></span>
+              <input className="input" type={showPass ? 'text' : 'password'} value={newPass} onChange={(e) => setNewPass(e.target.value)} autoComplete="new-password" />
+              {newPass && passphraseProblem(newPass) && <span className="hint">{t('setup_too_short')}</span>}
+            </label>
+            <label className="field">{t('setup_pass2')}
+              <input className="input" type={showPass ? 'text' : 'password'} value={newPass2} onChange={(e) => setNewPass2(e.target.value)} autoComplete="new-password" aria-invalid={Boolean(newPass2) && newPass !== newPass2} />
+              {newPass2 && newPass !== newPass2 && <span className="error" role="alert">{t('setup_mismatch')}</span>}
+            </label>
+            <Notice tone="warn">{t('setup_lost')}</Notice>
+            {setupState === 'failed' && <p className="error" role="alert">{t('setup_failed')}</p>}
+            <button className="btn btn-primary btn-full" type="submit" disabled={setupState === 'busy' || !!passphraseProblem(newPass) || newPass !== newPass2}>
+              {setupState === 'busy' ? t('setup_busy') : t('setup_button')}
+            </button>
+          </form>
+        ) : <p className="t-small">{t('setup_ask_admin')}</p>)}
+        </div>
+        {wide && (open ? (
+          <Detail key={open.d.referral.id} embedded d={open.d} ownFacility={open.as} deps={deps} ambulance={ambulance} onBack={close} onChange={(d) => setOpen({ d, as: open.as })} />
+        ) : (
+          <section className="split-detail"><Empty icon={<List size={26} />} title={t('inbox_pick_title')} body={t('inbox_pick_body')} /></section>
         ))}
-      </fieldset>
-
-      {keys && !keys.hasKey && (keys.canSetUp ? (
-        <form className="panel" onSubmit={(e) => void setUp(e)}>
-          <h2 className="lead strong">{t('setup_title')}</h2>
-          <p className="small">{t('setup_body')}</p>
-          <label className="field">{t('setup_pass')}
-            <input type="password" value={newPass} onChange={(e) => setNewPass(e.target.value)} autoComplete="new-password" />
-          </label>
-          <label className="field">{t('setup_pass2')}
-            <input type="password" value={newPass2} onChange={(e) => setNewPass2(e.target.value)} autoComplete="new-password" />
-          </label>
-          {newPass && passphraseProblem(newPass) && <p className="small">{t('setup_too_short')}</p>}
-          {newPass2 && newPass !== newPass2 && <p className="small">{t('setup_mismatch')}</p>}
-          {setupState === 'failed' && <p className="alert" role="alert">{t('setup_failed')}</p>}
-          <button className="btn btn-dark" type="submit" disabled={setupState === 'busy' || !!passphraseProblem(newPass) || newPass !== newPass2}>
-            {setupState === 'busy' ? t('setup_busy') : t('setup_button')}
-          </button>
-        </form>
-      ) : (
-        <p className="small">{t('setup_ask_admin')}</p>
-      ))}
-
-      {tab === 'received' && (
-        <form className="stack" onSubmit={(e) => void find(e)}>
-          <label className="field">
-            {t('lookup_label')}
-            <input value={code} onChange={(e) => { setCode(e.target.value); setLookup('idle'); }} autoComplete="off"
-              autoCapitalize="characters" spellCheck={false} maxLength={12} placeholder="KAM 7QM4X" />
-          </label>
-          {lookup === 'missing' && <p className="alert" role="alert">{t('lookup_missing')}</p>}
-          {lookup === 'locked' && <p className="alert" role="alert">{t('lookup_locked')}</p>}
-          <button className="btn btn-dark" type="submit" disabled={!code.trim() || lookup === 'busy'}>
-            {lookup === 'busy' ? t('lookup_busy') : t('lookup_button')}
-          </button>
-        </form>
-      )}
-
-      {rows === 'loading' && <p className="muted" role="status">{t('inbox_loading')}</p>}
-      {rows === null && <p className="alert" role="alert">{t('inbox_offline')}</p>}
-      {Array.isArray(rows) && rows.length === 0 && <p className="muted">{t(tab === 'received' ? 'inbox_empty_received' : 'inbox_empty_sent')}</p>}
-      {Array.isArray(rows) && rows.length > 0 && (
-        <ul className="facs" style={{ listStyle: 'none' }}>
-          {rows.map((r) => {
-            const late = tab === 'sent' && notArrived(r, now);
-            return (
-              <li key={r.id}>
-                <button className="fac" type="button" style={{ width: '100%', textAlign: 'left', font: 'inherit' }} onClick={() => void openRow(r)}>
-                  <span className="fac-head">
-                    <span className="fac-name num">{formatCode(r.code, r.initials)}</span>
-                    <span className="small">{day(r.createdAt)}</span>
-                  </span>
-                  <span className="small">{tab === 'received' ? t('row_from', { name: r.fromName }) : t('row_to', { name: r.toName })}</span>
-                  <span className="small strong">
-                    {t(`status_${r.status}` as StringKey)}
-                    {r.outcome ? ` · ${t(`outcome_${r.outcome}` as StringKey)}` : ''}
-                  </span>
-                  {late && <span className="small strong">{t('row_not_arrived')}</span>}
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      )}
+        </div>
+      </div>
+      {dock}
     </main>
   );
 }

@@ -6,7 +6,9 @@ import { useEffect, useState } from 'react';
 import { SERVICE_TAGS } from '../lib/referral/rules';
 import { share, type Count, type FacilityDeps, type FacilityStats, type MyFacility } from '../lib/referral/stats';
 import { t, type StringKey } from '../strings';
-import { Back } from '../ui/icons';
+import { Empty, Notice, Stepper, TopBar } from '../ui/kit';
+import { Chart, WifiOff } from '../ui/icons';
+import { hoursSince, LOW_BEDS } from '../lib/referral/beds';
 
 const WEEKS = 8;
 
@@ -30,8 +32,8 @@ function Numbers({ f }: { f: FacilityStats }) {
   const amb = share(sum.ambSeen10min, sum.ambRequests);
   return (
     <section className="card" aria-label={f.facilityName}>
-      <h2>{f.facilityName}</h2>
-      <dl className="kv">
+      <h3 className="t-sub">{f.facilityName}</h3>
+      <dl className="facts">
         <div><dt>{t('stats_sent')}</dt><dd className="num">{c(sum.sent)}</dd></div>
         <div><dt>{t('stats_arrived')}</dt><dd className="num">{arrived.text || c(sum.arrived)}</dd></div>
         <div><dt>{t('stats_confirmed')}</dt><dd className="num">{confirmed.text || c(sum.confirmed)}</dd></div>
@@ -54,7 +56,37 @@ function Numbers({ f }: { f: FacilityStats }) {
   );
 }
 
-export function Facility({ deps, onBack }: { deps: FacilityDeps; onBack: () => void }) {
+/** Bed manager (E10-10): one stepper for free beds, the total behind a small field. */
+function BedManager({ fac, deps }: { fac: MyFacility; deps: FacilityDeps }) {
+  const [total, setTotal] = useState(fac.beds?.total ?? 0);
+  const [free, setFree] = useState(fac.beds?.free ?? 0);
+  const [at, setAt] = useState(fac.beds?.updatedAt ?? null);
+  const [state, setState] = useState<'idle' | 'busy' | 'saved' | 'failed'>('idle');
+  const h = hoursSince(at, new Date());
+  async function save() {
+    setState('busy');
+    const b = await deps.saveBeds(fac.id, total, Math.min(free, total));
+    if (b) { setTotal(b.total); setFree(b.free); setAt(b.updatedAt); setState('saved'); } else setState('failed');
+  }
+  const low = total > 0 && free <= LOW_BEDS;
+  return (
+    <section className="cloud stack" aria-labelledby="beds-h" style={{ gap: 14 }}>
+      <span className="row"><h2 className="t-title" id="beds-h">{t('beds_title')}</h2><span className="t-small">{h === null ? t('beds_not_updated') : t('beds_updated_ago', { h })}</span></span>
+      {total > 0 && <Stepper value={free} max={total} label={t('beds_free_n', { n: free })} onChange={(n) => { setFree(n); setState('idle'); }} />}
+      {low && <Notice tone="danger">{t('beds_low_note', { max: LOW_BEDS })}</Notice>}
+      <label className="field">{t('beds_total_label')}
+        <input className="input num" type="number" inputMode="numeric" min={0} max={5000} value={total}
+          onChange={(e) => { const n = Math.max(0, Math.min(5000, Math.floor(Number(e.target.value) || 0))); setTotal(n); setFree((f) => Math.min(f, n)); setState('idle'); }} />
+        {total === 0 && <span className="hint">{t('beds_none_note')}</span>}
+      </label>
+      <button className="btn btn-primary btn-full" type="button" disabled={state === 'busy'} onClick={() => void save()}>{t('beds_save')}</button>
+      {state === 'saved' && <p className="t-small" role="status" style={{ color: 'var(--ink)' }}>{t('beds_saved')}</p>}
+      {state === 'failed' && <Notice tone="danger" role="alert">{t('beds_save_failed')}</Notice>}
+    </section>
+  );
+}
+
+export function Facility({ deps, dock }: { deps: FacilityDeps; onBack?: () => void; dock?: React.ReactNode }) {
   const [role, setRole] = useState<string | null | 'loading'>('loading');
   const [fac, setFac] = useState<MyFacility | null>(null);
   const [services, setServices] = useState<string[]>([]);
@@ -82,53 +114,53 @@ export function Facility({ deps, onBack }: { deps: FacilityDeps; onBack: () => v
     if (next) { setFac(next); setSave('saved'); } else setSave('failed');
   }
 
-  const bar = (
-    <header className="bar">
-      <button className="btn btn-round" type="button" aria-label={t('back')} onClick={onBack}><Back /></button>
-      <span className="bar-title">{t('facility_header')}</span>
-    </header>
-  );
-  if (role === 'loading') return <main className="screen">{bar}<p className="muted" role="status">{t('inbox_loading')}</p></main>;
+  const title = fac?.name ?? t('facility_header');
+  const beds = fac ? <BedManager key={fac.id} fac={fac} deps={deps} /> : null;
+  if (role === 'loading') return <main className="screen"><TopBar title={t('facility_header')} big /><div className="body"><p className="t-small" role="status">{t('inbox_loading')}</p></div>{dock}</main>;
   if (role !== 'admin' && role !== 'maintainer') {
-    return <main className="screen">{bar}<p className="alert" role="alert">{t('facility_admins_only')}</p></main>;
+    return <main className="screen"><TopBar title={t('facility_header')} big /><div className="body"><Notice tone="danger" role="alert">{t('facility_admins_only')}</Notice></div>{dock}</main>;
   }
   const confirmed = daysAgo(fac?.servicesConfirmedAt ?? null);
   return (
     <main className="screen">
-      {bar}
-      {fac && (
-        <form className="panel" onSubmit={(e) => void onSave(e)}>
-          <h1 className="h1">{fac.name}</h1>
-          <p className={confirmed === null || confirmed > 90 ? 'alert' : 'small'}>
-            {confirmed === null ? t('facility_never_confirmed') : t('facility_confirmed_ago', { days: confirmed })}
-          </p>
-          <fieldset className="stack" style={{ border: 0, padding: 0, margin: 0 }}>
-            <legend className="lead strong" style={{ marginBottom: 8 }}>{t('facility_services_q')}</legend>
-            {SERVICE_TAGS.map((s) => (
-              <label className="consent" key={s}>
-                <input type="checkbox" checked={services.includes(s)}
-                  onChange={(e) => { setSave('idle'); setServices((v) => (e.target.checked ? [...v, s] : v.filter((x) => x !== s))); }} />
-                <span>{t(`service_${s}` as StringKey)}</span>
+      <TopBar title={title} big />
+      <div className="body has-dock pane">
+        <div className="wide">
+          {fac && (
+            <form className="stack sticky" style={{ gap: 20 }} onSubmit={(e) => void onSave(e)}>
+              {(confirmed === null || confirmed > 90)
+                ? <Notice tone="warn">{confirmed === null ? t('facility_never_confirmed') : t('facility_last_checked', { days: confirmed })}</Notice>
+                : <p className="t-small">{t('facility_last_checked', { days: confirmed })}</p>}
+              {beds}
+              <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
+                <legend className="t-title" style={{ marginBottom: 6 }}>{t('facility_services_today')}</legend>
+                {SERVICE_TAGS.map((x) => (
+                  <label className="toggle" key={x}>
+                    {t(`service_${x}` as StringKey).replace(/^./, (m) => m.toUpperCase())}
+                    <input type="checkbox" role="switch" checked={services.includes(x)}
+                      onChange={(e) => { setSave('idle'); setServices((v) => (e.target.checked ? [...v, x] : v.filter((y) => y !== x))); }} />
+                  </label>
+                ))}
+              </fieldset>
+              <label className="field">{t('facility_phone')}
+                <input className="input num" value={phone} onChange={(e) => { setSave('idle'); setPhone(e.target.value); }} inputMode="tel" maxLength={32} />
               </label>
-            ))}
-          </fieldset>
-          <label className="field">
-            {t('facility_phone')}
-            <input value={phone} onChange={(e) => { setSave('idle'); setPhone(e.target.value); }} inputMode="tel" maxLength={32} />
-          </label>
-          {save === 'saved' && <p className="small" role="status">{t('facility_saved')}</p>}
-          {save === 'failed' && <p className="alert" role="alert">{t('facility_save_failed')}</p>}
-          <button className="btn btn-dark" type="submit" disabled={save === 'busy'}>{t('facility_save')}</button>
-        </form>
-      )}
-
-      <div className="stack">
-        <h2 className="lead strong">{t('stats_title', { weeks: WEEKS })}</h2>
-        <p className="small">{t('stats_note')}</p>
-        {rows === 'loading' && <p className="muted" role="status">{t('inbox_loading')}</p>}
-        {rows === null && <p className="alert" role="alert">{t('inbox_offline')}</p>}
-        {Array.isArray(rows) && rows.map((f) => <Numbers key={f.facilityId} f={f} />)}
+              <button className="btn btn-primary btn-full" type="submit" disabled={save === 'busy'}>{t('facility_save')}</button>
+              {save === 'saved' && <p className="t-small" role="status" style={{ color: 'var(--ink)' }}>{t('facility_saved')}</p>}
+              {save === 'failed' && <Notice tone="danger" role="alert">{t('facility_save_failed')}</Notice>}
+            </form>
+          )}
+          <section className="stack" aria-labelledby="nums">
+            <h2 className="t-title" id="nums">{t('stats_title', { weeks: WEEKS })}</h2>
+            <p className="t-small">{t('stats_note')}</p>
+            {rows === 'loading' && <p className="t-small" role="status">{t('inbox_loading')}</p>}
+            {rows === null && <Empty tone="problem" role="alert" icon={<WifiOff size={26} />} title={t('stats_offline_title')} body={t('stats_offline')} />}
+            {Array.isArray(rows) && rows.length === 0 && <Empty icon={<Chart size={26} />} title={t('stats_empty_title')} body={t('stats_empty')} />}
+            {Array.isArray(rows) && rows.map((f) => <Numbers key={f.facilityId} f={f} />)}
+          </section>
+        </div>
       </div>
+      {dock}
     </main>
   );
 }

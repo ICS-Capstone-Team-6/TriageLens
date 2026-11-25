@@ -31,8 +31,8 @@ function useNow(ms = 30_000) {
 }
 
 function CallButton({ phone, name, primary }: { phone: string; name: string; primary?: boolean }) {
-  if (!phone) return <p className="small">{t('amb_no_phone', { name })}</p>;
-  return <a className={`btn ${primary ? 'btn-primary' : 'btn-secondary'}`} href={`tel:${phone}`}>{t('amb_call', { name })}</a>;
+  if (!phone) return <p className="t-small">{t('amb_no_phone', { name })}</p>;
+  return <a className={`btn ${primary ? 'btn-primary' : 'btn-ghost'}`} href={`tel:${phone}`}>{t('amb_call', { name })}</a>;
 }
 
 /** Sender side, on the slip and on a sent referral. */
@@ -75,24 +75,24 @@ export function AmbulancePanel({ referralId, toName, toPhone, deps }: { referral
 
   const open = req && isOpen(req);
   return (
-    <section className="panel" aria-labelledby="amb-h">
-      <h2 className="lead strong" id="amb-h">{t('amb_title')}</h2>
-      <p className="small">{t('amb_emergency')}</p>
+    <section className="cloud" aria-labelledby="amb-h">
+      <h2 className="t-title" id="amb-h">{t('amb_title')}</h2>
+      <p className="t-small">{t('amb_emergency')}</p>
       {/* The call always comes first (H18). */}
       <CallButton phone={toPhone} name={toName} primary />
 
       {req && req.status !== 'cancelled' && (
         <div className="amb-status" role="status" aria-live="polite">
-          <p className="strong">{t(`amb_status_${req.status}` as StringKey, { name: toName, eta: req.etaMinutes ?? '' })}</p>
-          {req.status === 'cannot_send' && req.answerNote && <p className="small">{req.answerNote}</p>}
-          {req.status === 'requested' && <p className="small">{t('amb_sent_ago', { m: minutesSince(req.createdAt, now) })}</p>}
-          {notSeenTooLong(req, now) && <p className="alert" role="alert">{t('amb_not_seen')}</p>}
+          <p className="t-strong">{t(`amb_status_${req.status}` as StringKey, { name: toName, eta: req.etaMinutes ?? '' })}</p>
+          {req.status === 'cannot_send' && req.answerNote && <p className="t-small">{req.answerNote}</p>}
+          {req.status === 'requested' && <p className="t-small">{t('amb_sent_ago', { m: minutesSince(req.createdAt, now) })}</p>}
+          {notSeenTooLong(req, now) && <p className="notice notice-danger" role="alert">{t('amb_not_seen')}</p>}
           {open && <button className="link" type="button" onClick={() => void cancel()}>{t('amb_cancel')}</button>}
         </div>
       )}
 
       {!open && !form && (
-        <button className="btn btn-secondary" type="button" onClick={() => { setForm(true); setState('idle'); }}>
+        <button className="btn btn-ghost" type="button" onClick={() => { setForm(true); setState('idle'); }}>
           {t('amb_ask', { name: toName })}
         </button>
       )}
@@ -100,9 +100,9 @@ export function AmbulancePanel({ referralId, toName, toPhone, deps }: { referral
       {form && !open && (
         <form className="stack" onSubmit={(e) => void send(e)}>
           <fieldset className="stack" style={{ border: 0, padding: 0, margin: 0 }}>
-            <legend className="strong" style={{ marginBottom: 8 }}>{t('amb_reason_q')}</legend>
+            <legend className="t-strong" style={{ marginBottom: 8 }}>{t('amb_reason_q')}</legend>
             {REASONS.map((r) => (
-              <label className="consent" key={r}>
+              <label className="choice" key={r}>
                 <input type="radio" name="amb-reason" checked={reason === r} onChange={() => setReason(r)} />
                 <span>{t(`amb_reason_${r}` as StringKey)}</span>
               </label>
@@ -110,13 +110,13 @@ export function AmbulancePanel({ referralId, toName, toPhone, deps }: { referral
           </fieldset>
           <label className="field">
             {reason === 'other' ? t('amb_note_required') : t('amb_note')}
-            <input value={note} onChange={(e) => setNote(e.target.value)} maxLength={300} />
+            <input className="input" value={note} onChange={(e) => setNote(e.target.value)} maxLength={300} />
           </label>
-          {reason && URGENT_REASONS.includes(reason) && <p className="alert" role="alert">{t('amb_urgent', { name: toName })}</p>}
-          {state === 'offline' && <p className="alert" role="alert">{t('amb_offline', { name: toName })}</p>}
-          {state === 'failed' && <p className="alert" role="alert">{t('amb_failed')}</p>}
-          {state === 'already_open' && <p className="alert" role="alert">{t('amb_already_open')}</p>}
-          <button className="btn btn-dark" type="submit" disabled={!reason || (reason === 'other' && !note.trim()) || state === 'sending'}>
+          {reason && URGENT_REASONS.includes(reason) && <p className="notice notice-danger" role="alert">{t('amb_urgent', { name: toName })}</p>}
+          {state === 'offline' && <p className="notice notice-danger" role="alert">{t('amb_offline', { name: toName })}</p>}
+          {state === 'failed' && <p className="notice notice-danger" role="alert">{t('amb_failed')}</p>}
+          {state === 'already_open' && <p className="notice notice-danger" role="alert">{t('amb_already_open')}</p>}
+          <button className="btn btn-primary" type="submit" disabled={!reason || (reason === 'other' && !note.trim()) || state === 'sending'}>
             {state === 'sending' ? t('amb_sending') : t('amb_send', { name: toName })}
           </button>
           <button className="link" type="button" onClick={() => setForm(false)}>{t('cancel')}</button>
@@ -166,19 +166,19 @@ export function AmbulanceQueue({ deps }: { deps: AmbulanceDeps }) {
   }
   return (
     <section className="stack" aria-labelledby="ambq-h">
-      <h2 className="lead strong" id="ambq-h">{t('amb_queue_title', { n: rows.length })}</h2>
+      <h2 className="t-title" id="ambq-h">{t('amb_queue_title', { n: rows.length })}</h2>
       {rows.map((a) => (
         <article className="amb-card" key={a.id}>
-          <p className="strong">{t(`amb_reason_${a.reason}` as StringKey)}</p>
-          {a.note && <p className="small">{a.note}</p>}
-          <p className="small">{t('amb_from', { name: a.fromName, code: formatCode(a.code, a.initials), m: minutesSince(a.createdAt, now) })}</p>
+          <p className="t-strong">{t(`amb_reason_${a.reason}` as StringKey)}</p>
+          {a.note && <p className="t-small">{a.note}</p>}
+          <p className="t-small">{t('amb_from', { name: a.fromName, code: formatCode(a.code, a.initials), m: minutesSince(a.createdAt, now) })}</p>
           <CallButton phone={a.fromPhone} name={a.fromName} />
           {a.status === 'requested' && (
-            <button className="btn btn-dark" type="button" disabled={busy === a.id} onClick={() => void answer(a, 'seen')}>{t('amb_mark_seen')}</button>
+            <button className="btn btn-primary" type="button" disabled={busy === a.id} onClick={() => void answer(a, 'seen')}>{t('amb_mark_seen')}</button>
           )}
           <label className="field">
             {t('amb_eta')}
-            <select value={eta[a.id] ?? ''} onChange={(e) => setEta((m) => ({ ...m, [a.id]: Number(e.target.value) || undefined }))}>
+            <select className="input" value={eta[a.id] ?? ''} onChange={(e) => setEta((m) => ({ ...m, [a.id]: Number(e.target.value) || undefined }))}>
               <option value="">{t('amb_eta_choose')}</option>
               {ETAS.map((m) => <option key={m} value={m}>{t('amb_eta_option', { m })}</option>)}
             </select>
@@ -188,9 +188,9 @@ export function AmbulanceQueue({ deps }: { deps: AmbulanceDeps }) {
             <div className="stack">
               <label className="field">
                 {t('amb_cannot_why')}
-                <input value={why[a.id] ?? ''} onChange={(e) => setWhy((m) => ({ ...m, [a.id]: e.target.value }))} maxLength={300} />
+                <input className="input" value={why[a.id] ?? ''} onChange={(e) => setWhy((m) => ({ ...m, [a.id]: e.target.value }))} maxLength={300} />
               </label>
-              <button className="btn btn-secondary" type="button" disabled={busy === a.id || !(why[a.id] ?? '').trim()} onClick={() => void answer(a, 'cannot_send')}>
+              <button className="btn btn-ghost" type="button" disabled={busy === a.id || !(why[a.id] ?? '').trim()} onClick={() => void answer(a, 'cannot_send')}>
                 {t('amb_cannot_send')}
               </button>
             </div>
@@ -225,7 +225,7 @@ export function AmbulanceAlert({ deps }: { deps: AmbulanceDeps }) {
     <div className="amb-alert" role="alert">
       {late.map((a) => (
         <p key={a.id}>
-          <span className="strong">{t('amb_alert', { name: a.toName, code: formatCode(a.code, a.initials) })}</span>{' '}
+          <span className="t-strong">{t('amb_alert', { name: a.toName, code: formatCode(a.code, a.initials) })}</span>{' '}
           {a.toPhone && <a className="amb-alert-call" href={`tel:${a.toPhone}`}>{t('amb_call', { name: a.toName })}</a>}
         </p>
       ))}

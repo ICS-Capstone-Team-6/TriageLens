@@ -1,7 +1,12 @@
-import { useRef } from 'react';
+// Camera-first home (canvas "1 Ready: camera first"). The phone's own camera opens from the
+// shutter; there is no live preview in this version (E8-07 is a Should), so the stage shows a
+// drawn film. Age band first (Hick: one row of choices); Under 15 turns the shutter off with a
+// note (H5). The shutter is the one large target (Fitts).
+import { useEffect, useRef, useState } from 'react';
 import type { AgeBand } from '../lib/records';
 import { t } from '../strings';
-import { Camera, Clock, Mark, Phone } from '../ui/icons';
+import { Film, ImageIcon, Info, Wifi, WifiOff } from '../ui/icons';
+import { Dock, type Tab } from '../ui/kit';
 
 const BANDS: AgeBand[] = ['15-24', '25-34', '35-44', '45-54', '55-64', '65+'];
 
@@ -12,83 +17,69 @@ interface Props {
   ready: boolean;
   modelReady: boolean;
   onMonitor: () => void;
-  onReferrals: (() => void) | null;
-  onFacility?: (() => void) | null;
   onSignOut: (() => void) | null;
   backendNote: boolean;
   demo?: boolean;
+  tabs: { id: Tab; href: string }[];
 }
 
-export function Home({ age, onAge, onFile, ready, modelReady, onMonitor, onReferrals, onFacility = null, onSignOut, backendNote, demo = false }: Props) {
+export function useOnline() {
+  const [on, setOn] = useState(typeof navigator === 'undefined' || navigator.onLine !== false);
+  useEffect(() => {
+    const up = () => setOn(true), down = () => setOn(false);
+    addEventListener('online', up); addEventListener('offline', down);
+    return () => { removeEventListener('online', up); removeEventListener('offline', down); };
+  }, []);
+  return on;
+}
+
+export function Home({ age, onAge, onFile, ready, modelReady, onMonitor, onSignOut, backendNote, tabs }: Props) {
   const camera = useRef<HTMLInputElement>(null);
   const upload = useRef<HTMLInputElement>(null);
-  const canStart = ready;
+  const online = useOnline();
+  const under = age === 'under15';
   const pick = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     e.target.value = '';
     if (f) onFile(f);
   };
+  const hint = !modelReady ? t('hint_loading') : under ? t('hint_under15') : age === null ? t('hint_age') : t('hint_ready');
 
   return (
-    <main className="screen">
-      <header className="bar">
-        <span className="brand"><Mark />{t('app_name')}</span>
-        <button className="link" type="button" onClick={onMonitor}>{t('monitor_link')}</button>
-        {onReferrals && <button className="link" type="button" onClick={onReferrals}>{t('referrals_link')}</button>}
-        {onFacility && <button className="link" type="button" onClick={onFacility}>{t('facility_link')}</button>}
-        {onSignOut && <button className="link" type="button" onClick={onSignOut}>{t('sign_out')}</button>}
+    <main className="cam">
+      <div className="cam-glow" aria-hidden="true" />
+
+      <header className="cam-top">
+        <h1 className="who">{t('app_name')}</h1>
+        <span className="net" role="status">{online ? <Wifi size={16} /> : <WifiOff size={16} />}{online ? t('online') : t('offline')}</span>
       </header>
+      <p className="cam-hint" role="status" aria-live="polite"><Info size={16} color="#2597d0" />{hint}</p>
+      <div className="cam-film" aria-hidden="true"><Film width={150} /></div>
 
-      <div className="stack">
-        <h1 className="h1">{t('home_title')}</h1>
-        <p className="lead">{t('home_body')}</p>
-      </div>
-
-      <fieldset className="choices">
-        <legend>{t('age_question')}</legend>
-        {BANDS.map((b) => (
-          <label className="choice" key={b}>
-            <input type="radio" name="age" value={b} checked={age === b} onChange={() => onAge(b)} />
-            <span>{b}</span>
-          </label>
-        ))}
-        <label className="choice" style={{ gridColumn: '1 / -1' }}>
-          <input type="radio" name="age" value="under15" checked={age === 'under15'} onChange={() => onAge('under15')} />
-          <span>{t('age_under_15')}</span>
-        </label>
-      </fieldset>
-
-      <section className="panel" aria-live="polite">
-        <div className="status">
-          <Phone />
-          <div>
-            <p className="status-title">{demo ? t('model_demo') : modelReady ? t('model_ready') : t('model_loading')}</p>
-            <p className="muted">{demo ? t('model_demo_body') : modelReady ? t('model_ready_body') : t('model_loading_body')}</p>
-          </div>
+      <div className="cam-lower">
+        {under && <p className="cam-note" role="alert"><b>{t('under15_title')}.</b> {t('under15_body')}</p>}
+        {backendNote && <p className="cam-note">{t('backend_missing')}</p>}
+        <p className="cam-use">{t('prototype_note')} {t('reminder')}</p>
+        <div className="ages" role="group" aria-label={t('age_question')}>
+          {BANDS.map((b) => (
+            <button key={b} type="button" aria-pressed={age === b} onClick={() => onAge(b)}>{b}</button>
+          ))}
+          <button type="button" aria-pressed={under} onClick={() => onAge('under15')}>{t('age_under_15')}</button>
         </div>
-        <div className="status">
-          <Clock />
-          <div>
-            <p className="status-title">{t('reminder')}</p>
-            <p className="muted">{t('prototype_note')}</p>
-          </div>
+        <div className="shoot-row">
+          <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+            <button className="link" type="button" onClick={onMonitor} style={{ color: '#fff', fontSize: 13, minHeight: 48 }}>{t('monitor_link')}</button>
+            {onSignOut && <button className="link" type="button" onClick={onSignOut} style={{ color: '#fff', fontSize: 13, minHeight: 48 }}>{t('sign_out')}</button>}
+          </span>
+          <button className="shutter" type="button" aria-label={t('take_photo')} disabled={!ready} onClick={() => camera.current?.click()} />
+          <button className="upload" type="button" aria-label={t('upload')} disabled={!ready} onClick={() => upload.current?.click()}>
+            <ImageIcon size={22} color="#ffffff" />
+          </button>
         </div>
-        {backendNote && <p className="muted">{t('backend_missing')}</p>}
-      </section>
-
-      <div className="spacer" />
-
-      <div className="stack">
-        {!canStart && modelReady && <p className="muted center">{t('choose_age_first')}</p>}
         <input ref={camera} className="file" type="file" accept="image/*" capture="environment" onChange={pick} tabIndex={-1} aria-hidden="true" />
         <input ref={upload} className="file" type="file" accept="image/*" onChange={pick} tabIndex={-1} aria-hidden="true" />
-        <button className="btn btn-primary" type="button" disabled={!canStart} onClick={() => camera.current?.click()}>
-          <Camera />{t('take_photo')}
-        </button>
-        <button className="btn btn-secondary" type="button" disabled={!canStart} onClick={() => upload.current?.click()}>
-          {t('upload')}
-        </button>
       </div>
+      <Dock current="screen" tabs={tabs} />
     </main>
   );
 }

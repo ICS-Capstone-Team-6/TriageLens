@@ -1,5 +1,6 @@
 // Referral numbers and the facility services editor (E10-09, adds to E10-02; ADR-28 section 6).
 // Counts only, no patient identifiers. Pure helpers are tested in stats.test.ts.
+import { parseBeds, type Beds } from './beds';
 import { supabase } from '../supabase';
 
 // Counts from 1 to 4 arrive as null from the server ("fewer than 5") so a small clinic's
@@ -29,12 +30,14 @@ export interface MyFacility {
   phone: string;
   services: string[];
   servicesConfirmedAt: string | null;
+  beds: Beds | null;
 }
 
 export interface FacilityDeps {
   role: () => Promise<string | null>;
   myFacility: () => Promise<MyFacility | null>;
   saveServices: (id: string, services: string[], phone: string) => Promise<MyFacility | null>;
+  saveBeds: (id: string, total: number, free: number) => Promise<Beds | null>;
   stats: (weeks: number) => Promise<FacilityStats[] | null>;
 }
 
@@ -77,6 +80,7 @@ function parseFacility(d: unknown): MyFacility | null {
     id: r.id, name: String(r.name ?? ''), phone: String(r.phone ?? ''),
     services: Array.isArray(r.services) ? r.services.filter((s): s is string => typeof s === 'string') : [],
     servicesConfirmedAt: typeof r.services_confirmed_at === 'string' ? r.services_confirmed_at : null,
+    beds: parseBeds(r),
   };
 }
 
@@ -95,6 +99,11 @@ export const realFacility: FacilityDeps = {
     if (!supabase) return null;
     const { data, error } = await supabase.rpc('update_facility_services', { p_facility_id: id, p_services: services, p_phone: phone });
     return error ? null : parseFacility(data);
+  },
+  async saveBeds(id, total, free) {
+    if (!supabase) return null;
+    const { data, error } = await supabase.rpc('update_facility_beds', { p_facility_id: id, p_beds_total: total, p_beds_free: free });
+    return error || !data ? null : parseBeds(data as Record<string, unknown>);
   },
   async stats(weeks) {
     if (!supabase) return null;

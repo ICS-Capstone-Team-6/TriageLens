@@ -1,45 +1,31 @@
-// Checking, retake, result and blocking screens. Result wording is the exact TRD 7.2 text
-// from strings/en.json; every result carries the reminder and the three versions (TRD 7.3, FR-12).
+// Checking, retake, result and blocking screens (canvas "2 Checking", "3a-3c Result",
+// "3d Retake"). Result wording is the exact TRD 7.2 text from strings/en.json; every result
+// carries the reminder and the three versions (TRD 7.3, FR-12). Zones: colour plus icon plus
+// words (H8), the one strongly coloured block on the screen (Von Restorff).
 import { useState } from 'react';
 import type { RetakeReason } from '../lib/quality';
 import { t, type StringKey } from '../strings';
-import { Back, Mark, Retake as RetakeIcon, XRay, ZoneIcon } from '../ui/icons';
-
-function Bar({ title, onBack }: { title: string; onBack: () => void }) {
-  return (
-    <header className="bar">
-      <button className="btn btn-round" type="button" aria-label={t('back')} onClick={onBack}><Back /></button>
-      <span className="bar-title">{title}</span>
-    </header>
-  );
-}
+import { ArrowUpRight, Film, Mark, Retake as RetakeIcon, ZoneIcon } from '../ui/icons';
+import { Facts, Foot, Notice, TopBar } from '../ui/kit';
 
 export function Checking({ step }: { step: 0 | 1 | 2 }) {
-  const rows: { key: StringKey; state: 'done' | 'open' | 'wait' }[] = [
-    { key: 'step_quality', state: step > 0 ? 'done' : 'open' },
-    { key: 'step_prepare', state: step > 1 ? 'done' : step === 1 ? 'open' : 'wait' },
-    { key: 'step_model', state: step === 2 ? 'open' : 'wait' },
-  ];
+  const keys: StringKey[] = ['step_quality', 'step_prepare', 'step_model'];
+  const pct = ['22%', '58%', '88%'][step];
   return (
-    <main className="screen">
-      <header className="bar"><span className="bar-title">{t('screening_header')}</span></header>
-      <div className="xray"><XRay /></div>
-      <div className="stack">
-        <h1 className="h1">{t('checking_title')}</h1>
-        <p className="muted">{t('checking_body')}</p>
+    <main className="cam">
+      <div className="cam-glow" aria-hidden="true" />
+      <header className="cam-top"><h1 className="who">{t('checking_title')}</h1></header>
+      <div className="cam-hint" role="status" aria-live="polite" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8, borderRadius: 18, minWidth: 250, padding: '12px 16px' }}>
+        <span key={step} className="pane">{t(keys[step])}</span>
+        <span className="progress"><i style={{ width: pct }} /></span>
       </div>
-      <ol className="steps" aria-live="polite">
-        {rows.map((r) => (
-          <li key={r.key}>
-            <span className={`step-name${r.state === 'open' ? ' strong' : ''}`}>
-              <span className={`dot${r.state === 'open' ? ' open' : r.state === 'wait' ? ' wait' : ''}`} aria-hidden="true" />
-              {t(r.key)}
-            </span>
-            <span className="small">{t(r.state === 'done' ? 'step_done' : r.state === 'open' ? 'step_working' : 'step_waiting')}</span>
-          </li>
-        ))}
-        <li aria-hidden="true" style={{ display: 'block' }}><div className="progress"><div /></div></li>
-      </ol>
+      <div className="cam-film" aria-hidden="true" style={{ filter: 'brightness(.85)' }}>
+        <Film width={150} />
+        <span className="scanline" />
+      </div>
+      <div className="cam-lower" style={{ paddingBottom: 48 }}>
+        <p className="cam-note">{t('checking_body')}</p>
+      </div>
     </main>
   );
 }
@@ -47,18 +33,19 @@ export function Checking({ step }: { step: 0 | 1 | 2 }) {
 export function Retake({ reason, onRetake, onCancel }: { reason: RetakeReason; onRetake: () => void; onCancel: () => void }) {
   return (
     <main className="screen">
-      <Bar title={t('screening_header')} onBack={onCancel} />
-      <section className="panel panel-big" role="alert" style={{ marginTop: 24 }}>
-        <RetakeIcon />
-        <h1 className="h1">{t(`retake_title_${reason}` as StringKey)}</h1>
-        <p className="lead">{t(`retake_body_${reason}` as StringKey)}</p>
-        <p className="muted">{t('retake_no_result')}</p>
-      </section>
-      <div className="spacer" />
-      <div className="stack">
-        <button className="btn btn-primary" type="button" onClick={onRetake}>{t('retake_button')}</button>
-        <button className="btn btn-secondary" type="button" onClick={onCancel}>{t('cancel')}</button>
+      <TopBar title={t('screening_header')} onBack={onCancel} />
+      <div className="body has-foot pane">
+        <span className="round" style={{ width: 56, height: 56 }} aria-hidden="true"><RetakeIcon size={26} /></span>
+        <div className="stack">
+          <h2 className="t-display" role="alert">{t(`retake_title_${reason}` as StringKey)}</h2>
+          <p style={{ fontSize: 17, lineHeight: 1.45, color: 'var(--ink)' }}>{t(`retake_body_${reason}` as StringKey)}</p>
+          <p className="t-small">{t('retake_no_result')}</p>
+        </div>
       </div>
+      <Foot remind={false}>
+        <button className="btn btn-primary btn-lg btn-full" type="button" onClick={onRetake}><RetakeIcon />{t('retake_button')}</button>
+        <button className="btn btn-ghost btn-full" type="button" onClick={onCancel}>{t('cancel')}</button>
+      </Foot>
     </main>
   );
 }
@@ -66,19 +53,23 @@ export function Retake({ reason, onRetake, onCancel }: { reason: RetakeReason; o
 export function ErrorScreen({ onBack }: { onBack: () => void }) {
   return (
     <main className="screen">
-      <Bar title={t('screening_header')} onBack={onBack} />
-      <section className="panel panel-big" role="alert" style={{ marginTop: 24 }}>
-        <h1 className="h1">{t('error_title')}</h1>
-        <p className="lead">{t('error_body')}</p>
-      </section>
-      <div className="spacer" />
-      <button className="btn btn-primary" type="button" onClick={onBack}>{t('done_new')}</button>
+      <TopBar title={t('screening_header')} onBack={onBack} />
+      <div className="body has-foot">
+        <div className="stack" role="alert">
+          <h2 className="t-display">{t('error_title')}</h2>
+          <p className="t-lead">{t('error_body')}</p>
+        </div>
+      </div>
+      <Foot remind={false}><button className="btn btn-primary btn-lg btn-full" type="button" onClick={onBack}>{t('done_new')}</button></Foot>
     </main>
   );
 }
 
 interface ResultProps {
   zone: 'refer_now' | 'unsure' | 'low_risk';
+  ageBand?: string;
+  /** Local case code (E8-06); null when the phone could not save the case; undefined hides it. */
+  caseCode?: string | null;
   versions: { model: string; thresholds: string; preprocess: string };
   saved: boolean | null;
   onDone: () => void;
@@ -91,47 +82,51 @@ interface ResultProps {
   devScore?: { probability: number; screenOut: number; refer: number };
 }
 
-export function Result({ zone, versions, saved, onDone, onRetake, onRefer, referBusy = false, devScore }: ResultProps) {
+export function Result({ zone, ageBand, caseCode, versions, saved, onDone, onRetake, onRefer, referBusy = false, devScore }: ResultProps) {
   const [referred, setReferred] = useState(false);
   const refer = () => (onRefer ? onRefer() : setReferred(true));
+  const word = t(`zone_${zone}` as StringKey);
   return (
-    <main className="screen">
-      <Bar title={t('result_header')} onBack={onDone} />
-      <section className={`zone zone-${zone}`} aria-labelledby="zone-name">
-        <div className="zone-head">
-          <ZoneIcon zone={zone} />
-          <h1 className="zone-name" id="zone-name">{t(`zone_${zone}` as StringKey)}</h1>
+    <main className="screen" style={{ background: 'var(--obsidian)' }}>
+      <div style={{ height: 'max(48px, env(safe-area-inset-top))' }} />
+      <section className="pane" style={{ flex: 1, background: '#fff', borderRadius: '32px 32px 0 0', display: 'flex', flexDirection: 'column' }} aria-labelledby="zone-name">
+        <div className={`zone-band zone-${zone}`}>
+          <span className="grab" aria-hidden="true" />
+          <h1 className="zone-name" id="zone-name"><ZoneIcon zone={zone} size={34} />{word}</h1>
+          <p className="zone-msg">{t(`message_${zone}` as StringKey)}</p>
+          {zone === 'low_risk' && <p style={{ fontSize: 16, fontWeight: 500 }}>{t('action_low_risk')}</p>}
         </div>
-        <p className="zone-message">{t(`message_${zone}` as StringKey)}</p>
-        {zone === 'low_risk' && <p className="lead strong">{t('action_low_risk')}</p>}
+        <div className="body has-foot" style={{ gap: 16 }}>
+          <Facts rows={[
+            [t('condition_tb'), <b key="z" style={{ fontWeight: 600 }}>{word}</b>],
+            [t('condition_pneumonia'), <span key="p" className="t-small">{t('not_checked')}</span>],
+            ...(ageBand ? [[t('age_band'), ageBand] as [string, string]] : []),
+            ...(caseCode ? [[t('case_label'), <span key="c" className="code">{caseCode}</span>] as [string, React.ReactNode]] : []),
+          ]} />
+          {devScore && (
+            <p className="t-cap num">{t('dev_score', { p: devScore.probability.toFixed(3), so: devScore.screenOut.toFixed(4), ref: devScore.refer.toFixed(3) })}</p>
+          )}
+          {referred && <Notice role="status">{t('refer_confirm')}</Notice>}
+          {caseCode === null && <Notice tone="warn" role="status">{t('result_case_failed')}</Notice>}
+          {saved !== null && <p className="t-small" role="status">{saved ? t('saved') : t('not_saved')}</p>}
+          <p className="t-cap">{t('versions', versions)}</p>
+        </div>
       </section>
-      <dl className="conditions">
-        <div><dt>{t('condition_tb')}</dt><dd>{t(`zone_${zone}` as StringKey)}</dd></div>
-        <div><dt className="muted">{t('condition_pneumonia')}</dt><dd className="off">{t('not_checked')}</dd></div>
-      </dl>
-      {devScore && (
-        <p className="dev-score num">
-          {t('dev_score', { p: devScore.probability.toFixed(3), so: devScore.screenOut.toFixed(4), ref: devScore.refer.toFixed(3) })}
-        </p>
-      )}
-      {referred && <p className="panel lead" role="status">{t('refer_confirm')}</p>}
-      <div className="spacer" />
-      <p className="lead strong center">{t('reminder')}</p>
-      {zone === 'unsure' ? (
-        <div className="row2">
-          <button className="btn btn-primary" type="button" onClick={onRetake}>{t('retake')}</button>
-          <button className="btn btn-dark" type="button" onClick={refer} disabled={referBusy}>{t('refer')}</button>
-        </div>
-      ) : zone === 'refer_now' && onRefer ? (
-        <div className="stack">
-          <button className="btn btn-primary" type="button" onClick={onRefer} disabled={referBusy}>{referBusy ? t('refer_saving') : t('refer_to_facility')}</button>
-          <button className="btn btn-secondary" type="button" onClick={onDone}>{t('done_new')}</button>
-        </div>
-      ) : (
-        <button className="btn btn-primary" type="button" onClick={onDone}>{t('done_new')}</button>
-      )}
-      {saved !== null && <p className="small center" role="status">{saved ? t('saved') : t('not_saved')}</p>}
-      <p className="versions">{t('versions', versions)}</p>
+      <Foot>
+        {zone === 'unsure' ? (
+          <div className="grid2">
+            <button className="btn btn-primary btn-lg" type="button" onClick={onRetake}><RetakeIcon />{t('retake')}</button>
+            <button className="btn btn-ghost btn-lg" type="button" onClick={refer} disabled={referBusy} style={{ background: '#fff' }}><ArrowUpRight />{t('refer')}</button>
+          </div>
+        ) : zone === 'refer_now' && onRefer ? (
+          <div className="grid2">
+            <button className="btn btn-primary btn-lg" type="button" onClick={onRefer} disabled={referBusy}><ArrowUpRight />{referBusy ? t('refer_saving') : t('refer')}</button>
+            <button className="btn btn-ghost btn-lg" type="button" onClick={onDone} style={{ background: '#fff' }}>{t('next_person')}</button>
+          </div>
+        ) : (
+          <button className="btn btn-primary btn-lg btn-full" type="button" onClick={onDone}>{t('next_person')}</button>
+        )}
+      </Foot>
     </main>
   );
 }
@@ -139,15 +134,15 @@ export function Result({ zone, versions, saved, onDone, onRetake, onRefer, refer
 export function Blocked({ title, body, action, onAction }: { title: string; body: string; action?: string; onAction?: () => void }) {
   return (
     <main className="screen">
-      <header className="bar brand"><Mark />{t('app_name')}</header>
-      <div className="spacer" />
-      <section className="panel panel-big" role="alert">
-        <h1 className="h1">{title}</h1>
-        <p className="lead">{body}</p>
-      </section>
-      <div className="spacer" />
-      {action && onAction && <button className="btn btn-primary" type="button" onClick={onAction}>{action}</button>}
-      <p className="small center">{t('reminder')} {t('prototype_note')}</p>
+      <header className="bar"><Mark /><span className="bar-title">{t('app_name')}</span></header>
+      <div className="body has-foot" style={{ justifyContent: 'center' }}>
+        <div className="cloud" role="alert" style={{ padding: 28 }}>
+          <h1 className="t-display">{title}</h1>
+          <p className="t-lead">{body}</p>
+        </div>
+        <p className="t-small">{t('prototype_note')}</p>
+      </div>
+      <Foot>{action && onAction && <button className="btn btn-primary btn-lg btn-full" type="button" onClick={onAction}>{action}</button>}</Foot>
     </main>
   );
 }

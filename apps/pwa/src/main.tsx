@@ -1,9 +1,7 @@
-import '@fontsource/manrope/500.css';
-import '@fontsource/manrope/600.css';
 import { StrictMode, type ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
-import './styles.css';
+import './ui/sky.css';
 
 const root = createRoot(document.getElementById('root')!);
 const render = (node: ReactNode) => root.render(<StrictMode>{node}</StrictMode>);

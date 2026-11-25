@@ -23,7 +23,7 @@ function serviceWorker(): Plugin {
     generateBundle(_options, bundle) {
       const sw = Object.values(bundle).find((c) => c.type === 'chunk' && c.name === 'sw');
       if (!sw || sw.type !== 'chunk') return this.error('service worker entry missing');
-      const pub = resolve(__dirname, 'public');
+      const pub = resolve(import.meta.dirname, 'public');
       const id = createHash('sha256');
       // Skipped: source maps; .woff (every target browser takes .woff2); the bundler's hashed
       // copy of the ONNX Runtime wasm, because the worker loads /ort/ (wasmPaths) and
@@ -58,7 +58,7 @@ export default defineConfig({
   build: {
     target: ['chrome90', 'safari16'],
     rollupOptions: {
-      input: { index: resolve(__dirname, 'index.html'), sw: resolve(__dirname, 'src/sw/sw.ts') },
+      input: { index: resolve(import.meta.dirname, 'index.html'), sw: resolve(import.meta.dirname, 'src/sw/sw.ts') },
       output: { entryFileNames: (c) => (c.name === 'sw' ? 'sw.js' : 'assets/[name]-[hash].js') },
     },
   },

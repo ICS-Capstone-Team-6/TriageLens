@@ -61,13 +61,14 @@ Every document in `docs/`, who owns it and how it changes.
 | [adr/0025-chest-xray-execution-and-distillation.md](adr/0025-chest-xray-execution-and-distillation.md) | ADR-25. Chest X-ray execution and two-teacher distillation (proposed) | Micheal | Living (supersede with a new ADR) |
 | [adr/0026-dr-data-aptos-eyepacs.md](adr/0026-dr-data-aptos-eyepacs.md) | ADR-26. DR training data: APTOS without patient IDs, EyePACS subsample, padded crop (proposed) | Kweku | Living (supersede with a new ADR) |
 | [adr/0027-calibration-v1-thresholds.md](adr/0027-calibration-v1-thresholds.md) | ADR-27. Thresholds v1: raw-scale cuts, temperature recorded, ECE target missed (proposed) | Chelsea | Living (supersede with a new ADR) |
+| [adr/0028-referral-routing-and-transfer.md](adr/0028-referral-routing-and-transfer.md) | ADR-28. Referral routing: nearest capable facility, case transfer, ambulance request (proposed) | Kweku | Living (supersede with a new ADR) |
 
 ## Safety and ethics
 
 | Document | Description | Owner | Update rule |
 |----------|-------------|-------|-------------|
 | [safety/intended-use.md](safety/intended-use.md) | One-page intended use and success metrics for sign-off (TRD 3.3, 3.4; E0-04) | Kweku | Frozen after sign-off; change by ADR |
-| [safety/hazard-log.md](safety/hazard-log.md) | Hazards H1 to H12 with status and evidence (TRD 12.2) | Kweku | Living |
+| [safety/hazard-log.md](safety/hazard-log.md) | Hazards H1 to H20 with status and evidence (TRD 12.2) | Kweku | Living |
 | [ethics/ethics-pathway.md](ethics/ethics-pathway.md) | Review route, protocol outline, submission checklist, timing (E12-01) | Kweku | Living |
 | [ethics/clinic-contacts.md](ethics/clinic-contacts.md) | Clinic contact log; roles only, no personal details (E12-01) | Kweku | Living |
 | [ethics/irb-checklist.md](ethics/irb-checklist.md) | Ethics pathway checklist (TRD 12.3) | Kweku | Living |

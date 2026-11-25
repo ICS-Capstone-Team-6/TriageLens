@@ -5,6 +5,7 @@ import type { CamForShare, DirectoryCache, ReferralDraft, SentReferral, ShareRes
 import { renderHeatmap } from '../lib/heatmap';
 import type { Screened } from '../inference/messages';
 import type { InboxDeps, KeyStatus, Outcome, ReferralDetail, Status } from '../lib/referral/inbox';
+import type { AmbulanceDeps, AmbulanceRequest } from '../lib/referral/ambulance';
 import type { Zone } from '../lib/triage';
 import type { Facility, OpeningHours } from '../lib/referral/match';
 import type { ReferralDeps } from '../screens/Referral';
@@ -173,4 +174,58 @@ export const demoInbox: InboxDeps = {
     return demoUnlocked;
   },
   async setUpKey() { return true; },
+};
+
+// Demo ambulance requests. One incoming request is already waiting; requests the demo
+// clinic sends are "seen" after 5 seconds and "dispatched" after 12, to show each state.
+const ambs: AmbulanceRequest[] = [];
+const minsAgo = (m: number) => new Date(Date.now() - m * 60_000).toISOString();
+function ambFor(refId: string, reason: AmbulanceRequest['reason'], note: string, createdAt: string, id: string = crypto.randomUUID()): AmbulanceRequest | null {
+  const r = store.find((x) => x.detail.referral.id === refId)?.detail.referral;
+  if (!r) return null;
+  return {
+    id, referralId: refId, code: r.code, initials: r.initials, reason, note, status: 'requested', etaMinutes: null, answerNote: '',
+    fromName: r.fromName, fromPhone: r.fromPhone, toName: r.toName, toPhone: r.toPhone, createdAt, seenAt: null, answeredAt: null,
+  };
+}
+const seeded = ambFor('demo-in-2', 'breathing_hard', '', minsAgo(12), 'demo-amb-in');
+if (seeded) ambs.push(seeded);
+
+export const demoAmbulance: AmbulanceDeps = {
+  async list(direction) {
+    await wait(120);
+    const mine = (a: AmbulanceRequest) => {
+      const r = store.find((x) => x.detail.referral.id === a.referralId)?.detail.referral;
+      return direction === 'sent' ? r?.fromFacility === DEMO_OWN_ID : r?.toFacility === DEMO_OWN_ID;
+    };
+    return ambs.filter(mine).map((a) => ({ ...a }));
+  },
+  async request(q) {
+    await wait(500);
+    if (!navigator.onLine) return { kind: 'offline' };
+    if (ambs.some((a) => a.referralId === q.referralId && (a.status === 'requested' || a.status === 'seen'))) return { kind: 'already_open' };
+    const a = ambFor(q.referralId, q.reason, q.note.trim(), new Date().toISOString(), q.id);
+    if (!a) return { kind: 'failed' };
+    ambs.push(a);
+    setTimeout(() => { if (a.status === 'requested') { a.status = 'seen'; a.seenAt = new Date().toISOString(); } }, 5_000);
+    setTimeout(() => { if (a.status === 'seen') { a.status = 'dispatched'; a.etaMinutes = 30; a.answeredAt = new Date().toISOString(); } }, 12_000);
+    return { kind: 'ok', request: { ...a } };
+  },
+  async answer(id, status, eta, note) {
+    await wait(300);
+    const a = ambs.find((x) => x.id === id);
+    if (!a) return null;
+    a.status = status;
+    a.seenAt = a.seenAt ?? new Date().toISOString();
+    if (status === 'dispatched') a.etaMinutes = eta ?? 30;
+    if (status === 'cannot_send') a.answerNote = note ?? '';
+    return { ...a };
+  },
+  async cancel(id) {
+    await wait(200);
+    const a = ambs.find((x) => x.id === id);
+    if (!a) return null;
+    a.status = 'cancelled';
+    return { ...a };
+  },
 };

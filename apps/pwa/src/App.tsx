@@ -17,6 +17,7 @@ import { Blocked, Checking, ErrorScreen, Retake, Result } from './screens/Flow';
 import { Referral, type ReferralDeps } from './screens/Referral';
 import { Inbox } from './screens/Inbox';
 import { realInbox, type InboxDeps } from './lib/referral/inbox';
+import { realAmbulance, type AmbulanceDeps } from './lib/referral/ambulance';
 import { canReceiveImages, loadDirectory, loadOwnFacilityId, sendReferral, shareImage, type CamForShare } from './lib/referral/api';
 import { computeCam, loadCamHead, normalizeCam, type CamHead } from './lib/heatmap';
 import { forgetKeys } from './lib/referral/keys';
@@ -41,6 +42,7 @@ export interface DemoHooks {
   banner: React.ReactNode;
   referral: ReferralDeps;
   inbox: InboxDeps;
+  ambulance: AmbulanceDeps;
   /** Demo only: a made-up heatmap so the receiving screen can be clicked through. */
   cam: (r: Screened) => CamForShare | null;
 }
@@ -155,7 +157,7 @@ export function App({ demo }: { demo?: DemoHooks }) {
   if (!demo && backendConfigured && signedIn === null) return null;
   if (!demo && backendConfigured && !signedIn) return <SignIn onSignIn={signIn} error={signInError} />;
   if (route === 'monitor') return <Monitor onBack={() => go('#/')} rows={demo ? [...demo.rows] : undefined} />;
-  if (route === 'referrals' && (demo || backendConfigured)) return <Inbox deps={demo ? demo.inbox : realInbox} onBack={() => go('#/')} />;
+  if (route === 'referrals' && (demo || backendConfigured)) return <Inbox deps={demo ? demo.inbox : realInbox} ambulance={demo ? demo.ambulance : realAmbulance} onBack={() => go('#/')} />;
 
   if (age === 'under15') {
     return <Blocked title={t('under15_title')} body={t('under15_body')} action={t('under15_back')} onAction={() => setAge(null)} />;
@@ -191,6 +193,7 @@ export function App({ demo }: { demo?: DemoHooks }) {
           image={view.result.image}
           cam={view.result.cam}
           deps={demo ? demo.referral : realReferral}
+          ambulance={demo ? demo.ambulance : realAmbulance}
           versions={t('versions', versionsNow())}
           onBack={() => setView(view.result)}
           onDone={() => end('done')}

@@ -8,6 +8,8 @@ import { distanceBand, distanceKm, matchFacilities, validPoint, type Facility, t
 import { RULES_V1, type ServiceTag, type Urgency } from '../lib/referral/rules';
 import { t, type StringKey } from '../strings';
 import { Back } from '../ui/icons';
+import { AmbulancePanel } from './Ambulance';
+import type { AmbulanceDeps } from '../lib/referral/ambulance';
 
 export interface ReferralDeps {
   loadDirectory: () => Promise<DirectoryCache | null>;
@@ -23,6 +25,7 @@ interface Props {
   image: Blob | null; // the screened image, kept in memory only; shared only with consent
   cam: CamForShare | null; // heatmap for the receiving clinician, when the model gives one
   deps: ReferralDeps;
+  ambulance: AmbulanceDeps;
   versions: string;
   onBack: () => void;
   onDone: () => void;
@@ -63,7 +66,7 @@ function FacilityCard({ o, selected, onSelect }: { o: Option; selected: boolean;
   );
 }
 
-export function Referral({ zone, caseId, image, cam, deps, versions, onBack, onDone }: Props) {
+export function Referral({ zone, caseId, image, cam, deps, ambulance, versions, onBack, onDone }: Props) {
   const [consent, setConsent] = useState(false);
   const [receives, setReceives] = useState<Record<string, boolean>>({});
   const [directory, setDirectory] = useState<DirectoryCache | null | 'loading'>('loading');
@@ -183,7 +186,7 @@ export function Referral({ zone, caseId, image, cam, deps, versions, onBack, onD
         {step.image === 'failed' && (
           <button className="btn btn-secondary" type="button" onClick={() => void share(step.sent, step.to)}>{t('image_retry')}</button>
         )}
-        {f.phone && <a className="link" href={`tel:${f.phone}`}>{t('call_facility', { phone: f.phone })}</a>}
+        <AmbulancePanel referralId={step.sent.id} toName={f.name} toPhone={f.phone} deps={ambulance} />
         <div className="spacer" />
         <p className="lead strong center">{t('reminder')}</p>
         <button className="btn btn-primary" type="button" onClick={onDone}>{t('done_new')}</button>

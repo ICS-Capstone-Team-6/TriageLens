@@ -7,6 +7,8 @@ import { nextActions, notArrived, OUTCOMES, type InboxDeps, type KeyStatus, type
 import { passphraseProblem } from '../lib/referral/crypto';
 import { t, type StringKey } from '../strings';
 import { Back } from '../ui/icons';
+import { AmbulancePanel, AmbulanceQueue } from './Ambulance';
+import type { AmbulanceDeps } from '../lib/referral/ambulance';
 
 type Tab = 'received' | 'sent';
 
@@ -25,8 +27,8 @@ function Bar({ title, onBack }: { title: string; onBack: () => void }) {
   );
 }
 
-function Detail({ d, ownFacility, deps, onBack, onChange }: {
-  d: ReferralDetail; ownFacility: 'sender' | 'receiver'; deps: InboxDeps; onBack: () => void; onChange: (d: ReferralDetail) => void;
+function Detail({ d, ownFacility, deps, ambulance, onBack, onChange }: {
+  d: ReferralDetail; ownFacility: 'sender' | 'receiver'; deps: InboxDeps; ambulance: AmbulanceDeps; onBack: () => void; onChange: (d: ReferralDetail) => void;
 }) {
   const r = d.referral;
   const [busy, setBusy] = useState(false);
@@ -117,7 +119,9 @@ function Detail({ d, ownFacility, deps, onBack, onChange }: {
         ))}
       </ol>
 
-      {(() => {
+      {ownFacility === 'sender' && r.status !== 'closed' ? (
+        <AmbulancePanel referralId={r.id} toName={r.toName} toPhone={r.toPhone} deps={ambulance} />
+      ) : (() => {
         // Each side can call the other facility.
         const phone = ownFacility === 'sender' ? r.toPhone : r.fromPhone;
         return phone ? <a className="link" href={`tel:${phone}`}>{t('call_facility', { phone })}</a> : null;
@@ -156,7 +160,7 @@ function Detail({ d, ownFacility, deps, onBack, onChange }: {
   );
 }
 
-export function Inbox({ deps, onBack }: { deps: InboxDeps; onBack: () => void }) {
+export function Inbox({ deps, ambulance, onBack }: { deps: InboxDeps; ambulance: AmbulanceDeps; onBack: () => void }) {
   const [tab, setTab] = useState<Tab>('received');
   const [rows, setRows] = useState<ReferralSummary[] | null | 'loading'>('loading');
   const [code, setCode] = useState('');
@@ -209,6 +213,7 @@ export function Inbox({ deps, onBack }: { deps: InboxDeps; onBack: () => void })
         d={open.d}
         ownFacility={open.as}
         deps={deps}
+        ambulance={ambulance}
         onBack={() => { setOpen(null); load(tab); }}
         onChange={(d) => setOpen({ d, as: open.as })}
       />
@@ -218,6 +223,7 @@ export function Inbox({ deps, onBack }: { deps: InboxDeps; onBack: () => void })
   return (
     <main className="screen">
       <Bar title={t('inbox_header')} onBack={onBack} />
+      <AmbulanceQueue deps={ambulance} />
       <fieldset className="choices" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
         <legend className="sr">{t('inbox_header')}</legend>
         {(['received', 'sent'] as const).map((x) => (

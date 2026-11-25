@@ -14,6 +14,79 @@ export type Database = {
   }
   public: {
     Tables: {
+      ambulance_requests: {
+        Row: {
+          answer_note: string
+          answered_at: string | null
+          answered_by: string | null
+          created_at: string
+          created_by: string
+          eta_minutes: number | null
+          from_facility: string
+          id: string
+          note: string
+          reason: string
+          referral_id: string
+          seen_at: string | null
+          status: string
+          to_facility: string
+        }
+        Insert: {
+          answer_note?: string
+          answered_at?: string | null
+          answered_by?: string | null
+          created_at?: string
+          created_by: string
+          eta_minutes?: number | null
+          from_facility: string
+          id: string
+          note?: string
+          reason: string
+          referral_id: string
+          seen_at?: string | null
+          status?: string
+          to_facility: string
+        }
+        Update: {
+          answer_note?: string
+          answered_at?: string | null
+          answered_by?: string | null
+          created_at?: string
+          created_by?: string
+          eta_minutes?: number | null
+          from_facility?: string
+          id?: string
+          note?: string
+          reason?: string
+          referral_id?: string
+          seen_at?: string | null
+          status?: string
+          to_facility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ambulance_requests_from_facility_fkey"
+            columns: ["from_facility"]
+            isOneToOne: false
+            referencedRelation: "facilities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ambulance_requests_referral_id_fkey"
+            columns: ["referral_id"]
+            isOneToOne: false
+            referencedRelation: "referrals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ambulance_requests_to_facility_fkey"
+            columns: ["to_facility"]
+            isOneToOne: false
+            referencedRelation: "facilities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_log: {
         Row: {
           action: string
@@ -432,7 +505,17 @@ export type Database = {
         }
         Returns: Json
       }
+      answer_ambulance: {
+        Args: {
+          p_eta?: number
+          p_id: string
+          p_note?: string
+          p_status: string
+        }
+        Returns: Json
+      }
       append_inference: { Args: { p_inference: Json }; Returns: Json }
+      cancel_ambulance: { Args: { p_id: string }; Returns: Json }
       confirm_image_upload: {
         Args: { p_id: string; p_keys: Json }
         Returns: Json
@@ -442,6 +525,10 @@ export type Database = {
       facility_public_keys: { Args: { p_ids: string[] }; Returns: Json }
       get_case: { Args: { p_case_id: string }; Returns: Json }
       get_referral: { Args: { p_id: string }; Returns: Json }
+      list_ambulance_requests: {
+        Args: { p_direction: string; p_limit?: number }
+        Returns: Json
+      }
       list_cases: {
         Args: { p_limit?: number; p_offset?: number }
         Returns: Json
@@ -455,6 +542,7 @@ export type Database = {
       open_referral_image: { Args: { p_id: string }; Returns: Json }
       own_facility_key: { Args: never; Returns: Json }
       referral_images_due_for_deletion: { Args: never; Returns: string[] }
+      request_ambulance: { Args: { p: Json }; Returns: Json }
       reset_facility_key: {
         Args: { p_facility_id: string }
         Returns: undefined

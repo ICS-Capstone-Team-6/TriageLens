@@ -269,6 +269,8 @@ export type Database = {
           id: string
           image_shared: boolean
           initials: string
+          outcome: string | null
+          outcome_at: string | null
           rules_version: string
           status: string
           to_facility: string
@@ -287,6 +289,8 @@ export type Database = {
           id: string
           image_shared?: boolean
           initials?: string
+          outcome?: string | null
+          outcome_at?: string | null
           rules_version: string
           status?: string
           to_facility: string
@@ -305,6 +309,8 @@ export type Database = {
           id?: string
           image_shared?: boolean
           initials?: string
+          outcome?: string | null
+          outcome_at?: string | null
           rules_version?: string
           status?: string
           to_facility?: string
@@ -340,9 +346,19 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      advance_referral: {
+        Args: {
+          p_id: string
+          p_note?: string
+          p_outcome?: string
+          p_status: string
+        }
+        Returns: Json
+      }
       append_inference: { Args: { p_inference: Json }; Returns: Json }
       create_referral: { Args: { p_referral: Json }; Returns: Json }
       get_case: { Args: { p_case_id: string }; Returns: Json }
+      get_referral: { Args: { p_id: string }; Returns: Json }
       list_cases: {
         Args: { p_limit?: number; p_offset?: number }
         Returns: Json
@@ -352,6 +368,7 @@ export type Database = {
         Args: { p_direction: string; p_limit?: number; p_offset?: number }
         Returns: Json
       }
+      lookup_referral: { Args: { p_code: string }; Returns: Json }
       save_case: { Args: { p_case: Json }; Returns: Json }
       update_facility_services: {
         Args: {

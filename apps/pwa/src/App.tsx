@@ -15,6 +15,8 @@ import { Home } from './screens/Home';
 import { SignIn } from './screens/SignIn';
 import { Blocked, Checking, ErrorScreen, Retake, Result } from './screens/Flow';
 import { Referral, type ReferralDeps } from './screens/Referral';
+import { Inbox } from './screens/Inbox';
+import { realInbox, type InboxDeps } from './lib/referral/inbox';
 import { loadDirectory, loadOwnFacilityId, sendReferral } from './lib/referral/api';
 import { t } from './strings';
 
@@ -35,6 +37,11 @@ export interface DemoHooks {
   rows: InferenceRow[];
   banner: React.ReactNode;
   referral: ReferralDeps;
+  inbox: InboxDeps;
+}
+
+function routeOf(hash: string): 'monitor' | 'referrals' | 'app' {
+  return hash === '#/monitor' ? 'monitor' : hash === '#/referrals' ? 'referrals' : 'app';
 }
 
 const realReferral: ReferralDeps = { loadDirectory, ownFacilityId: loadOwnFacilityId, send: sendReferral };
@@ -43,7 +50,7 @@ const MODEL_URL = (import.meta.env.VITE_MODEL_URL as string | undefined) ?? '';
 const MODEL_SHA256 = (import.meta.env.VITE_MODEL_SHA256 as string | undefined) ?? '';
 
 export function App({ demo }: { demo?: DemoHooks }) {
-  const [route, setRoute] = useState(location.hash === '#/monitor' ? 'monitor' : 'app');
+  const [route, setRoute] = useState(routeOf(location.hash));
   const [signedIn, setSignedIn] = useState<boolean | null>(backendConfigured && !demo ? null : false);
   const [signInError, setSignInError] = useState<string | null>(null);
   const [thresholds, setThresholds] = useState<ThresholdsState | null>(null);
@@ -53,7 +60,7 @@ export function App({ demo }: { demo?: DemoHooks }) {
   const client = useRef<Pick<DemoHooks['client'], 'screen'> | null>(null);
 
   useEffect(() => {
-    const onHash = () => setRoute(location.hash === '#/monitor' ? 'monitor' : 'app');
+    const onHash = () => setRoute(routeOf(location.hash));
     addEventListener('hashchange', onHash);
     return () => removeEventListener('hashchange', onHash);
   }, []);
@@ -129,6 +136,7 @@ export function App({ demo }: { demo?: DemoHooks }) {
   if (!demo && backendConfigured && signedIn === null) return null;
   if (!demo && backendConfigured && !signedIn) return <SignIn onSignIn={signIn} error={signInError} />;
   if (route === 'monitor') return <Monitor onBack={() => go('#/')} rows={demo ? [...demo.rows] : undefined} />;
+  if (route === 'referrals' && (demo || backendConfigured)) return <Inbox deps={demo ? demo.inbox : realInbox} onBack={() => go('#/')} />;
 
   if (age === 'under15') {
     return <Blocked title={t('under15_title')} body={t('under15_body')} action={t('under15_back')} onAction={() => setAge(null)} />;
@@ -194,6 +202,7 @@ export function App({ demo }: { demo?: DemoHooks }) {
           ready={canScreen(typeof model === 'object', Boolean(thresholds?.ok), age)}
           modelReady={typeof model === 'object'}
           onMonitor={() => go('#/monitor')}
+          onReferrals={demo || backendConfigured ? () => go('#/referrals') : null}
           onSignOut={supabase && !demo ? () => void supabase!.auth.signOut() : null}
           backendNote={!backendConfigured && !demo}
           demo={Boolean(demo)}

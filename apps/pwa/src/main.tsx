@@ -25,6 +25,7 @@ if (import.meta.env.DEV && params.has('preview')) {
           rows: d.demoRows,
           banner: <DemoBar />,
           referral: r.demoReferral,
+          inbox: r.demoInbox,
         }}
       />,
     ),

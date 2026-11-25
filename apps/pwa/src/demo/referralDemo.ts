@@ -2,6 +2,8 @@
 // supabase/seed.sql so the referral screens can be clicked through with no backend.
 // Nothing is sent anywhere; the code is made up on the phone.
 import type { DirectoryCache, ReferralDraft, SentReferral } from '../lib/referral/api';
+import type { InboxDeps, Outcome, ReferralDetail, Status } from '../lib/referral/inbox';
+import type { Zone } from '../lib/triage';
 import type { Facility, OpeningHours } from '../lib/referral/match';
 import type { ReferralDeps } from '../screens/Referral';
 
@@ -42,6 +44,87 @@ export const demoReferral: ReferralDeps = {
   async ownFacilityId() { return DEMO_OWN_ID; },
   async send(d: ReferralDraft): Promise<SentReferral> {
     await wait(600);
-    return { id: d.id, code: demoCode(d.initials), initials: d.initials, expiresAt: new Date(Date.now() + 60 * day).toISOString() };
+    const to = DEMO_FACILITIES.find((f) => f.id === d.toFacility);
+    const sent = { id: d.id, code: demoCode(d.initials), initials: d.initials, expiresAt: new Date(Date.now() + 60 * day).toISOString() };
+    store.push(rec(sent.id, sent.code, d.initials, DEMO_OWN_ID, to?.id ?? '', 'created', 0, d.urgency ?? null, 'refer_now'));
+    return sent;
+  },
+};
+
+// In-memory referrals for the demo inbox. FAKE people: initials only, made-up symptoms.
+interface DemoRec {
+  detail: ReferralDetail;
+}
+const store: DemoRec[] = [];
+const fac = (id: string) => DEMO_FACILITIES.find((f) => f.id === id);
+
+function rec(id: string, code: string, initials: string, from: string, to: string, status: Status, daysAgo: number,
+  urgency: string | null, zone: Zone, symptoms: string[] = []): DemoRec {
+  const at = ago(daysAgo);
+  const events: ReferralDetail['events'] = [{ status: 'created', note: '', at }];
+  if (status !== 'created') events.push({ status: 'seen', note: '', at });
+  return {
+    detail: {
+      referral: {
+        id, code, initials, status, outcome: null, fromFacility: from, fromName: fac(from)?.name ?? '', toFacility: to,
+        toName: fac(to)?.name ?? '', conditions: ['tb'], urgency, createdAt: at, expiresAt: ago(daysAgo - 60),
+        fromPhone: fac(from)?.phone ?? '', toPhone: fac(to)?.phone ?? '',
+      },
+      ageBand: '35-44', sex: null, symptoms,
+      results: [{ zone, modelVersion: 'demo-stand-in', thresholdsVersion: 'demo-only', createdAt: at }],
+      events,
+    },
+  };
+}
+
+store.push(
+  rec('demo-in-1', 'EAB7QM4X', 'EAB', 'demo-koforidua', DEMO_OWN_ID, 'created', 1, 'days', 'refer_now', ['cough_2_weeks', 'night_sweats']),
+  rec('demo-in-2', 'YK3HP9TZ', 'YK', 'demo-kumasi', DEMO_OWN_ID, 'seen', 3, 'days', 'unsure', ['weight_loss']),
+  rec('demo-out-1', 'AO9RW2LC', 'AO', DEMO_OWN_ID, 'demo-accra', 'seen', 9, 'days', 'refer_now'),
+);
+
+let failures = 0;
+const clone = (d: ReferralDetail): ReferralDetail => JSON.parse(JSON.stringify(d)) as ReferralDetail;
+const RANK: Status[] = ['created', 'seen', 'arrived', 'tested', 'closed'];
+
+function markSeen(r: DemoRec) {
+  if (r.detail.referral.status === 'created') {
+    r.detail.referral.status = 'seen';
+    r.detail.events.push({ status: 'seen', note: '', at: new Date().toISOString() });
+  }
+}
+
+export const demoInbox: InboxDeps = {
+  async list(direction) {
+    await wait(150);
+    return store
+      .filter((r) => (direction === 'sent' ? r.detail.referral.fromFacility : r.detail.referral.toFacility) === DEMO_OWN_ID)
+      .map((r) => clone(r.detail).referral)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  },
+  async lookup(code) {
+    await wait(300);
+    if (failures >= 10) return 'locked';
+    const c = code.toUpperCase().replace(/[\s-]/g, '');
+    const r = store.find((x) => x.detail.referral.code === c && x.detail.referral.toFacility === DEMO_OWN_ID);
+    if (!r) { failures += 1; return null; }
+    markSeen(r);
+    return clone(r.detail);
+  },
+  async open(id) {
+    await wait(150);
+    const r = store.find((x) => x.detail.referral.id === id);
+    if (!r) return null;
+    if (r.detail.referral.toFacility === DEMO_OWN_ID) markSeen(r);
+    return clone(r.detail);
+  },
+  async advance(id, status, outcome?: Outcome, note?: string) {
+    await wait(300);
+    const r = store.find((x) => x.detail.referral.id === id && x.detail.referral.toFacility === DEMO_OWN_ID);
+    if (!r || RANK.indexOf(status) <= RANK.indexOf(r.detail.referral.status)) return r ? clone(r.detail) : null;
+    r.detail.referral.status = status;
+    if (outcome) r.detail.referral.outcome = outcome;
+    r.detail.events.push({ status, note: note ?? '', at: new Date().toISOString() });
+    return clone(r.detail);
   },
 };

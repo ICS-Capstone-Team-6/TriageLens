@@ -103,6 +103,14 @@ The team chose (25 Nov 2026) to start the referral code with the person's initia
 - With consent, the image is encrypted on the phone (ADR-7) and uploaded to a private storage bucket when there is signal. Only the sending and receiving facility can read it under storage policies, and every read writes an audit row (FR-17). It is deleted 60 days after the referral closes.
 - Without consent, the referral still goes with results only (ADR-22). The facility sees "Image not shared".
 
+**As built (25 Nov 2026, E10-07):**
+
+- Only the image is shared. The app does not compute a heatmap yet (ADR-9 not built).
+- The image is protected in transit by HTTPS and stored in a private bucket. It is not end-to-end encrypted to the receiving facility; that would need key exchange between facilities.
+- Before upload the app re-encodes the image as a smaller JPEG (longest side 1600 px, at most 2 MB). This also removes file metadata such as GPS location.
+- The database enforces the rules: upload only after consent, read only by the two facilities and only within 5 minutes of a logged view, no change or delete through the API, and no reads 60 days after closing.
+- The scheduled job that deletes files 60 days after closing is **not built yet**. The database lists the files due (`referral_images_due_for_deletion`). Owner: Nana Yaw.
+
 ### 5. Ambulance request (E10-08)
 
 **The app never decides that someone needs an ambulance.** The health worker decides.

@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { SERVICE_TAGS } from '../lib/referral/rules';
 import { share, type Count, type FacilityDeps, type FacilityStats, type MyFacility } from '../lib/referral/stats';
 import { t, type StringKey } from '../strings';
-import { Back } from '../ui/icons';
+import { Notice, TopBar } from '../ui/kit';
 
 const WEEKS = 8;
 
@@ -30,8 +30,8 @@ function Numbers({ f }: { f: FacilityStats }) {
   const amb = share(sum.ambSeen10min, sum.ambRequests);
   return (
     <section className="card" aria-label={f.facilityName}>
-      <h2>{f.facilityName}</h2>
-      <dl className="kv">
+      <h3 className="t-sub">{f.facilityName}</h3>
+      <dl className="facts">
         <div><dt>{t('stats_sent')}</dt><dd className="num">{c(sum.sent)}</dd></div>
         <div><dt>{t('stats_arrived')}</dt><dd className="num">{arrived.text || c(sum.arrived)}</dd></div>
         <div><dt>{t('stats_confirmed')}</dt><dd className="num">{confirmed.text || c(sum.confirmed)}</dd></div>
@@ -54,13 +54,14 @@ function Numbers({ f }: { f: FacilityStats }) {
   );
 }
 
-export function Facility({ deps, onBack }: { deps: FacilityDeps; onBack: () => void }) {
+export function Facility({ deps, dock }: { deps: FacilityDeps; onBack?: () => void; dock?: React.ReactNode }) {
   const [role, setRole] = useState<string | null | 'loading'>('loading');
   const [fac, setFac] = useState<MyFacility | null>(null);
   const [services, setServices] = useState<string[]>([]);
   const [phone, setPhone] = useState('');
   const [save, setSave] = useState<'idle' | 'busy' | 'saved' | 'failed'>('idle');
   const [rows, setRows] = useState<FacilityStats[] | null | 'loading'>('loading');
+  const beds: React.ReactNode = null; // bed manager (beds phase)
 
   useEffect(() => {
     void deps.role().then(async (r) => {
@@ -82,53 +83,51 @@ export function Facility({ deps, onBack }: { deps: FacilityDeps; onBack: () => v
     if (next) { setFac(next); setSave('saved'); } else setSave('failed');
   }
 
-  const bar = (
-    <header className="bar">
-      <button className="btn btn-round" type="button" aria-label={t('back')} onClick={onBack}><Back /></button>
-      <span className="bar-title">{t('facility_header')}</span>
-    </header>
-  );
-  if (role === 'loading') return <main className="screen">{bar}<p className="muted" role="status">{t('inbox_loading')}</p></main>;
+  const title = fac?.name ?? t('facility_header');
+  if (role === 'loading') return <main className="screen"><TopBar title={t('facility_header')} big /><div className="body"><p className="t-small" role="status">{t('inbox_loading')}</p></div>{dock}</main>;
   if (role !== 'admin' && role !== 'maintainer') {
-    return <main className="screen">{bar}<p className="alert" role="alert">{t('facility_admins_only')}</p></main>;
+    return <main className="screen"><TopBar title={t('facility_header')} big /><div className="body"><Notice tone="danger" role="alert">{t('facility_admins_only')}</Notice></div>{dock}</main>;
   }
   const confirmed = daysAgo(fac?.servicesConfirmedAt ?? null);
   return (
     <main className="screen">
-      {bar}
-      {fac && (
-        <form className="panel" onSubmit={(e) => void onSave(e)}>
-          <h1 className="h1">{fac.name}</h1>
-          <p className={confirmed === null || confirmed > 90 ? 'alert' : 'small'}>
-            {confirmed === null ? t('facility_never_confirmed') : t('facility_confirmed_ago', { days: confirmed })}
-          </p>
-          <fieldset className="stack" style={{ border: 0, padding: 0, margin: 0 }}>
-            <legend className="lead strong" style={{ marginBottom: 8 }}>{t('facility_services_q')}</legend>
-            {SERVICE_TAGS.map((s) => (
-              <label className="consent" key={s}>
-                <input type="checkbox" checked={services.includes(s)}
-                  onChange={(e) => { setSave('idle'); setServices((v) => (e.target.checked ? [...v, s] : v.filter((x) => x !== s))); }} />
-                <span>{t(`service_${s}` as StringKey)}</span>
+      <TopBar title={title} big />
+      <div className="body has-dock pane">
+        <div className="wide">
+          {fac && (
+            <form className="stack sticky" style={{ gap: 20 }} onSubmit={(e) => void onSave(e)}>
+              {(confirmed === null || confirmed > 90)
+                ? <Notice tone="warn">{confirmed === null ? t('facility_never_confirmed') : t('facility_last_checked', { days: confirmed })}</Notice>
+                : <p className="t-small">{t('facility_last_checked', { days: confirmed })}</p>}
+              {beds}
+              <fieldset style={{ border: 0, padding: 0, margin: 0 }}>
+                <legend className="t-title" style={{ marginBottom: 6 }}>{t('facility_services_today')}</legend>
+                {SERVICE_TAGS.map((x) => (
+                  <label className="toggle" key={x}>
+                    {t(`service_${x}` as StringKey).replace(/^./, (m) => m.toUpperCase())}
+                    <input type="checkbox" role="switch" checked={services.includes(x)}
+                      onChange={(e) => { setSave('idle'); setServices((v) => (e.target.checked ? [...v, x] : v.filter((y) => y !== x))); }} />
+                  </label>
+                ))}
+              </fieldset>
+              <label className="field">{t('facility_phone')}
+                <input className="input num" value={phone} onChange={(e) => { setSave('idle'); setPhone(e.target.value); }} inputMode="tel" maxLength={32} />
               </label>
-            ))}
-          </fieldset>
-          <label className="field">
-            {t('facility_phone')}
-            <input value={phone} onChange={(e) => { setSave('idle'); setPhone(e.target.value); }} inputMode="tel" maxLength={32} />
-          </label>
-          {save === 'saved' && <p className="small" role="status">{t('facility_saved')}</p>}
-          {save === 'failed' && <p className="alert" role="alert">{t('facility_save_failed')}</p>}
-          <button className="btn btn-dark" type="submit" disabled={save === 'busy'}>{t('facility_save')}</button>
-        </form>
-      )}
-
-      <div className="stack">
-        <h2 className="lead strong">{t('stats_title', { weeks: WEEKS })}</h2>
-        <p className="small">{t('stats_note')}</p>
-        {rows === 'loading' && <p className="muted" role="status">{t('inbox_loading')}</p>}
-        {rows === null && <p className="alert" role="alert">{t('inbox_offline')}</p>}
-        {Array.isArray(rows) && rows.map((f) => <Numbers key={f.facilityId} f={f} />)}
+              <button className="btn btn-primary btn-full" type="submit" disabled={save === 'busy'}>{t('facility_save')}</button>
+              {save === 'saved' && <p className="t-small" role="status" style={{ color: 'var(--ink)' }}>{t('facility_saved')}</p>}
+              {save === 'failed' && <Notice tone="danger" role="alert">{t('facility_save_failed')}</Notice>}
+            </form>
+          )}
+          <section className="stack" aria-labelledby="nums">
+            <h2 className="t-title" id="nums">{t('stats_title', { weeks: WEEKS })}</h2>
+            <p className="t-small">{t('stats_note')}</p>
+            {rows === 'loading' && <p className="t-small" role="status">{t('inbox_loading')}</p>}
+            {rows === null && <Notice tone="danger" role="alert">{t('inbox_offline')}</Notice>}
+            {Array.isArray(rows) && rows.map((f) => <Numbers key={f.facilityId} f={f} />)}
+          </section>
+        </div>
       </div>
+      {dock}
     </main>
   );
 }

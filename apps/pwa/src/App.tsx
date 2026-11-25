@@ -26,6 +26,7 @@ import { computeCam, loadCamHead, normalizeCam, type CamHead } from './lib/heatm
 import { forgetKeys } from './lib/referral/keys';
 import type { Screened as ScreenedMsg } from './inference/messages';
 import { t } from './strings';
+import { Dock, type Tab } from './ui/kit';
 
 type View =
   | { name: 'home' }
@@ -157,6 +158,13 @@ export function App({ demo }: { demo?: DemoHooks }) {
     setView((v) => (v.name === 'result' ? { ...v, saved } : v));
   }
 
+  // Dock tabs: everyone screens; referrals and the map need the backend (or the demo);
+  // the facility page is for admins and maintainers.
+  const tabs: { id: Tab; href: string }[] = [
+    { id: 'screen', href: '#/' },
+    ...(demo || backendConfigured ? [{ id: 'referrals' as Tab, href: '#/referrals' }, { id: 'map' as Tab, href: '#/map' }] : []),
+    ...(isAdmin ? [{ id: 'facility' as Tab, href: '#/facility' }] : []),
+  ];
   const amb: AmbulanceDeps | null = ambulanceEnabled(Boolean(demo)) ? (demo ? demo.ambulance : realAmbulance) : null;
   const screenEl = renderScreen();
   const alert = amb && (demo || signedIn) ? <AmbulanceAlert deps={amb} /> : null;
@@ -168,12 +176,9 @@ export function App({ demo }: { demo?: DemoHooks }) {
   if (!demo && backendConfigured && signedIn === null) return null;
   if (!demo && backendConfigured && !signedIn) return <SignIn onSignIn={signIn} error={signInError} />;
   if (route === 'monitor') return <Monitor onBack={() => go('#/')} rows={demo ? [...demo.rows] : undefined} />;
-  if (route === 'facility' && (demo || backendConfigured)) return <Facility deps={demo ? demo.facility : realFacility} onBack={() => go('#/')} />;
-  if (route === 'referrals' && (demo || backendConfigured)) return <Inbox deps={demo ? demo.inbox : realInbox} ambulance={amb} onBack={() => go('#/')} />;
+  if (route === 'facility' && (demo || backendConfigured)) return <Facility deps={demo ? demo.facility : realFacility} onBack={() => go('#/')} dock={<Dock current="facility" tabs={tabs} />} />;
+  if (route === 'referrals' && (demo || backendConfigured)) return <Inbox deps={demo ? demo.inbox : realInbox} ambulance={amb} onBack={() => go('#/')} dock={<Dock current="referrals" tabs={tabs} />} />;
 
-  if (age === 'under15') {
-    return <Blocked title={t('under15_title')} body={t('under15_body')} action={t('under15_back')} onAction={() => setAge(null)} />;
-  }
   if (thresholds && !thresholds.ok) {
     const body = thresholds.reason === 'pending' ? t('not_ready_pending') : t('not_ready_invalid');
     return <Blocked title={t('not_ready_title')} body={body} />;
@@ -219,6 +224,7 @@ export function App({ demo }: { demo?: DemoHooks }) {
       return (
         <Result
           zone={view.zone}
+          ageBand={age && age !== 'under15' ? age : undefined}
           saved={backendConfigured ? view.saved : null}
           versions={versionsNow()}
           devScore={import.meta.env.DEV && thresholds?.ok && view.probability != null ? { probability: view.probability, screenOut: thresholds.thresholds.screenOut, refer: thresholds.thresholds.refer } : undefined}
@@ -240,8 +246,7 @@ export function App({ demo }: { demo?: DemoHooks }) {
           ready={canScreen(typeof model === 'object', Boolean(thresholds?.ok), age)}
           modelReady={typeof model === 'object'}
           onMonitor={() => go('#/monitor')}
-          onReferrals={demo || backendConfigured ? () => go('#/referrals') : null}
-          onFacility={isAdmin ? () => go('#/facility') : null}
+          tabs={tabs}
           onSignOut={supabase && !demo ? () => { void forgetKeys(); void supabase!.auth.signOut(); } : null}
           backendNote={!backendConfigured && !demo}
           demo={Boolean(demo)}

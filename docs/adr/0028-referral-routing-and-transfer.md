@@ -148,6 +148,8 @@ The team chose (25 Nov 2026) to start the referral code with the person's initia
 
 **Admin (E10-02):** counts per week and facility: referred, arrived, tested, confirmed, and ambulance requests answered within 10 minutes. No patient identifiers.
 
+**As built (25 Nov 2026, E10-09):** the Referrals page is the sending and receiving dashboard: ambulance queue on top, the received inbox with code lookup, and the sent follow-up list. The Facility page (admins) has the services editor and the weekly numbers above. Counts only, no patient identifiers.
+
 ### Stories (estimates)
 
 - **E10-06**, facility directory, rules table and matching: 5 points

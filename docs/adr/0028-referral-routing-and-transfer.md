@@ -128,6 +128,8 @@ The team chose (25 Nov 2026) to start the referral code with the person's initia
 - The request, the receiver queue, the call-first layout, the refusal when offline and the 10-minute "call them" alert work as described above. The reasons are: cannot walk or stand, struggling to breathe, very weak or very ill, confused or hard to wake, or other (a note is required).
 - **Notifications.** The receiving facility sees requests while the app is open: it checks every 15 seconds and shows a phone notification if staff allowed them. **Push to a closed app is not built.** It needs a push service (Web Push with VAPID keys, or Firebase) and a small server function to send it. Until then, the call button is the reliable path, and the wording says so.
 
+**Safety review (25 Nov 2026):** the ambulance request is **off in real builds** (`VITE_FEATURE_AMBULANCE`) until this ADR is accepted and `docs/safety/intended-use.md` says the app can help arrange transport the worker has decided on. It stays on in the dev demo. The 10-minute alert shows on every screen while signed in.
+
 ### 6. Dashboards (E10-09, adds to E10-02)
 
 **Sending facility:**

@@ -21,9 +21,9 @@ export interface SaveInput {
   totalMs: number;
 }
 
-export async function saveScreening(s: SaveInput): Promise<boolean> {
+/** `caseId` is chosen by the caller so a referral can point at the same case (E10-03). */
+export async function saveScreening(s: SaveInput, caseId: string = crypto.randomUUID()): Promise<boolean> {
   if (!supabase) return false;
-  const caseId = crypto.randomUUID();
   const { error: caseError } = await supabase.rpc('save_case', {
     p_case: { id: caseId, age_band: s.ageBand, status: 'open', notes: 'M2 slice screening', client_version: 1 },
   });

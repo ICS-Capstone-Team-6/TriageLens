@@ -183,3 +183,17 @@ td { padding: 10px 8px; }
 
 /* development-only score line on the result screen (src/screens/Flow.tsx) */
 .dev-score { background: var(--panel); border-radius: 16px; padding: 12px 16px; font-size: 14px; line-height: 1.45; color: var(--ink); }
+
+/* referral: facility cards are a radio group; the whole card is the target (Fitts) */
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.facs { border: 0; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
+.fac { position: relative; display: flex; flex-direction: column; gap: 4px; padding: 16px 18px; border-radius: var(--radius-card); background: var(--panel); border: 2px solid transparent; cursor: pointer; transition: border-color 160ms ease-out; }
+.fac input { position: absolute; opacity: 0; inset: 0; margin: 0; cursor: pointer; }
+.fac-on { border-color: var(--ink); background: var(--ground); }
+.fac:has(input:focus-visible) { outline: 3px solid var(--action); outline-offset: 3px; }
+.fac-head { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+.fac-head .small { white-space: nowrap; }
+.fac-name { font-size: 17px; font-weight: 600; }
+.fac-call { position: relative; z-index: 1; align-self: flex-start; }
+.slip-code { font-size: 40px; line-height: 1.1; font-weight: 600; letter-spacing: 2px; overflow-wrap: anywhere; }
+@media (prefers-reduced-motion: reduce) { .fac { transition: none; } }

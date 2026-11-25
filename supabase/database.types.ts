@@ -221,18 +221,137 @@ export type Database = {
           },
         ]
       }
+      referral_events: {
+        Row: {
+          actor: string | null
+          id: string
+          note: string
+          occurred_at: string
+          referral_id: string
+          status: string
+        }
+        Insert: {
+          actor?: string | null
+          id?: string
+          note?: string
+          occurred_at?: string
+          referral_id: string
+          status: string
+        }
+        Update: {
+          actor?: string | null
+          id?: string
+          note?: string
+          occurred_at?: string
+          referral_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referral_events_referral_id_fkey"
+            columns: ["referral_id"]
+            isOneToOne: false
+            referencedRelation: "referrals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      referrals: {
+        Row: {
+          case_id: string
+          code: string
+          conditions: string[]
+          created_at: string
+          created_by: string
+          distance_band: string | null
+          expires_at: string
+          from_facility: string
+          id: string
+          image_shared: boolean
+          initials: string
+          rules_version: string
+          status: string
+          to_facility: string
+          updated_at: string
+          urgency: string | null
+        }
+        Insert: {
+          case_id: string
+          code: string
+          conditions: string[]
+          created_at?: string
+          created_by: string
+          distance_band?: string | null
+          expires_at?: string
+          from_facility: string
+          id: string
+          image_shared?: boolean
+          initials?: string
+          rules_version: string
+          status?: string
+          to_facility: string
+          updated_at?: string
+          urgency?: string | null
+        }
+        Update: {
+          case_id?: string
+          code?: string
+          conditions?: string[]
+          created_at?: string
+          created_by?: string
+          distance_band?: string | null
+          expires_at?: string
+          from_facility?: string
+          id?: string
+          image_shared?: boolean
+          initials?: string
+          rules_version?: string
+          status?: string
+          to_facility?: string
+          updated_at?: string
+          urgency?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referrals_case_id_fkey"
+            columns: ["case_id"]
+            isOneToOne: false
+            referencedRelation: "cases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referrals_from_facility_fkey"
+            columns: ["from_facility"]
+            isOneToOne: false
+            referencedRelation: "facilities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referrals_to_facility_fkey"
+            columns: ["to_facility"]
+            isOneToOne: false
+            referencedRelation: "facilities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
       append_inference: { Args: { p_inference: Json }; Returns: Json }
+      create_referral: { Args: { p_referral: Json }; Returns: Json }
       get_case: { Args: { p_case_id: string }; Returns: Json }
       list_cases: {
         Args: { p_limit?: number; p_offset?: number }
         Returns: Json
       }
       list_referral_facilities: { Args: never; Returns: Json }
+      list_referrals: {
+        Args: { p_direction: string; p_limit?: number; p_offset?: number }
+        Returns: Json
+      }
       save_case: { Args: { p_case: Json }; Returns: Json }
       update_facility_services: {
         Args: {

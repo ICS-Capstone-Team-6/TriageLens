@@ -14,7 +14,7 @@ const params = new URLSearchParams(location.search);
 if (import.meta.env.DEV && params.has('preview')) {
   void import('./screens/Preview').then(({ Preview }) => render(<Preview name={params.get('preview') ?? ''} />));
 } else if (import.meta.env.DEV && params.has('demo')) {
-  void Promise.all([import('./demo/demo'), import('./demo/DemoBar')]).then(([d, { DemoBar }]) =>
+  void Promise.all([import('./demo/demo'), import('./demo/DemoBar'), import('./demo/referralDemo')]).then(([d, { DemoBar }, r]) =>
     render(
       <App
         demo={{
@@ -24,6 +24,7 @@ if (import.meta.env.DEV && params.has('preview')) {
           record: d.recordDemo,
           rows: d.demoRows,
           banner: <DemoBar />,
+          referral: r.demoReferral,
         }}
       />,
     ),

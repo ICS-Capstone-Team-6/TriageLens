@@ -14,13 +14,16 @@ import { Monitor } from './screens/Monitor';
 import { Home } from './screens/Home';
 import { SignIn } from './screens/SignIn';
 import { Blocked, Checking, ErrorScreen, Retake, Result } from './screens/Flow';
+import { Referral, type ReferralDeps } from './screens/Referral';
+import { loadDirectory, loadOwnFacilityId, sendReferral } from './lib/referral/api';
 import { t } from './strings';
 
 type View =
   | { name: 'home' }
   | { name: 'checking'; step: 0 | 1 | 2 }
   | { name: 'retake'; reason: RetakeReason }
-  | { name: 'result'; zone: 'refer_now' | 'unsure' | 'low_risk'; saved: boolean | null; probability: number | null }
+  | { name: 'result'; zone: 'refer_now' | 'unsure' | 'low_risk'; saved: boolean | null; probability: number | null; caseId: string }
+  | { name: 'refer'; zone: 'refer_now' | 'unsure'; caseId: string | null; result: Extract<View, { name: 'result' }> }
   | { name: 'error' };
 
 /** Development-only demo wiring, injected by main.tsx; production never passes it. */
@@ -31,7 +34,10 @@ export interface DemoHooks {
   record: (s: Screened, zone: Zone, probability: number | null, totalMs: number) => void;
   rows: InferenceRow[];
   banner: React.ReactNode;
+  referral: ReferralDeps;
 }
+
+const realReferral: ReferralDeps = { loadDirectory, ownFacilityId: loadOwnFacilityId, send: sendReferral };
 
 const MODEL_URL = (import.meta.env.VITE_MODEL_URL as string | undefined) ?? '';
 const MODEL_SHA256 = (import.meta.env.VITE_MODEL_SHA256 as string | undefined) ?? '';
@@ -98,18 +104,19 @@ export function App({ demo }: { demo?: DemoHooks }) {
     const probability = r.logit == null ? null : sigmoid(r.logit);
     const zone = zoneFor(probability ?? Number.NaN, thresholds.thresholds, r.quality.passed);
     const totalMs = performance.now() - started;
+    const caseId = crypto.randomUUID();
     const record = { ageBand: age, screened: r, zone, probability, thresholdsVersion: thresholds.thresholds.version, modelSha256: model.modelSha256, totalMs };
     if (demo) {
       demo.record(r, zone, probability, totalMs);
-      return setView(zone === 'retake' ? { name: 'retake', reason: r.quality.reason ?? 'blank' } : { name: 'result', zone, saved: null, probability });
+      return setView(zone === 'retake' ? { name: 'retake', reason: r.quality.reason ?? 'blank' } : { name: 'result', zone, saved: null, probability, caseId });
     }
     if (zone === 'retake') {
       setView({ name: 'retake', reason: r.quality.reason ?? 'blank' });
-      void saveScreening(record);
+      void saveScreening(record, caseId);
       return;
     }
-    setView({ name: 'result', zone, saved: null, probability });
-    const saved = await saveScreening(record);
+    setView({ name: 'result', zone, saved: null, probability, caseId });
+    const saved = await saveScreening(record, caseId);
     setView((v) => (v.name === 'result' ? { ...v, saved } : v));
   }
 
@@ -135,6 +142,9 @@ export function App({ demo }: { demo?: DemoHooks }) {
     return <Blocked title={t('not_ready_title')} body={t('not_ready_invalid')} />;
   }
 
+  function versionsNow() {
+    return { model: demo ? 'demo-stand-in' : MODEL_RUN, thresholds: thresholds?.ok ? thresholds.thresholds.version : '–', preprocess: PREPROCESS_VERSION };
+  }
   const end = (action: EndAction) => {
     setAge((a) => ageAfter(action, a));
     setView({ name: 'home' });
@@ -146,17 +156,35 @@ export function App({ demo }: { demo?: DemoHooks }) {
       return <Retake reason={view.reason} onRetake={() => end('retake')} onCancel={() => end('cancel')} />;
     case 'error':
       return <ErrorScreen onBack={() => end('error')} />;
-    case 'result':
+    case 'refer':
+      return (
+        <Referral
+          zone={view.zone}
+          caseId={view.caseId}
+          deps={demo ? demo.referral : realReferral}
+          versions={t('versions', versionsNow())}
+          onBack={() => setView(view.result)}
+          onDone={() => end('done')}
+        />
+      );
+    case 'result': {
+      // A referral needs the case saved first (no outbox until E9-02). In demo mode nothing is saved.
+      const canRefer = view.zone !== 'low_risk' && (demo ? true : backendConfigured && view.saved !== null);
+      const result = view;
       return (
         <Result
           zone={view.zone}
           saved={backendConfigured ? view.saved : null}
-          versions={{ model: demo ? 'demo-stand-in' : MODEL_RUN, thresholds: thresholds?.ok ? thresholds.thresholds.version : '–', preprocess: PREPROCESS_VERSION }}
+          versions={versionsNow()}
           devScore={import.meta.env.DEV && thresholds?.ok && view.probability != null ? { probability: view.probability, screenOut: thresholds.thresholds.screenOut, refer: thresholds.thresholds.refer } : undefined}
           onDone={() => end('done')}
           onRetake={() => end('retake')}
+          onRefer={canRefer && result.zone !== 'low_risk'
+            ? () => setView({ name: 'refer', zone: result.zone as 'refer_now' | 'unsure', caseId: demo || result.saved ? result.caseId : null, result })
+            : undefined}
         />
       );
+    }
     default:
       return (
         <Home

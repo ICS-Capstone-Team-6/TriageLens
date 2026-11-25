@@ -49,7 +49,18 @@ export const demoReferral: ReferralDeps = {
     store.push(rec(sent.id, sent.code, d.initials, DEMO_OWN_ID, to?.id ?? '', 'created', 0, d.urgency ?? null, 'refer_now'));
     return sent;
   },
+  async shareImage(referralId: string, file: Blob): Promise<boolean> {
+    await wait(700);
+    const r = store.find((x) => x.detail.referral.id === referralId);
+    if (!r) return false;
+    images.set(referralId, URL.createObjectURL(file));
+    r.detail.referral.imageShared = true;
+    return true;
+  },
 };
+
+// Demo images stay in this tab's memory as object URLs; nothing is uploaded.
+const images = new Map<string, string>();
 
 // In-memory referrals for the demo inbox. FAKE people: initials only, made-up symptoms.
 interface DemoRec {
@@ -67,7 +78,7 @@ function rec(id: string, code: string, initials: string, from: string, to: strin
     detail: {
       referral: {
         id, code, initials, status, outcome: null, fromFacility: from, fromName: fac(from)?.name ?? '', toFacility: to,
-        toName: fac(to)?.name ?? '', conditions: ['tb'], urgency, createdAt: at, expiresAt: ago(daysAgo - 60),
+        toName: fac(to)?.name ?? '', conditions: ['tb'], urgency, createdAt: at, expiresAt: ago(daysAgo - 60), imageShared: false,
         fromPhone: fac(from)?.phone ?? '', toPhone: fac(to)?.phone ?? '',
       },
       ageBand: '35-44', sex: null, symptoms,
@@ -126,5 +137,9 @@ export const demoInbox: InboxDeps = {
     if (outcome) r.detail.referral.outcome = outcome;
     r.detail.events.push({ status, note: note ?? '', at: new Date().toISOString() });
     return clone(r.detail);
+  },
+  async imageUrl(id) {
+    await wait(200);
+    return images.get(id) ?? null;
   },
 };

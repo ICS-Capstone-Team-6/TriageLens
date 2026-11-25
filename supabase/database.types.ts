@@ -267,6 +267,8 @@ export type Database = {
           expires_at: string
           from_facility: string
           id: string
+          image_consent: boolean
+          image_consented_at: string | null
           image_shared: boolean
           initials: string
           outcome: string | null
@@ -287,6 +289,8 @@ export type Database = {
           expires_at?: string
           from_facility: string
           id: string
+          image_consent?: boolean
+          image_consented_at?: string | null
           image_shared?: boolean
           initials?: string
           outcome?: string | null
@@ -307,6 +311,8 @@ export type Database = {
           expires_at?: string
           from_facility?: string
           id?: string
+          image_consent?: boolean
+          image_consented_at?: string | null
           image_shared?: boolean
           initials?: string
           outcome?: string | null
@@ -356,6 +362,8 @@ export type Database = {
         Returns: Json
       }
       append_inference: { Args: { p_inference: Json }; Returns: Json }
+      confirm_image_upload: { Args: { p_id: string }; Returns: Json }
+      consent_image_share: { Args: { p_id: string }; Returns: Json }
       create_referral: { Args: { p_referral: Json }; Returns: Json }
       get_case: { Args: { p_case_id: string }; Returns: Json }
       get_referral: { Args: { p_id: string }; Returns: Json }
@@ -369,6 +377,8 @@ export type Database = {
         Returns: Json
       }
       lookup_referral: { Args: { p_code: string }; Returns: Json }
+      record_image_access: { Args: { p_id: string }; Returns: boolean }
+      referral_images_due_for_deletion: { Args: never; Returns: string[] }
       save_case: { Args: { p_case: Json }; Returns: Json }
       update_facility_services: {
         Args: {

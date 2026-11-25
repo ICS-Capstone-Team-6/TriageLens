@@ -228,5 +228,18 @@
   "action_close": "Close this referral",
   "action_close_not_arrived": "Close: the person did not come",
   "note_did_not_arrive": "Did not arrive",
-  "advance_failed": "Not saved. Check the signal and try again."
+  "advance_failed": "Not saved. Check the signal and try again.",
+  "image_consent_label": "The person agrees to share the X-ray image with this facility",
+  "image_consent_hint": "Ask first. Without this, only the result and the code are sent.",
+  "slip_image": "X-ray image",
+  "image_none": "Not shared",
+  "image_sending": "Sending…",
+  "image_shared": "Shared with the facility",
+  "image_failed": "Not sent yet",
+  "image_retry": "Try sending the image again",
+  "image_not_shared": "The X-ray image was not shared.",
+  "image_show": "Show the X-ray image",
+  "image_loading": "Loading the image…",
+  "image_load_failed": "Could not load the image. Tap to try again.",
+  "image_alt": "Chest X-ray image shared with this referral"
 }

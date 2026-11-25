@@ -31,6 +31,11 @@ function Detail({ d, ownFacility, deps, onBack, onChange }: {
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
   const [askOutcome, setAskOutcome] = useState(false);
+  const [img, setImg] = useState<string | null | 'loading' | 'failed'>(null);
+  async function showImage() {
+    setImg('loading');
+    setImg((await deps.imageUrl(r.id)) ?? 'failed');
+  }
   const actions = ownFacility === 'receiver' ? nextActions(r.status) : [];
 
   async function act(status: 'arrived' | 'tested' | 'closed', outcome?: Outcome, note?: string) {
@@ -62,6 +67,15 @@ function Detail({ d, ownFacility, deps, onBack, onChange }: {
         <div><dt>{t('detail_symptoms')}</dt><dd>{d.symptoms.length ? d.symptoms.map(pretty).join(', ') : t('detail_none_recorded')}</dd></div>
       </dl>
       <p className="small">{t('detail_screening_note')}</p>
+      {!r.imageShared ? (
+        <p className="small">{t('image_not_shared')}</p>
+      ) : img && img !== 'loading' && img !== 'failed' ? (
+        <img className="xray-shared" src={img} alt={t('image_alt')} />
+      ) : (
+        <button className="btn btn-secondary" type="button" disabled={img === 'loading'} onClick={() => void showImage()}>
+          {img === 'loading' ? t('image_loading') : img === 'failed' ? t('image_load_failed') : t('image_show')}
+        </button>
+      )}
 
       <ol className="steps" aria-label={t('detail_history')}>
         {d.events.map((e, i) => (

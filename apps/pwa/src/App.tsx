@@ -17,14 +17,14 @@ import { Blocked, Checking, ErrorScreen, Retake, Result } from './screens/Flow';
 import { Referral, type ReferralDeps } from './screens/Referral';
 import { Inbox } from './screens/Inbox';
 import { realInbox, type InboxDeps } from './lib/referral/inbox';
-import { loadDirectory, loadOwnFacilityId, sendReferral } from './lib/referral/api';
+import { loadDirectory, loadOwnFacilityId, sendReferral, shareImage } from './lib/referral/api';
 import { t } from './strings';
 
 type View =
   | { name: 'home' }
   | { name: 'checking'; step: 0 | 1 | 2 }
   | { name: 'retake'; reason: RetakeReason }
-  | { name: 'result'; zone: 'refer_now' | 'unsure' | 'low_risk'; saved: boolean | null; probability: number | null; caseId: string }
+  | { name: 'result'; zone: 'refer_now' | 'unsure' | 'low_risk'; saved: boolean | null; probability: number | null; caseId: string; image: Blob }
   | { name: 'refer'; zone: 'refer_now' | 'unsure'; caseId: string | null; result: Extract<View, { name: 'result' }> }
   | { name: 'error' };
 
@@ -44,7 +44,7 @@ function routeOf(hash: string): 'monitor' | 'referrals' | 'app' {
   return hash === '#/monitor' ? 'monitor' : hash === '#/referrals' ? 'referrals' : 'app';
 }
 
-const realReferral: ReferralDeps = { loadDirectory, ownFacilityId: loadOwnFacilityId, send: sendReferral };
+const realReferral: ReferralDeps = { loadDirectory, ownFacilityId: loadOwnFacilityId, send: sendReferral, shareImage };
 
 const MODEL_URL = (import.meta.env.VITE_MODEL_URL as string | undefined) ?? '';
 const MODEL_SHA256 = (import.meta.env.VITE_MODEL_SHA256 as string | undefined) ?? '';
@@ -115,14 +115,14 @@ export function App({ demo }: { demo?: DemoHooks }) {
     const record = { ageBand: age, screened: r, zone, probability, thresholdsVersion: thresholds.thresholds.version, modelSha256: model.modelSha256, totalMs };
     if (demo) {
       demo.record(r, zone, probability, totalMs);
-      return setView(zone === 'retake' ? { name: 'retake', reason: r.quality.reason ?? 'blank' } : { name: 'result', zone, saved: null, probability, caseId });
+      return setView(zone === 'retake' ? { name: 'retake', reason: r.quality.reason ?? 'blank' } : { name: 'result', zone, saved: null, probability, caseId, image: file });
     }
     if (zone === 'retake') {
       setView({ name: 'retake', reason: r.quality.reason ?? 'blank' });
       void saveScreening(record, caseId);
       return;
     }
-    setView({ name: 'result', zone, saved: null, probability, caseId });
+    setView({ name: 'result', zone, saved: null, probability, caseId, image: file });
     const saved = await saveScreening(record, caseId);
     setView((v) => (v.name === 'result' ? { ...v, saved } : v));
   }
@@ -169,6 +169,7 @@ export function App({ demo }: { demo?: DemoHooks }) {
         <Referral
           zone={view.zone}
           caseId={view.caseId}
+          image={view.result.image}
           deps={demo ? demo.referral : realReferral}
           versions={t('versions', versionsNow())}
           onBack={() => setView(view.result)}

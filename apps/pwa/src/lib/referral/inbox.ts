@@ -24,6 +24,7 @@ export interface ReferralSummary {
   urgency: string | null;
   createdAt: string;
   expiresAt: string;
+  imageShared: boolean;
 }
 
 export interface ReferralDetail {
@@ -40,6 +41,8 @@ export interface InboxDeps {
   lookup: (code: string) => Promise<ReferralDetail | null | 'locked'>;
   open: (id: string) => Promise<ReferralDetail | null>;
   advance: (id: string, status: Exclude<Status, 'created'>, outcome?: Outcome, note?: string) => Promise<ReferralDetail | null>;
+  /** Logs the view first (the bucket refuses reads otherwise), then a short-lived URL. */
+  imageUrl: (id: string) => Promise<string | null>;
 }
 
 const str = (v: unknown, d = ''): string => (typeof v === 'string' ? v : d);
@@ -64,6 +67,7 @@ export function parseSummary(raw: unknown): ReferralSummary | null {
     urgency: typeof r.urgency === 'string' ? r.urgency : null,
     createdAt: str(r.created_at),
     expiresAt: str(r.expires_at),
+    imageShared: r.image_shared === true,
   };
 }
 
@@ -140,5 +144,12 @@ export const realInbox: InboxDeps = {
       p_id: id, p_status: status, p_outcome: outcome ?? undefined, p_note: note ?? undefined,
     });
     return error ? null : parseDetail(data);
+  },
+  async imageUrl(id) {
+    if (!supabase) return null;
+    const { data: ok, error } = await supabase.rpc('record_image_access', { p_id: id });
+    if (error || ok !== true) return null;
+    const signed = await supabase.storage.from('referral-images').createSignedUrl(`${id}/image.jpg`, 120);
+    return signed.error ? null : signed.data.signedUrl;
   },
 };

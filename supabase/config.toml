@@ -42,7 +42,9 @@ enable_confirmations = false
 enabled = false
 
 [storage]
-enabled = false
+# E10-07 (ADR-28): private bucket for referral images shared with consent.
+enabled = true
+file_size_limit = "2MiB"
 
 [realtime]
 enabled = false

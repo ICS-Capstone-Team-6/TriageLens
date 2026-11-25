@@ -13,18 +13,21 @@ export interface ReferralDeps {
   loadDirectory: () => Promise<DirectoryCache | null>;
   ownFacilityId: () => Promise<string | null>;
   send: (d: ReferralDraft) => Promise<SentReferral | null>;
+  shareImage: (referralId: string, file: Blob) => Promise<boolean>;
 }
 
 interface Props {
   zone: 'refer_now' | 'unsure';
   caseId: string | null; // null when the screening was not saved: cannot be sent yet
+  image: Blob | null; // the screened image, kept in memory only; shared only with consent
   deps: ReferralDeps;
   versions: string;
   onBack: () => void;
   onDone: () => void;
 }
 
-type Step = { name: 'choose' } | { name: 'sending' } | { name: 'failed' } | { name: 'sent'; sent: SentReferral; to: Option };
+type ImageState = 'none' | 'sending' | 'shared' | 'failed';
+type Step = { name: 'choose' } | { name: 'sending' } | { name: 'failed' } | { name: 'sent'; sent: SentReferral; to: Option; image: ImageState };
 
 const svc = (tag: ServiceTag | string) => t(`service_${tag}` as StringKey);
 const list = (tags: string[]) => tags.map(svc).join(', ');
@@ -58,7 +61,8 @@ function FacilityCard({ o, selected, onSelect }: { o: Option; selected: boolean;
   );
 }
 
-export function Referral({ zone, caseId, deps, versions, onBack, onDone }: Props) {
+export function Referral({ zone, caseId, image, deps, versions, onBack, onDone }: Props) {
+  const [consent, setConsent] = useState(false);
   const [directory, setDirectory] = useState<DirectoryCache | null | 'loading'>('loading');
   const [own, setOwn] = useState<string | null>(null);
   const [phoneHere, setPhoneHere] = useState<Point | null>(null);
@@ -128,7 +132,17 @@ export function Referral({ zone, caseId, deps, versions, onBack, onDone }: Props
       id: referralId, caseId, toFacility: pick.facility.id, conditions: ['tb'], urgency,
       rulesVersion: RULES_V1.version, distanceBand: here ? pick.distanceBand : null, initials,
     });
-    setStep(sent ? { name: 'sent', sent, to: pick } : { name: 'failed' });
+    if (!sent) return setStep({ name: 'failed' });
+    const withImage = consent && image !== null;
+    setStep({ name: 'sent', sent, to: pick, image: withImage ? 'sending' : 'none' });
+    if (withImage) void share(sent, pick);
+  }
+
+  async function share(sent: SentReferral, to: Option) {
+    if (!image) return;
+    setStep({ name: 'sent', sent, to, image: 'sending' });
+    const ok = await deps.shareImage(sent.id, image);
+    setStep({ name: 'sent', sent, to, image: ok ? 'shared' : 'failed' });
   }
 
   const bar = (title: string, back: () => void) => (
@@ -155,7 +169,11 @@ export function Referral({ zone, caseId, deps, versions, onBack, onDone }: Props
           <div><dt>{t('slip_result')}</dt><dd>{t(`zone_${zone}` as StringKey)}</dd></div>
           {urgency && <div><dt>{t('slip_when')}</dt><dd>{t(`urgency_${urgency}` as StringKey)}</dd></div>}
           <div><dt>{t('slip_distance')}</dt><dd>{km(step.to)}</dd></div>
+          <div><dt>{t('slip_image')}</dt><dd role="status">{t(`image_${step.image}` as StringKey)}</dd></div>
         </dl>
+        {step.image === 'failed' && (
+          <button className="btn btn-secondary" type="button" onClick={() => void share(step.sent, step.to)}>{t('image_retry')}</button>
+        )}
         {f.phone && <a className="link" href={`tel:${f.phone}`}>{t('call_facility', { phone: f.phone })}</a>}
         <div className="spacer" />
         <p className="lead strong center">{t('reminder')}</p>
@@ -221,6 +239,15 @@ export function Referral({ zone, caseId, deps, versions, onBack, onDone }: Props
               {initials ? t('initials_preview', { initials }) : t('initials_hint')}
             </span>
           </label>
+          {image && (
+            <label className="consent">
+              <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
+              <span>
+                <span className="strong">{t('image_consent_label')}</span>
+                <span className="small">{t('image_consent_hint')}</span>
+              </span>
+            </label>
+          )}
         </>
       )}
 

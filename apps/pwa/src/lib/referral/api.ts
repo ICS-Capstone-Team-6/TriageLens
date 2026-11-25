@@ -3,6 +3,7 @@
 // signal for now; it moves to the sync outbox when E9-02 lands. Pure helpers are tested
 // in api.test.ts.
 import { supabase } from '../supabase';
+import { toShareableJpeg } from './image';
 import { parseDirectory, type DistanceBand, type Facility } from './match';
 import type { Condition, Urgency } from './rules';
 
@@ -120,6 +121,25 @@ export async function loadOwnFacilityId(): Promise<string | null> {
   if (!supabase) return null;
   const { data } = await supabase.from('profiles').select('facility_id').single();
   return data?.facility_id ?? null;
+}
+
+/**
+ * Shares the X-ray image with the receiving facility, after the person agreed (ADR-28 4).
+ * Order matters: consent is recorded first, because the bucket refuses uploads without it.
+ * Safe to retry: consent and confirm are replays, and an image already uploaded is kept.
+ */
+export async function shareImage(referralId: string, file: Blob): Promise<boolean> {
+  if (!supabase) return false;
+  const consent = await supabase.rpc('consent_image_share', { p_id: referralId });
+  if (consent.error) return false;
+  if ((consent.data as { image_shared?: boolean } | null)?.image_shared) return true;
+  const jpeg = await toShareableJpeg(file);
+  if (!jpeg) return false;
+  const up = await supabase.storage.from('referral-images').upload(`${referralId}/image.jpg`, jpeg, { contentType: 'image/jpeg' });
+  // "already exists" means an earlier try uploaded it; confirm still checks the file is there.
+  if (up.error && !/exists|duplicate/i.test(up.error.message)) return false;
+  const done = await supabase.rpc('confirm_image_upload', { p_id: referralId });
+  return !done.error;
 }
 
 export async function sendReferral(d: ReferralDraft): Promise<SentReferral | null> {

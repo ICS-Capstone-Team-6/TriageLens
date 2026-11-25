@@ -197,3 +197,9 @@ td { padding: 10px 8px; }
 .fac-call { position: relative; z-index: 1; align-self: flex-start; }
 .slip-code { font-size: 40px; line-height: 1.1; font-weight: 600; letter-spacing: 2px; overflow-wrap: anywhere; }
 @media (prefers-reduced-motion: reduce) { .fac { transition: none; } }
+
+/* referral image consent: the whole row is the target; unticked by default */
+.consent { display: flex; gap: 12px; align-items: flex-start; padding: 16px 18px; border-radius: var(--radius-card); background: var(--panel); cursor: pointer; }
+.consent input { width: 24px; height: 24px; margin: 2px 0 0; flex: none; accent-color: var(--ink); }
+.consent > span { display: flex; flex-direction: column; gap: 4px; font-size: 16px; line-height: 1.4; }
+.xray-shared { width: 100%; border-radius: var(--radius-card); background: #000; }

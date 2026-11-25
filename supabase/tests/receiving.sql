@@ -60,6 +60,7 @@ begin
   assert got->'inferences'->0->>'zone' = 'refer_now' and got->'inferences'->0->>'thresholds_version' = 'demo-only', 'Receiver sees the result with versions'; n:=n+1;
   assert got->'referral'->>'from_name' like 'FAKE receiving test A%', 'Receiver sees who sent it'; n:=n+1;
   assert not (got->'case' ? 'notes') and not (got->'case' ? 'created_by'), 'Case notes and author stay with the sender'; n:=n+1;
+  assert not (got->'inferences'->0 ? 'outputs') and not (got->'inferences'->0 ? 'quality_scores'), 'No raw scores reach the receiving facility'; n:=n+1;
   assert public.lookup_referral(old_code) is null, 'Expired code is not found'; n:=n+1;
   assert jsonb_array_length(public.list_referrals('received')) = 2, 'Reviewer sees the received list'; n:=n+1;
 

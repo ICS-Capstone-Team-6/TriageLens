@@ -4,7 +4,7 @@
 // recently say "Check by phone first" (H16). Then a slip shows the referral code.
 import { useEffect, useMemo, useState } from 'react';
 import { formatCode, toInitials, type CamForShare, type DirectoryCache, type ReferralDraft, type SentReferral, type ShareResult } from '../lib/referral/api';
-import { distanceBand, distanceKm, matchFacilities, validPoint, type Facility, type Match, type Option, type Point } from '../lib/referral/match';
+import { distanceBand, distanceKm, isOpenAt, matchFacilities, validPoint, type Facility, type Match, type Option, type Point } from '../lib/referral/match';
 import { RULES_V1, type ServiceTag, type Urgency } from '../lib/referral/rules';
 import { t, type StringKey } from '../strings';
 import { Back } from '../ui/icons';
@@ -25,7 +25,7 @@ interface Props {
   image: Blob | null; // the screened image, kept in memory only; shared only with consent
   cam: CamForShare | null; // heatmap for the receiving clinician, when the model gives one
   deps: ReferralDeps;
-  ambulance: AmbulanceDeps;
+  ambulance: AmbulanceDeps | null; // null while the feature is off
   versions: string;
   onBack: () => void;
   onDone: () => void;
@@ -101,22 +101,28 @@ export function Referral({ zone, caseId, image, cam, deps, ambulance, versions, 
   );
   const everyone: Option[] = useMemo(() => {
     const pool = facilities.filter((f) => f.id !== own);
+    // The full list shows services too, so a worker picking from it still sees what each place has (H16).
+    const needs = match.kind === 'matches' || match.kind === 'none_in_reach' ? match.needs : [];
     const opts: Option[] = pool.map((f) => {
       const d = here ? distanceKm(here, f) : 0;
+      const conf = f.servicesConfirmedAt ? Date.parse(f.servicesConfirmedAt) : Number.NaN;
+      const days = Number.isFinite(conf) ? Math.max(0, Math.floor((now.getTime() - conf) / 86_400_000)) : null;
       return {
         facility: f, distanceKm: d, distanceBand: distanceBand(d),
-        has: [], missing: [], preferredHas: [], openNow: null, stale: false, confirmedDaysAgo: null,
+        has: needs.filter((s) => f.services.includes(s)), missing: needs.filter((s) => !f.services.includes(s)),
+        preferredHas: [], openNow: isOpenAt(f.openingHours, now),
+        stale: days === null || days > (RULES_V1?.staleAfterDays ?? 90), confirmedDaysAgo: days,
       };
     });
     return here ? opts.sort((a, b) => a.distanceKm - b.distanceKm) : opts.sort((a, b) => a.facility.name.localeCompare(b.facility.name));
-  }, [facilities, here, own]);
+  }, [facilities, here, own, match, now]);
 
   const suggested: Option[] =
     match.kind === 'matches' ? match.options
       : match.kind === 'unfiltered' ? match.options.slice(0, 3)
         : match.kind === 'none_in_reach' ? [match.nearestPartial, match.nearestBeyondReach].filter((o): o is Option => o !== null)
           : [];
-  const shown = showAll ? everyone : suggested;
+  const shown = showAll || match.kind === 'no_location' ? everyone : suggested;
   const pick = [...suggested, ...everyone].find((o) => o.facility.id === chosen) ?? null;
   const initials = toInitials(initialsInput);
   useEffect(() => {
@@ -179,14 +185,15 @@ export function Referral({ zone, caseId, image, cam, deps, ambulance, versions, 
         <dl className="kv">
           <div><dt>{t('slip_to')}</dt><dd>{f.name}</dd></div>
           <div><dt>{t('slip_result')}</dt><dd>{t(`zone_${zone}` as StringKey)}</dd></div>
-          {urgency && <div><dt>{t('slip_when')}</dt><dd>{t(`urgency_${urgency}` as StringKey)}</dd></div>}
+          {urgency && <div><dt>{t('slip_when')}</dt><dd>{t(`urgency_${urgency}` as StringKey)}{RULES_V1?.status === 'demo_draft' ? ` ${t('urgency_draft')}` : ''}</dd></div>}
           <div><dt>{t('slip_distance')}</dt><dd>{km(step.to)}</dd></div>
           <div><dt>{t('slip_image')}</dt><dd role="status">{t(`image_${step.image}` as StringKey)}</dd></div>
         </dl>
         {step.image === 'failed' && (
           <button className="btn btn-secondary" type="button" onClick={() => void share(step.sent, step.to)}>{t('image_retry')}</button>
         )}
-        <AmbulancePanel referralId={step.sent.id} toName={f.name} toPhone={f.phone} deps={ambulance} />
+        {ambulance ? <AmbulancePanel referralId={step.sent.id} toName={f.name} toPhone={f.phone} deps={ambulance} />
+          : f.phone && <a className="link" href={`tel:${f.phone}`}>{t('call_facility', { phone: f.phone })}</a>}
         <div className="spacer" />
         <p className="lead strong center">{t('reminder')}</p>
         <button className="btn btn-primary" type="button" onClick={onDone}>{t('done_new')}</button>
@@ -229,7 +236,7 @@ export function Referral({ zone, caseId, image, cam, deps, ambulance, versions, 
           <fieldset className="facs">
             <legend className="sr">{t('refer_choose_legend')}</legend>
             {shown.map((o) => (
-              <FacilityCard key={o.facility.id} o={o} selected={chosen === o.facility.id} onSelect={() => setChosen(o.facility.id)} />
+              <FacilityCard key={o.facility.id} o={o} selected={chosen === o.facility.id} onSelect={() => { setChosen(o.facility.id); setConsent(false); }} />
             ))}
           </fieldset>
           <button className="link" type="button" onClick={() => setShowAll((v) => !v)}>
@@ -248,7 +255,7 @@ export function Referral({ zone, caseId, image, cam, deps, ambulance, versions, 
               aria-describedby="initials-hint"
             />
             <span className="small" id="initials-hint">
-              {initials ? t('initials_preview', { initials }) : t('initials_hint')}
+              {initials ? t('initials_preview', { initials, name: pick?.facility.name ?? t('the_facility') }) : t('initials_hint', { name: pick?.facility.name ?? t('the_facility') })}
             </span>
           </label>
           {image && pick && receives[pick.facility.id] === false && (
@@ -258,7 +265,7 @@ export function Referral({ zone, caseId, image, cam, deps, ambulance, versions, 
             <label className="consent">
               <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} />
               <span>
-                <span className="strong">{t('image_consent_label')}</span>
+                <span className="strong">{t('image_consent_label', { name: pick.facility.name })}</span>
                 <span className="small">{t('image_consent_hint')}</span>
               </span>
             </label>

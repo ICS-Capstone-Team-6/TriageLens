@@ -10,6 +10,17 @@ export type AmbStatus = 'requested' | 'seen' | 'dispatched' | 'cannot_send' | 'c
 export const ETAS = [15, 30, 45, 60, 90, 120] as const;
 export const NOT_SEEN_MINUTES = 10;
 export const POLL_MS = 15_000;
+// Reasons that can be emergency signs: the screen tells the worker to call now (H19).
+export const URGENT_REASONS: readonly Reason[] = ['breathing_hard', 'confused'];
+
+/**
+ * Off in real builds until ADR-28 is accepted and the intended-use page allows arranging
+ * transport (TRD 3.3, H19; safety review). On in the dev demo. Turn on with
+ * VITE_FEATURE_AMBULANCE=1 only after that sign-off.
+ */
+export function ambulanceEnabled(demo: boolean): boolean {
+  return demo || import.meta.env.VITE_FEATURE_AMBULANCE === '1';
+}
 
 export interface AmbulanceRequest {
   id: string;

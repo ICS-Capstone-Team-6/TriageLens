@@ -4,7 +4,7 @@
 //  - Referral numbers: weekly counts, no patient identifiers. A maintainer sees all facilities.
 import { useEffect, useState } from 'react';
 import { SERVICE_TAGS } from '../lib/referral/rules';
-import { byFacility, share, totals, type FacilityDeps, type MyFacility, type WeekRow } from '../lib/referral/stats';
+import { share, type Count, type FacilityDeps, type FacilityStats, type MyFacility } from '../lib/referral/stats';
 import { t, type StringKey } from '../strings';
 import { Back } from '../ui/icons';
 
@@ -21,29 +21,31 @@ function daysAgo(iso: string | null): number | null {
   return Number.isFinite(ms) ? Math.max(0, Math.floor((Date.now() - ms) / 86_400_000)) : null;
 }
 
-function Numbers({ name, rows }: { name: string; rows: WeekRow[] }) {
-  const sum = totals(rows);
+const c = (n: Count) => (n === null ? t('stats_fewer_than_5') : String(n));
+
+function Numbers({ f }: { f: FacilityStats }) {
+  const sum = f.totals;
   const arrived = share(sum.arrived, sum.sent);
   const confirmed = share(sum.confirmed, sum.tested);
   const amb = share(sum.ambSeen10min, sum.ambRequests);
   return (
-    <section className="card" aria-label={name}>
-      <h2>{name}</h2>
+    <section className="card" aria-label={f.facilityName}>
+      <h2>{f.facilityName}</h2>
       <dl className="kv">
-        <div><dt>{t('stats_sent')}</dt><dd className="num">{sum.sent}</dd></div>
-        <div><dt>{t('stats_arrived')}</dt><dd className="num">{arrived.text || t('stats_none')}</dd></div>
-        <div><dt>{t('stats_confirmed')}</dt><dd className="num">{confirmed.text || t('stats_none')}</dd></div>
-        <div><dt>{t('stats_not_arrived')}</dt><dd className="num">{sum.notArrived7d}</dd></div>
-        <div><dt>{t('stats_received')}</dt><dd className="num">{sum.received}</dd></div>
-        <div><dt>{t('stats_amb_in_time')}</dt><dd className="num">{amb.text || t('stats_none')}</dd></div>
+        <div><dt>{t('stats_sent')}</dt><dd className="num">{c(sum.sent)}</dd></div>
+        <div><dt>{t('stats_arrived')}</dt><dd className="num">{arrived.text || c(sum.arrived)}</dd></div>
+        <div><dt>{t('stats_confirmed')}</dt><dd className="num">{confirmed.text || c(sum.confirmed)}</dd></div>
+        <div><dt>{t('stats_not_arrived')}</dt><dd className="num">{c(sum.notArrived7d)}</dd></div>
+        <div><dt>{t('stats_received')}</dt><dd className="num">{c(sum.received)}</dd></div>
+        <div><dt>{t('stats_amb_in_time')}</dt><dd className="num">{amb.text || c(sum.ambSeen10min)}</dd></div>
       </dl>
       <div className="table-box">
         <table className="num stats-table">
-          <caption className="sr">{t('stats_table_caption', { name })}</caption>
+          <caption className="sr">{t('stats_table_caption', { name: f.facilityName })}</caption>
           <thead><tr><th scope="col">{t('stats_week')}</th><th scope="col">{t('stats_col_sent')}</th><th scope="col">{t('stats_col_arrived')}</th><th scope="col">{t('stats_col_received')}</th><th scope="col">{t('stats_col_amb')}</th></tr></thead>
           <tbody>
-            {rows.map((r) => (
-              <tr key={r.week}><td>{weekLabel(r.week)}</td><td>{r.sent}</td><td>{r.arrived}</td><td>{r.received}</td><td>{r.ambRequests}</td></tr>
+            {f.weeks.map((r) => (
+              <tr key={r.week}><td>{weekLabel(r.week)}</td><td>{c(r.sent)}</td><td>{c(r.arrived)}</td><td>{c(r.received)}</td><td>{c(r.ambRequests)}</td></tr>
             ))}
           </tbody>
         </table>
@@ -58,7 +60,7 @@ export function Facility({ deps, onBack }: { deps: FacilityDeps; onBack: () => v
   const [services, setServices] = useState<string[]>([]);
   const [phone, setPhone] = useState('');
   const [save, setSave] = useState<'idle' | 'busy' | 'saved' | 'failed'>('idle');
-  const [rows, setRows] = useState<WeekRow[] | null | 'loading'>('loading');
+  const [rows, setRows] = useState<FacilityStats[] | null | 'loading'>('loading');
 
   useEffect(() => {
     void deps.role().then(async (r) => {
@@ -125,7 +127,7 @@ export function Facility({ deps, onBack }: { deps: FacilityDeps; onBack: () => v
         <p className="small">{t('stats_note')}</p>
         {rows === 'loading' && <p className="muted" role="status">{t('inbox_loading')}</p>}
         {rows === null && <p className="alert" role="alert">{t('inbox_offline')}</p>}
-        {Array.isArray(rows) && [...byFacility(rows).values()].map((r) => <Numbers key={r[0].facilityId} name={r[0].facilityName} rows={r} />)}
+        {Array.isArray(rows) && rows.map((f) => <Numbers key={f.facilityId} f={f} />)}
       </div>
     </main>
   );

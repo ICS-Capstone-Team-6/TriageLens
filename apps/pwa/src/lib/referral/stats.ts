@@ -2,19 +2,25 @@
 // Counts only, no patient identifiers. Pure helpers are tested in stats.test.ts.
 import { supabase } from '../supabase';
 
+// Counts from 1 to 4 arrive as null from the server ("fewer than 5") so a small clinic's
+// single result cannot be picked out. Totals are summed on the server from real counts.
+export type Count = number | null;
+
+export interface Totals {
+  sent: Count; arrived: Count; tested: Count; confirmed: Count; notArrived7d: Count;
+  received: Count; ambRequests: Count; ambSeen10min: Count; ambDispatched: Count;
+}
+
 export interface WeekRow {
   week: string; // YYYY-MM-DD, Monday
+  sent: Count; arrived: Count; received: Count; ambRequests: Count;
+}
+
+export interface FacilityStats {
   facilityId: string;
   facilityName: string;
-  sent: number;
-  arrived: number;
-  tested: number;
-  confirmed: number;
-  notArrived7d: number;
-  received: number;
-  ambRequests: number;
-  ambSeen10min: number;
-  ambDispatched: number;
+  totals: Totals;
+  weeks: WeekRow[];
 }
 
 export interface MyFacility {
@@ -29,43 +35,39 @@ export interface FacilityDeps {
   role: () => Promise<string | null>;
   myFacility: () => Promise<MyFacility | null>;
   saveServices: (id: string, services: string[], phone: string) => Promise<MyFacility | null>;
-  stats: (weeks: number) => Promise<WeekRow[] | null>;
+  stats: (weeks: number) => Promise<FacilityStats[] | null>;
 }
 
-const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : Number(v) || 0);
+const count = (v: unknown): Count => (v === null || v === undefined ? null : typeof v === 'number' && Number.isFinite(v) ? v : null);
 
-export function parseStats(rows: unknown): WeekRow[] {
+export function parseStats(rows: unknown): FacilityStats[] {
   if (!Array.isArray(rows)) return [];
   return rows.flatMap((x) => {
     const r = x as Record<string, unknown>;
-    if (typeof r.week !== 'string' || typeof r.facility_id !== 'string') return [];
+    if (typeof r.facility_id !== 'string' || !r.totals || typeof r.totals !== 'object') return [];
+    const t = r.totals as Record<string, unknown>;
+    const weeks = (Array.isArray(r.weeks) ? r.weeks : []).flatMap((w) => {
+      const o = w as Record<string, unknown>;
+      return typeof o.week === 'string'
+        ? [{ week: o.week, sent: count(o.sent), arrived: count(o.arrived), received: count(o.received), ambRequests: count(o.amb_requests) }]
+        : [];
+    });
     return [{
-      week: r.week, facilityId: r.facility_id, facilityName: String(r.facility_name ?? ''),
-      sent: num(r.sent), arrived: num(r.arrived), tested: num(r.tested), confirmed: num(r.confirmed),
-      notArrived7d: num(r.not_arrived_7d), received: num(r.received), ambRequests: num(r.amb_requests),
-      ambSeen10min: num(r.amb_seen_10min), ambDispatched: num(r.amb_dispatched),
+      facilityId: r.facility_id, facilityName: String(r.facility_name ?? ''), weeks,
+      totals: {
+        sent: count(t.sent), arrived: count(t.arrived), tested: count(t.tested), confirmed: count(t.confirmed),
+        notArrived7d: count(t.not_arrived_7d), received: count(t.received), ambRequests: count(t.amb_requests),
+        ambSeen10min: count(t.amb_seen_10min), ambDispatched: count(t.amb_dispatched),
+      },
     }];
   });
 }
 
-/** Sums the weeks of one facility. */
-export function totals(rows: WeekRow[]): Omit<WeekRow, 'week' | 'facilityId' | 'facilityName'> {
-  const z = { sent: 0, arrived: 0, tested: 0, confirmed: 0, notArrived7d: 0, received: 0, ambRequests: 0, ambSeen10min: 0, ambDispatched: 0 };
-  for (const r of rows) for (const k of Object.keys(z) as (keyof typeof z)[]) z[k] += r[k];
-  return z;
-}
-
-/** "3 of 4 (75%)"; "none yet" when there is nothing to divide by. Whole percent, rounded down. */
-export function share(part: number, whole: number): { text: string; pct: number | null } {
-  if (whole <= 0) return { text: '', pct: null };
+/** "3 of 4 (75%)"; empty when either count is hidden or there is nothing to divide by. */
+export function share(part: Count, whole: Count): { text: string; pct: number | null } {
+  if (part === null || whole === null || whole <= 0) return { text: '', pct: null };
   const pct = Math.floor((part / whole) * 100);
   return { text: `${part} of ${whole} (${pct}%)`, pct };
-}
-
-export function byFacility(rows: WeekRow[]): Map<string, WeekRow[]> {
-  const m = new Map<string, WeekRow[]>();
-  for (const r of rows) m.set(r.facilityId, [...(m.get(r.facilityId) ?? []), r]);
-  return m;
 }
 
 function parseFacility(d: unknown): MyFacility | null {

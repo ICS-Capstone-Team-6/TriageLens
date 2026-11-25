@@ -96,6 +96,14 @@ begin
   assert public.open_referral_image(rid) is null, 'No access 60 days after closing'; n:=n+1;
   reset role;
   assert path in (select public.referral_images_due_for_deletion()), 'Image listed for deletion'; n:=n+1;
+  -- A referral never closed: its image expires with the code (60 days after sending).
+  insert into storage.objects(bucket_id,name) values ('referral-images', path2);
+  update public.referrals set image_consent = true, image_shared = true, expires_at = now() - interval '1 day' where id = r2;
+  assert path2 in (select public.referral_images_due_for_deletion()), 'Image of an expired, never-closed referral is due for deletion'; n:=n+1;
+  perform set_config('request.jwt.claim.sub', wb::text, true);
+  set local role authenticated;
+  assert public.open_referral_image(r2) is null, 'No access once the referral code has expired'; n:=n+1;
+  reset role;
   assert not has_function_privilege('authenticated', 'public.referral_images_due_for_deletion()', 'EXECUTE'), 'Deletion list is service-role only'; n:=n+1;
   assert (select count(*) from public.audit_log where entity_id = rid and action = 'image_consent') = 1, 'Consent audited once'; n:=n+1;
   assert (select count(*) from public.audit_log where entity_id = rid and action = 'image_upload') = 2, 'Image and heatmap uploads audited'; n:=n+1;

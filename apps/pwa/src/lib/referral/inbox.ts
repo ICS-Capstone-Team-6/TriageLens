@@ -66,7 +66,8 @@ export interface KeyStatus {
 const str = (v: unknown, d = ''): string => (typeof v === 'string' ? v : d);
 const isStatus = (v: unknown): v is Status => (STATUSES as readonly unknown[]).includes(v);
 const isOutcome = (v: unknown): v is Outcome => (OUTCOMES as readonly unknown[]).includes(v);
-const ZONES: readonly Zone[] = ['refer_now', 'unsure', 'low_risk', 'retake'];
+// A retake has no zone (TRD 7.2), so it is not shown as a result.
+const ZONES: readonly Zone[] = ['refer_now', 'unsure', 'low_risk'];
 
 export function parseSummary(raw: unknown): ReferralSummary | null {
   const r = raw as Record<string, unknown> | null;

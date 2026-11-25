@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { formatCode } from '../lib/referral/api';
 import {
-  ETAS, isOpen, minutesSince, newOpenIds, notSeenTooLong, notifyNewRequest, POLL_MS, REASONS,
+  ETAS, isOpen, minutesSince, newOpenIds, notSeenTooLong, notifyNewRequest, POLL_MS, REASONS, URGENT_REASONS,
   type AmbulanceDeps, type AmbulanceRequest, type Reason,
 } from '../lib/referral/ambulance';
 import { t, type StringKey } from '../strings';
@@ -112,6 +112,7 @@ export function AmbulancePanel({ referralId, toName, toPhone, deps }: { referral
             {reason === 'other' ? t('amb_note_required') : t('amb_note')}
             <input value={note} onChange={(e) => setNote(e.target.value)} maxLength={300} />
           </label>
+          {reason && URGENT_REASONS.includes(reason) && <p className="alert" role="alert">{t('amb_urgent', { name: toName })}</p>}
           {state === 'offline' && <p className="alert" role="alert">{t('amb_offline', { name: toName })}</p>}
           {state === 'failed' && <p className="alert" role="alert">{t('amb_failed')}</p>}
           {state === 'already_open' && <p className="alert" role="alert">{t('amb_already_open')}</p>}
@@ -129,7 +130,7 @@ export function AmbulancePanel({ referralId, toName, toPhone, deps }: { referral
 export function AmbulanceQueue({ deps }: { deps: AmbulanceDeps }) {
   const [rows, setRows] = useState<AmbulanceRequest[]>([]);
   const [busy, setBusy] = useState<string | null>(null);
-  const [eta, setEta] = useState<Record<string, number>>({});
+  const [eta, setEta] = useState<Record<string, number | undefined>>({});
   const [why, setWhy] = useState<Record<string, string>>({});
   const [askWhy, setAskWhy] = useState<string | null>(null);
   const known = useRef<Set<string> | null>(null);
@@ -150,7 +151,8 @@ export function AmbulanceQueue({ deps }: { deps: AmbulanceDeps }) {
 
   async function answer(a: AmbulanceRequest, status: 'seen' | 'dispatched' | 'cannot_send') {
     setBusy(a.id);
-    await deps.answer(a.id, status, status === 'dispatched' ? eta[a.id] ?? 30 : undefined, status === 'cannot_send' ? why[a.id] : undefined);
+    if (status === 'dispatched' && !eta[a.id]) return; // staff must choose a time; no default (safety review)
+    await deps.answer(a.id, status, status === 'dispatched' ? eta[a.id] : undefined, status === 'cannot_send' ? why[a.id] : undefined);
     setBusy(null);
     setAskWhy(null);
     refresh();
@@ -176,11 +178,12 @@ export function AmbulanceQueue({ deps }: { deps: AmbulanceDeps }) {
           )}
           <label className="field">
             {t('amb_eta')}
-            <select value={eta[a.id] ?? 30} onChange={(e) => setEta((m) => ({ ...m, [a.id]: Number(e.target.value) }))}>
+            <select value={eta[a.id] ?? ''} onChange={(e) => setEta((m) => ({ ...m, [a.id]: Number(e.target.value) || undefined }))}>
+              <option value="">{t('amb_eta_choose')}</option>
               {ETAS.map((m) => <option key={m} value={m}>{t('amb_eta_option', { m })}</option>)}
             </select>
           </label>
-          <button className="btn btn-primary" type="button" disabled={busy === a.id} onClick={() => void answer(a, 'dispatched')}>{t('amb_dispatch')}</button>
+          <button className="btn btn-primary" type="button" disabled={busy === a.id || !eta[a.id]} onClick={() => void answer(a, 'dispatched')}>{t('amb_dispatch')}</button>
           {askWhy === a.id ? (
             <div className="stack">
               <label className="field">
@@ -197,5 +200,35 @@ export function AmbulanceQueue({ deps }: { deps: AmbulanceDeps }) {
         </article>
       ))}
     </section>
+  );
+}
+
+/**
+ * App-wide alert (H18): any request this clinic sent that nobody has seen for 10 minutes
+ * shows on every screen, not only on the slip. Checks every 30 seconds while signed in.
+ */
+export function AmbulanceAlert({ deps }: { deps: AmbulanceDeps }) {
+  const [late, setLate] = useState<AmbulanceRequest[]>([]);
+  const refresh = useCallback(() => {
+    void deps.list('sent').then((rows) => {
+      const now = new Date();
+      setLate((rows ?? []).filter((a) => notSeenTooLong(a, now)));
+    });
+  }, [deps]);
+  useEffect(() => {
+    refresh();
+    const id = setInterval(refresh, 30_000);
+    return () => clearInterval(id);
+  }, [refresh]);
+  if (late.length === 0) return null;
+  return (
+    <div className="amb-alert" role="alert">
+      {late.map((a) => (
+        <p key={a.id}>
+          <span className="strong">{t('amb_alert', { name: a.toName, code: formatCode(a.code, a.initials) })}</span>{' '}
+          {a.toPhone && <a className="amb-alert-call" href={`tel:${a.toPhone}`}>{t('amb_call', { name: a.toName })}</a>}
+        </p>
+      ))}
+    </div>
   );
 }

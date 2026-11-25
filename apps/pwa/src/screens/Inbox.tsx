@@ -28,7 +28,7 @@ function Bar({ title, onBack }: { title: string; onBack: () => void }) {
 }
 
 function Detail({ d, ownFacility, deps, ambulance, onBack, onChange }: {
-  d: ReferralDetail; ownFacility: 'sender' | 'receiver'; deps: InboxDeps; ambulance: AmbulanceDeps; onBack: () => void; onChange: (d: ReferralDetail) => void;
+  d: ReferralDetail; ownFacility: 'sender' | 'receiver'; deps: InboxDeps; ambulance: AmbulanceDeps | null; onBack: () => void; onChange: (d: ReferralDetail) => void;
 }) {
   const r = d.referral;
   const [busy, setBusy] = useState(false);
@@ -67,6 +67,7 @@ function Detail({ d, ownFacility, deps, ambulance, onBack, onChange }: {
         <p className="slip-code num">{formatCode(r.code, r.initials)}</p>
         <p className="lead strong">{t(`status_${r.status}` as StringKey)}</p>
         {r.outcome && <p className="lead">{t(`outcome_${r.outcome}` as StringKey)}</p>}
+        {r.outcome === 'not_confirmed' && ownFacility === 'sender' && <p className="small strong">{t('outcome_not_confirmed_note')}</p>}
       </section>
       <dl className="kv">
         <div><dt>{t('detail_from')}</dt><dd>{r.fromName}</dd></div>
@@ -76,6 +77,9 @@ function Detail({ d, ownFacility, deps, ambulance, onBack, onChange }: {
         {d.results.map((x) => (
           <div key={x.createdAt}><dt>{t('condition_tb')}</dt><dd>{t(`zone_${x.zone}` as StringKey)}</dd></div>
         ))}
+        {d.results.length > 0 && (
+          <div><dt>{t('detail_versions')}</dt><dd className="small">{d.results[d.results.length - 1].modelVersion} · {d.results[d.results.length - 1].thresholdsVersion}</dd></div>
+        )}
         {d.ageBand && <div><dt>{t('detail_age')}</dt><dd>{d.ageBand}</dd></div>}
         <div><dt>{t('detail_symptoms')}</dt><dd>{d.symptoms.length ? d.symptoms.map(pretty).join(', ') : t('detail_none_recorded')}</dd></div>
       </dl>
@@ -119,7 +123,7 @@ function Detail({ d, ownFacility, deps, ambulance, onBack, onChange }: {
         ))}
       </ol>
 
-      {ownFacility === 'sender' && r.status !== 'closed' ? (
+      {ambulance && ownFacility === 'sender' && r.status !== 'closed' ? (
         <AmbulancePanel referralId={r.id} toName={r.toName} toPhone={r.toPhone} deps={ambulance} />
       ) : (() => {
         // Each side can call the other facility.
@@ -160,7 +164,7 @@ function Detail({ d, ownFacility, deps, ambulance, onBack, onChange }: {
   );
 }
 
-export function Inbox({ deps, ambulance, onBack }: { deps: InboxDeps; ambulance: AmbulanceDeps; onBack: () => void }) {
+export function Inbox({ deps, ambulance, onBack }: { deps: InboxDeps; ambulance: AmbulanceDeps | null; onBack: () => void }) {
   const [tab, setTab] = useState<Tab>('received');
   const [rows, setRows] = useState<ReferralSummary[] | null | 'loading'>('loading');
   const [code, setCode] = useState('');
@@ -223,7 +227,7 @@ export function Inbox({ deps, ambulance, onBack }: { deps: InboxDeps; ambulance:
   return (
     <main className="screen">
       <Bar title={t('inbox_header')} onBack={onBack} />
-      <AmbulanceQueue deps={ambulance} />
+      {ambulance && <AmbulanceQueue deps={ambulance} />}
       <fieldset className="choices" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))' }}>
         <legend className="sr">{t('inbox_header')}</legend>
         {(['received', 'sent'] as const).map((x) => (

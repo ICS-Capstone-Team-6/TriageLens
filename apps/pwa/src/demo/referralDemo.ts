@@ -6,7 +6,7 @@ import { renderHeatmap } from '../lib/heatmap';
 import type { Screened } from '../inference/messages';
 import type { InboxDeps, KeyStatus, Outcome, ReferralDetail, Status } from '../lib/referral/inbox';
 import type { AmbulanceDeps, AmbulanceRequest } from '../lib/referral/ambulance';
-import type { FacilityDeps, MyFacility, WeekRow } from '../lib/referral/stats';
+import type { FacilityDeps, FacilityStats, MyFacility } from '../lib/referral/stats';
 import type { Zone } from '../lib/triage';
 import type { Facility, OpeningHours } from '../lib/referral/match';
 import type { ReferralDeps } from '../screens/Referral';
@@ -233,18 +233,21 @@ export const demoAmbulance: AmbulanceDeps = {
 
 // Demo facility page: the demo clinic's admin view with made-up weekly numbers.
 const demoFac: MyFacility = { id: DEMO_OWN_ID, name: 'FAKE Test Clinic A', phone: '+233000000001', services: ['tb_treatment'], servicesConfirmedAt: ago(104) };
-function demoWeeks(n: number): WeekRow[] {
+// Made-up numbers; counts from 1 to 4 are hidden (null) as the server does.
+const hide = (n: number) => (n >= 1 && n <= 4 ? null : n);
+function demoStats(n: number): FacilityStats[] {
   const monday = new Date();
   monday.setUTCHours(0, 0, 0, 0);
   monday.setUTCDate(monday.getUTCDate() - ((monday.getUTCDay() + 6) % 7));
-  const made = [[6, 5, 3, 2, 1, 2, 1, 1, 1], [9, 7, 6, 4, 1, 3, 2, 2, 1], [4, 4, 4, 1, 0, 1, 0, 0, 0], [7, 5, 4, 3, 2, 2, 1, 0, 1],
-    [5, 4, 3, 2, 1, 0, 0, 0, 0], [8, 6, 5, 3, 1, 4, 2, 2, 2], [3, 3, 2, 1, 0, 1, 0, 0, 0], [6, 4, 4, 2, 1, 2, 1, 1, 1]];
-  return Array.from({ length: n }, (_, i) => {
-    const w = new Date(monday.getTime() - i * 7 * day);
-    const [sent, arrived, tested, confirmed, notArrived7d, received, ambRequests, ambSeen10min, ambDispatched] = made[i % made.length];
-    return { week: w.toISOString().slice(0, 10), facilityId: DEMO_OWN_ID, facilityName: demoFac.name, sent, arrived, tested, confirmed,
-      notArrived7d: i === 0 ? 0 : notArrived7d, received, ambRequests, ambSeen10min, ambDispatched };
-  });
+  const made = [[6, 5, 2, 1], [9, 7, 3, 2], [4, 4, 1, 0], [7, 5, 2, 1], [5, 4, 0, 0], [8, 6, 4, 2], [3, 3, 1, 0], [6, 4, 2, 1]];
+  const rows = Array.from({ length: n }, (_, i) => ({ week: new Date(monday.getTime() - i * 7 * day).toISOString().slice(0, 10), v: made[i % made.length] }));
+  const sum = (k: number) => rows.reduce((a, r) => a + r.v[k], 0);
+  return [{
+    facilityId: DEMO_OWN_ID, facilityName: demoFac.name,
+    totals: { sent: hide(sum(0)), arrived: hide(sum(1)), tested: hide(31), confirmed: hide(18), notArrived7d: hide(6),
+      received: hide(sum(2)), ambRequests: hide(sum(3)), ambSeen10min: hide(3), ambDispatched: hide(3) },
+    weeks: rows.map((r) => ({ week: r.week, sent: hide(r.v[0]), arrived: hide(r.v[1]), received: hide(r.v[2]), ambRequests: hide(r.v[3]) })),
+  }];
 }
 export const demoFacility: FacilityDeps = {
   async role() { return 'admin'; },
@@ -256,5 +259,5 @@ export const demoFacility: FacilityDeps = {
     if (own) Object.assign(own, { services: [...services], phone, servicesConfirmedAt: demoFac.servicesConfirmedAt });
     return { ...demoFac };
   },
-  async stats(weeks) { await wait(200); return demoWeeks(weeks); },
+  async stats(weeks) { await wait(200); return demoStats(weeks); },
 };

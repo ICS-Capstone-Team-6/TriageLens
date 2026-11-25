@@ -7,7 +7,8 @@ declare
   fa uuid := gen_random_uuid(); fb uuid := gen_random_uuid();
   wa uuid := gen_random_uuid(); rb uuid := gen_random_uuid(); adm_a uuid := gen_random_uuid(); adm_b uuid := gen_random_uuid(); maint uuid := gen_random_uuid();
   ca uuid := gen_random_uuid(); r1 uuid := gen_random_uuid(); r2 uuid := gen_random_uuid(); r3 uuid := gen_random_uuid();
-  uid uuid; got jsonb; row_a jsonb; row_b jsonb; n integer := 0; txt text;
+  r4 uuid := gen_random_uuid(); r5 uuid := gen_random_uuid(); r6 uuid := gen_random_uuid(); x uuid;
+  uid uuid; got jsonb; fa_stats jsonb; fb_stats jsonb; wk jsonb; n integer := 0; txt text;
 begin
   insert into public.facilities(id,name) values (fa,'FAKE stats test A '||fa), (fb,'FAKE stats test B '||fb);
   foreach uid in array array[wa, rb, adm_a, adm_b, maint] loop
@@ -22,7 +23,7 @@ begin
 
   perform set_config('request.jwt.claim.sub', wa::text, true);
   set local role authenticated;
-  foreach uid in array array[r1, r2, r3] loop
+  foreach uid in array array[r1, r2, r3, r4, r5, r6] loop
     perform public.create_referral(jsonb_build_object('id',uid,'case_id',ca,'to_facility',fb,'conditions',jsonb_build_array('tb'),'rules_version','v1','initials','KAM'));
   end loop;
   perform public.request_ambulance(jsonb_build_object('id',gen_random_uuid(),'referral_id',r1,'reason','very_weak'));
@@ -34,39 +35,42 @@ begin
   perform public.advance_referral(r1,'tested','confirmed');
   perform public.advance_referral(r2,'arrived');
   perform public.advance_referral(r2,'closed');
+  foreach x in array array[r4, r5, r6] loop perform public.advance_referral(x,'arrived'); end loop;
   perform public.answer_ambulance(((public.list_ambulance_requests('received'))->0->>'id')::uuid, 'dispatched', 20);
   reset role;
   -- r3: sent 9 days ago, never arrived.
   -- Test only: back-date inside this rolled-back transaction.
   alter table public.referrals disable trigger referral_forward_only;
-  update public.referrals set created_at = greatest(date_trunc('week', now()), now() - interval '1 minute') where id in (r1, r2);
+  update public.referrals set created_at = greatest(date_trunc('week', now()), now() - interval '1 minute') where id in (r1, r2, r4, r5, r6);
   update public.referrals set created_at = now() - interval '9 days' where id = r3;
   alter table public.referrals enable trigger referral_forward_only;
 
-  -- Admin A: own facility only; counts as sender.
+  -- Admin A: own facility only. Six sent (five this week, one 9 days ago), five arrived,
+  -- one tested and confirmed, one not arrived after 7 days. Counts 1 to 4 are hidden.
   perform set_config('request.jwt.claim.sub', adm_a::text, true);
   set local role authenticated;
   got := public.referral_stats(4);
-  assert (select count(distinct e->>'facility_id') from jsonb_array_elements(got) e) = 1, 'Admin sees only their facility'; n:=n+1;
-  assert jsonb_array_length(got) = 4, 'One row per week asked for'; n:=n+1;
-  select e into row_a from jsonb_array_elements(got) e where e->>'week' = to_char(date_trunc('week', now()), 'YYYY-MM-DD');
-  assert (row_a->>'sent')::int = 2 and (row_a->>'arrived')::int = 2 and (row_a->>'tested')::int = 1 and (row_a->>'confirmed')::int = 1,
-    'This week: 2 sent, 2 arrived (one later closed), 1 tested, 1 confirmed'; n:=n+1;
-  assert (select sum((e->>'not_arrived_7d')::int) from jsonb_array_elements(got) e) = 1, 'One referral not arrived after 7 days'; n:=n+1;
+  assert jsonb_array_length(got) = 1 and got->0->>'facility_id' = fa::text, 'Admin sees only their facility'; n:=n+1;
+  fa_stats := got->0;
+  assert jsonb_array_length(fa_stats->'weeks') = 4, 'One row per week asked for'; n:=n+1;
+  assert (fa_stats->'totals'->>'sent')::int = 6 and (fa_stats->'totals'->>'arrived')::int = 5, 'Totals of 5 or more are shown'; n:=n+1;
+  assert fa_stats->'totals'->'tested' = 'null' and fa_stats->'totals'->'confirmed' = 'null' and fa_stats->'totals'->'not_arrived_7d' = 'null',
+    'Totals from 1 to 4 are hidden, so a single confirmed result cannot be picked out'; n:=n+1;
+  select w into wk from jsonb_array_elements(fa_stats->'weeks') w where w->>'week' = to_char(date_trunc('week', now()), 'YYYY-MM-DD');
+  assert (wk->>'sent')::int = 5 and (wk->>'arrived')::int = 5 and not (wk ? 'confirmed'), 'Weekly rows: volumes only, no results'; n:=n+1;
+  assert (select count(*) from jsonb_array_elements(fa_stats->'weeks') w where w->'sent' = 'null') = 1, 'The week with one referral is hidden'; n:=n+1;
   txt := got::text;
   assert position('KAM' in txt) = 0 and position(ca::text in txt) = 0 and position(r1::text in txt) = 0, 'No initials, case or referral ids in the numbers'; n:=n+1;
   begin perform public.referral_stats(0); raise exception 'Zero weeks unexpectedly allowed'; exception when invalid_parameter_value then n:=n+1; end;
   begin perform public.referral_stats(53); raise exception 'Over a year unexpectedly allowed'; exception when invalid_parameter_value then n:=n+1; end;
   reset role;
 
-  -- Admin B: counts as receiver, including the ambulance answered in time.
+  -- Admin B: counts as receiver; a single ambulance request is hidden.
   perform set_config('request.jwt.claim.sub', adm_b::text, true);
   set local role authenticated;
-  got := public.referral_stats(4);
-  select e into row_b from jsonb_array_elements(got) e where e->>'week' = to_char(date_trunc('week', now()), 'YYYY-MM-DD');
-  assert (row_b->>'received')::int = 2 and (row_b->>'amb_requests')::int = 1 and (row_b->>'amb_seen_10min')::int = 1 and (row_b->>'amb_dispatched')::int = 1,
-    'Receiver: 2 received, 1 ambulance request seen in time and dispatched'; n:=n+1;
-  assert (row_b->>'sent')::int = 0, 'Receiver sent nothing'; n:=n+1;
+  fb_stats := (public.referral_stats(4))->0;
+  assert (fb_stats->'totals'->>'received')::int = 6 and fb_stats->'totals'->'amb_requests' = 'null' and (fb_stats->'totals'->>'sent')::int = 0,
+    'Receiver: 6 received, one ambulance request hidden, zero sent shown as zero'; n:=n+1;
   assert (public.my_facility())->>'id' = fb::text, 'Admin reads their own facility for editing'; n:=n+1;
   reset role;
 

@@ -17,7 +17,8 @@ import { Blocked, Checking, ErrorScreen, Retake, Result } from './screens/Flow';
 import { Referral, type ReferralDeps } from './screens/Referral';
 import { Inbox } from './screens/Inbox';
 import { realInbox, type InboxDeps } from './lib/referral/inbox';
-import { realAmbulance, type AmbulanceDeps } from './lib/referral/ambulance';
+import { ambulanceEnabled, realAmbulance, type AmbulanceDeps } from './lib/referral/ambulance';
+import { AmbulanceAlert } from './screens/Ambulance';
 import { realFacility, type FacilityDeps } from './lib/referral/stats';
 import { Facility } from './screens/Facility';
 import { canReceiveImages, loadDirectory, loadOwnFacilityId, sendReferral, shareImage, type CamForShare } from './lib/referral/api';
@@ -156,9 +157,11 @@ export function App({ demo }: { demo?: DemoHooks }) {
     setView((v) => (v.name === 'result' ? { ...v, saved } : v));
   }
 
+  const amb: AmbulanceDeps | null = ambulanceEnabled(Boolean(demo)) ? (demo ? demo.ambulance : realAmbulance) : null;
   const screenEl = renderScreen();
-  if (demo) return <>{demo.banner}{screenEl}</>;
-  return screenEl;
+  const alert = amb && (demo || signedIn) ? <AmbulanceAlert deps={amb} /> : null;
+  if (demo) return <>{demo.banner}{alert}{screenEl}</>;
+  return <>{alert}{screenEl}</>;
 
   function renderScreen() {
   if (backendRequired(import.meta.env.PROD, backendConfigured)) return <Blocked title={t('not_ready_title')} body={t('backend_required')} />;
@@ -166,7 +169,7 @@ export function App({ demo }: { demo?: DemoHooks }) {
   if (!demo && backendConfigured && !signedIn) return <SignIn onSignIn={signIn} error={signInError} />;
   if (route === 'monitor') return <Monitor onBack={() => go('#/')} rows={demo ? [...demo.rows] : undefined} />;
   if (route === 'facility' && (demo || backendConfigured)) return <Facility deps={demo ? demo.facility : realFacility} onBack={() => go('#/')} />;
-  if (route === 'referrals' && (demo || backendConfigured)) return <Inbox deps={demo ? demo.inbox : realInbox} ambulance={demo ? demo.ambulance : realAmbulance} onBack={() => go('#/')} />;
+  if (route === 'referrals' && (demo || backendConfigured)) return <Inbox deps={demo ? demo.inbox : realInbox} ambulance={amb} onBack={() => go('#/')} />;
 
   if (age === 'under15') {
     return <Blocked title={t('under15_title')} body={t('under15_body')} action={t('under15_back')} onAction={() => setAge(null)} />;
@@ -202,7 +205,7 @@ export function App({ demo }: { demo?: DemoHooks }) {
           image={view.result.image}
           cam={view.result.cam}
           deps={demo ? demo.referral : realReferral}
-          ambulance={demo ? demo.ambulance : realAmbulance}
+          ambulance={amb}
           versions={t('versions', versionsNow())}
           onBack={() => setView(view.result)}
           onDone={() => end('done')}
@@ -210,7 +213,8 @@ export function App({ demo }: { demo?: DemoHooks }) {
       );
     case 'result': {
       // A referral needs the case saved first (no outbox until E9-02). In demo mode nothing is saved.
-      const canRefer = view.zone !== 'low_risk' && (demo ? true : backendConfigured && view.saved !== null);
+      // The Refer button shows at once (no button that moves under the finger) and waits for the save.
+      const canRefer = view.zone !== 'low_risk' && (demo ? true : backendConfigured);
       const result = view;
       return (
         <Result
@@ -220,6 +224,7 @@ export function App({ demo }: { demo?: DemoHooks }) {
           devScore={import.meta.env.DEV && thresholds?.ok && view.probability != null ? { probability: view.probability, screenOut: thresholds.thresholds.screenOut, refer: thresholds.thresholds.refer } : undefined}
           onDone={() => end('done')}
           onRetake={() => end('retake')}
+          referBusy={!demo && view.saved === null}
           onRefer={canRefer && result.zone !== 'low_risk'
             ? () => setView({ name: 'refer', zone: result.zone as 'refer_now' | 'unsure', caseId: demo || result.saved ? result.caseId : null, result })
             : undefined}

@@ -35,7 +35,7 @@ class TestLoad(unittest.TestCase):
         self.assertEqual(len(z["file_sha256"]), 64)
 
     def test_raw_scale_cuts_ignore_any_temperature_like_the_app(self):
-        # v1 (ADR-25): cuts on the raw scale; T is information. triage.ts applies no T, so
+        # v1 (ADR-27): cuts on the raw scale; T is information. triage.ts applies no T, so
         # neither may the one-time score. Applying it here would let more TB into low risk.
         with tempfile.TemporaryDirectory() as d:
             z = zones.load_zone_thresholds(thresholds_file(

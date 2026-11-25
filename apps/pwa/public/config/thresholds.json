@@ -1,50 +1,87 @@
 {
-  "version": "v0-uncalibrated",
+  "version": "v1-calibrated",
   "status": "set",
   "run_id": "efficientnet_lite0_seed1_20261021T114608Z",
   "split": "shenzhen_v2/validation (94 images, 49 TB)",
   "rule": {
-    "screen_out": "highest threshold with sensitivity >= 0.95 on validation, raw fp32 logits (ADR-20)",
-    "refer": "lowest threshold with specificity >= 0.95 on validation, raw fp32 logits (ADR-20)"
+    "screen_out": "halfway below the lowest score that keeps sensitivity >= 0.95 on validation (E6-01, ADR-20 rule)",
+    "refer": "halfway above the highest score that keeps specificity >= 0.95 on validation (E6-01, ADR-20 rule)"
   },
-  "screen_out_probability": 0.090453,
-  "refer_probability": 0.90177,
+  "probability_space": "raw_sigmoid",
+  "screen_out_probability": 0.088844,
+  "refer_probability": 0.901772,
   "model_sha256": "ef9c7dc7a8882703a4db24422c27b065d504358087216e86b8ff40a07584a289",
+  "checkpoint_sha256": "014f51ef1bbba998f090143581e3cda421be6a076d3dee6e8c6e7cc6e3b330bb",
+  "calibration": {
+    "method": "temperature scaling on validation logits (ADR-8)",
+    "temperature": 1.3431,
+    "calibrated_screen_out_probability": 0.150185,
+    "calibrated_refer_probability": 0.838984,
+    "ece_10_bins": {
+      "before": 0.0982,
+      "after": 0.0991,
+      "after_ci95": [
+        0.0746,
+        0.181
+      ]
+    },
+    "ece_target": 0.05,
+    "ece_target_met": false,
+    "for_display": false,
+    "note": "Zones use the raw cuts above; the calibrated values are the same cuts on the calibrated scale. Not for display to health workers until the ECE target is met on more validation data (ADR-27)."
+  },
   "validation": {
     "screen_out": {
-      "threshold_probability": 0.090453,
-      "tp": 47,
-      "fn": 2,
-      "tn": 27,
-      "fp": 18,
-      "sensitivity": 0.959,
+      "tb_not_low_risk": 47,
+      "n_tb": 49,
+      "sensitivity": 0.9591836734693877,
       "sensitivity_ci95": [
-        0.863,
-        0.989
+        0.8628671652316889,
+        0.9887346030720717
       ],
+      "normal_in_low_risk": 27,
       "specificity": 0.6,
       "specificity_ci95": [
-        0.455,
-        0.73
+        0.4545159420914473,
+        0.7297532055204246
       ]
     },
     "refer": {
-      "threshold_probability": 0.90177,
-      "tp": 23,
-      "fn": 26,
-      "tn": 43,
-      "fp": 2,
-      "sensitivity": 0.469,
-      "sensitivity_ci95": [
-        0.337,
-        0.606
-      ],
-      "specificity": 0.956,
+      "normal_below_refer": 43,
+      "n_normal": 45,
+      "specificity": 0.9555555555555556,
       "specificity_ci95": [
-        0.852,
-        0.988
+        0.8517222081611939,
+        0.9877261309595557
+      ],
+      "tb_in_refer": 23,
+      "sensitivity": 0.46938775510204084,
+      "sensitivity_ci95": [
+        0.33703281897894777,
+        0.6061937298008014
       ]
     },
-    "not_sure_share": 0.426
-  }
+    "counts": {
+      "low_risk": {
+        "tb": 2,
+        "normal": 27
+      },
+      "unsure": {
+        "tb": 24,
+        "normal": 16
+      },
+      "refer": {
+        "tb": 23,
+        "normal": 2
+      }
+    },
+    "not_sure_share": 0.426,
+    "margin_to_nearest_score": {
+      "screen_out": 0.001607,
+      "refer": 0.002762
+    }
+  },
+  "signature": null,
+  "signature_note": "Signing (ADR-11) is deferred to E2-05 (ADR-27); the file is bound to the model by model_sha256.",
+  "created_utc": "2026-11-24T11:00:56+00:00"
 }

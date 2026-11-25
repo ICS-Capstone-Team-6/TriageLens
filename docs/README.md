@@ -60,6 +60,7 @@ Every document in `docs/`, who owns it and how it changes.
 | [adr/0023-tbx11k-without-age-or-patient-ids.md](adr/0023-tbx11k-without-age-or-patient-ids.md) | ADR-23. TBX11K onboarded without age or patient IDs; not used for training (proposed) | Chelsea | Living (supersede with a new ADR) |
 | [adr/0025-chest-xray-execution-and-distillation.md](adr/0025-chest-xray-execution-and-distillation.md) | ADR-25. Chest X-ray execution and two-teacher distillation (proposed) | Micheal | Living (supersede with a new ADR) |
 | [adr/0026-dr-data-aptos-eyepacs.md](adr/0026-dr-data-aptos-eyepacs.md) | ADR-26. DR training data: APTOS without patient IDs, EyePACS subsample, padded crop (proposed) | Kweku | Living (supersede with a new ADR) |
+| [adr/0027-calibration-v1-thresholds.md](adr/0027-calibration-v1-thresholds.md) | ADR-27. Thresholds v1: raw-scale cuts, temperature recorded, ECE target missed (proposed) | Chelsea | Living (supersede with a new ADR) |
 
 ## Safety and ethics
 

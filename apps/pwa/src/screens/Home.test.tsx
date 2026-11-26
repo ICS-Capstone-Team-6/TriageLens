@@ -39,6 +39,12 @@ describe('Home: under-15 gate (H5)', () => {
     expect(r.text()).toContain(t('hint_age'));
   });
 
+  it('keeps the shutter off with no age band even if a caller wrongly passes ready', async () => {
+    r = await render(home(null, true));
+    expect(shutter(r.el).disabled).toBe(true);
+    expect(upload(r.el).disabled).toBe(true);
+  });
+
   it('turns the shutter on for 15 and over, with no under-15 note', async () => {
     r = await render(home('25-34', canScreen(true, true, '25-34')));
     expect(shutter(r.el).disabled).toBe(false);

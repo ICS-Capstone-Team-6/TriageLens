@@ -34,4 +34,4 @@ export async function render(ui: ReactNode): Promise<Rendered> {
 }
 
 /** Words the app must never show on a result (TRD 7.3, CLAUDE.md rule 1). */
-export const FORBIDDEN = /\b(diagnos\w*|positive|negative|healthy)\b|you do not have/i;
+export const FORBIDDEN = /\b(diagnos\w*|positive|negative|healthy)\b|you do not have|does not have|no disease/i;

@@ -38,8 +38,8 @@ export function Home({ age, onAge, onFile, ready, modelReady, onMonitor, onSignO
   const upload = useRef<HTMLInputElement>(null);
   const online = useOnline();
   const under = age === 'under15';
-  // H5: the shutter and upload stay off for under 15 even if a caller passes ready=true.
-  const canShoot = ready && !under;
+  // H5: the shutter and upload stay off for under 15, or with no age band, even if a caller passes ready=true.
+  const canShoot = ready && age !== null && !under;
   const pick = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     e.target.value = '';

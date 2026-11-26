@@ -1,42 +1,83 @@
-// Facility map (canvas "Map"): every facility in the directory on a drawn outline of Ghana,
-// with search, "must have" filters, free beds, and straight-line distances from the chosen
-// facility (H17: straight-line, roads may be longer). No map tiles or map library: it works
-// offline from the cached directory and adds no weight to the app shell.
+// Facility map (canvas "Map"): every facility in the directory, with search, "must have"
+// filters, free beds, and straight-line distances from the chosen facility (H17: straight-line,
+// roads may be longer). The background is OpenStreetMap tiles when the phone is online, drawn as
+// plain images under the pins (no map library, nothing added to the app shell). Offline, or if
+// tiles are blocked, the drawn outline of Ghana shows instead, so the map still works from the
+// cached directory. The list on the left and the details on the right can be hidden.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { DirectoryCache } from '../lib/referral/api';
 import { bedState, hoursSince } from '../lib/referral/beds';
-import { distanceKm, isOpenAt, type Facility } from '../lib/referral/match';
+import { distanceKm, isOpenAt, type Facility, type Point } from '../lib/referral/match';
+import { loadRoute, type RouteInfo } from '../lib/referral/route';
 import { SERVICE_TAGS } from '../lib/referral/rules';
 import { t, type StringKey } from '../strings';
-import { AlertCircle, Check, MapIcon, Minus, Phone, Plus, Scan, Search, WifiOff } from '../ui/icons';
+import { AlertCircle, Check, Info, List, MapIcon, Minus, Phone, Plus, Scan, Search, WifiOff } from '../ui/icons';
 import { Empty, Facts, Notice, TopBar } from '../ui/kit';
 
 export interface MapDeps {
   loadDirectory: () => Promise<DirectoryCache | null>;
   ownFacilityId: () => Promise<string | null>;
+  /** Drive route from the clinic to a facility. Defaults to OSRM with an offline estimate; tests and the demo inject their own. */
+  route?: (from: Point, to: Point, now: Date) => Promise<RouteInfo>;
 }
 
-// Equirectangular projection, 100 units per degree; the base view is 480 x 670 units.
-const P = (lat: number, lng: number) => ({ x: (lng + 3.4) * 100, y: (11.3 - lat) * 100 });
+// Web Mercator (the projection of OpenStreetMap tiles), 100 units per degree of longitude;
+// the base view, all of Ghana, is about 480 x 670 units.
+const M = (lat: number) => (180 / Math.PI) * Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360));
+const M0 = M(11.3);
+const P = (lat: number, lng: number) => ({ x: (lng + 3.4) * 100, y: (M0 - M(lat)) * 100 });
+const WORLD = 36000; // units across the whole world at 100 units per degree
+const X0 = -(180 - 3.4) * 100, Y0 = (M0 - 180) * 100; // unit position of the world's top-left corner
+const TILE_URL = (import.meta.env.VITE_TILE_URL as string | undefined) ?? 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 const BASE = { w: 480, h: 670, cx: 240, cy: 335 };
 const OUTLINE = [[-3.1, 5.1], [-2.95, 6.0], [-3.0, 7.0], [-2.6, 8.2], [-2.8, 9.4], [-2.7, 10.0], [-2.9, 10.7], [-2.85, 11.0], [-1.0, 11.05], [0.0, 11.1], [0.2, 11.0], [0.4, 10.3], [0.3, 9.4], [0.5, 8.3], [0.6, 7.4], [0.9, 6.8], [1.2, 6.1], [0.6, 5.8], [0.0, 5.7], [-0.6, 5.4], [-1.3, 5.05], [-1.8, 4.85], [-2.1, 4.75], [-2.6, 5.0]]
   .map(([lng, lat], i) => { const p = P(lat, lng); return `${i ? 'L' : 'M'}${p.x.toFixed(1)} ${p.y.toFixed(1)}`; }).join(' ') + 'Z';
 
 const svc = (s: string) => t(`service_${s}` as StringKey).replace(/^./, (m) => m.toUpperCase());
 const MAX_ZOOM = 24; // far enough in to pull apart a city's worth of facilities (about 20 km across)
-const NEAR = 6; // distance lines and names are drawn for this many nearest facilities, not all
+const MAX_TILES = 80; // never ask the tile server for more than this at once
+const NEAR = 6; // the opening view frames your clinic and this many of its nearest facilities
 
-/** Opening view: the clinic (or the list's centre) with its nearest facilities in frame. */
-function fitView(from: Facility | null, facs: Facility[]): View {
-  const pts = (from ? [from, ...facs.filter((f) => f.id !== from.id).sort((a, b) => distanceKm(from, a) - distanceKm(from, b)).slice(0, NEAR + 2)] : facs).map((f) => P(f.lat, f.lng));
+type View = { zoom: number; cx: number; cy: number };
+
+/** A view that frames these points with some room around them. */
+function fitPoints(pts: { x: number; y: number }[], cw: number, ch: number): View {
   if (!pts.length) return { zoom: 1, cx: BASE.cx, cy: BASE.cy };
   const xs = pts.map((q) => q.x), ys = pts.map((q) => q.y);
   const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
   const w = Math.max(maxX - minX, 12) * 1.5, h = Math.max(maxY - minY, 12) * 1.5; // 12 units is about 13 km
-  return { zoom: Math.max(1, Math.min(MAX_ZOOM, BASE.w / w, BASE.h / h)), cx: (minX + maxX) / 2, cy: (minY + maxY) / 2 };
+  const s1 = Math.max(BASE.w / cw, BASE.h / ch); // units per pixel when all of Ghana is in frame
+  return { zoom: Math.max(1, Math.min(MAX_ZOOM, (cw * s1) / w, (ch * s1) / h)), cx: (minX + maxX) / 2, cy: (minY + maxY) / 2 };
 }
 
-type View = { zoom: number; cx: number; cy: number };
+/** Opening view: the clinic (or the list's centre) with its nearest facilities in frame. */
+function fitView(from: Facility | null, facs: Facility[], cw: number, ch: number): View {
+  const near = from ? [from, ...facs.filter((f) => f.id !== from.id).sort((a, b) => distanceKm(from, a) - distanceKm(from, b)).slice(0, NEAR + 2)] : facs;
+  return fitPoints(near.map((f) => P(f.lat, f.lng)), cw, ch);
+}
+
+const clock = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit' });
+const span = (min: number) => { const m = Math.max(1, Math.round(min)); return m < 60 ? t('map_eta_min', { n: m }) : t('map_eta_hm', { h: Math.floor(m / 60), m: m % 60 }); };
+
+/** OpenStreetMap tiles under the pins. Plain images: no library, nothing stored by the app. */
+function Tiles({ cw, vx, vy, W, H, onLoad }: { cw: number; vx: number; vy: number; W: number; H: number; onLoad: () => void }) {
+  const n = Math.max(0, Math.min(18, Math.round(Math.log2((WORLD * cw) / (W * 256)))));
+  const T = WORLD / 2 ** n, last = 2 ** n - 1;
+  const x0 = Math.max(0, Math.floor((vx - X0) / T)), x1 = Math.min(last, Math.floor((vx + W - X0) / T));
+  const y0 = Math.max(0, Math.floor((vy - Y0) / T)), y1 = Math.min(last, Math.floor((vy + H - Y0) / T));
+  const tiles: { x: number; y: number }[] = [];
+  for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (tiles.length < MAX_TILES) tiles.push({ x, y });
+  return (
+    <div className="tiles" aria-hidden="true">
+      {tiles.map(({ x, y }) => (
+        <img key={`${n}/${x}/${y}`} alt="" draggable={false} crossOrigin="anonymous" referrerPolicy="strict-origin-when-cross-origin" decoding="async"
+          src={TILE_URL.replace('{z}', String(n)).replace('{x}', String(x)).replace('{y}', String(y))}
+          style={{ left: `${((x * T + X0 - vx) / W) * 100}%`, top: `${((y * T + Y0 - vy) / H) * 100}%`, width: `${(T / W) * 100 + 0.15}%`, height: `${(T / H) * 100 + 0.15}%` }}
+          onLoad={onLoad} onError={(e) => { e.currentTarget.style.display = 'none'; }} />
+      ))}
+    </div>
+  );
+}
 
 export function MapScreen({ deps, dock }: { deps: MapDeps; dock?: React.ReactNode }) {
   const [dir, setDir] = useState<DirectoryCache | null | 'loading'>('loading');
@@ -45,6 +86,13 @@ export function MapScreen({ deps, dock }: { deps: MapDeps; dock?: React.ReactNod
   const [q, setQ] = useState('');
   const [need, setNeed] = useState<string[]>([]);
   const [view, setView] = useState<View>({ zoom: 1, cx: BASE.cx, cy: BASE.cy });
+  const [showFind, setShowFind] = useState(true);
+  const [showSel, setShowSel] = useState(true);
+  const [tilesOk, setTilesOk] = useState(false);
+  const [route, setRoute] = useState<{ id: string; info: RouteInfo; at: Date } | null>(null);
+  const [size, setSize] = useState({ cw: BASE.w, ch: BASE.h });
+  const mapRef = useRef<HTMLDivElement>(null);
+  const fitted = useRef(false);
   const viewRef = useRef(view);
   viewRef.current = view;
   const raf = useRef(0);
@@ -53,14 +101,32 @@ export function MapScreen({ deps, dock }: { deps: MapDeps; dock?: React.ReactNod
 
   useEffect(() => {
     let live = true;
-    void Promise.all([deps.loadDirectory(), deps.ownFacilityId()]).then(([d, o]) => {
-      if (!live) return;
-      setDir(d); setOwn(o);
-      const facs = d?.facilities ?? [];
-      setView(fitView(facs.find((f) => f.id === o) ?? null, facs));
-    });
+    void Promise.all([deps.loadDirectory(), deps.ownFacilityId()]).then(([d, o]) => { if (live) { setDir(d); setOwn(o); } });
     return () => { live = false; cancelAnimationFrame(raf.current); };
   }, [deps]);
+
+  // The map takes the size of its area (it is not a fixed portrait box), and opens fitted once.
+  const hasMap = Boolean(dir && dir !== 'loading');
+  useEffect(() => {
+    const el = mapRef.current;
+    if (!el) return;
+    const measure = () => {
+      const r = el.getBoundingClientRect();
+      if (r.width > 0 && r.height > 0) setSize({ cw: r.width, ch: r.height });
+    };
+    measure();
+    if (typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [hasMap, showFind, showSel]);
+  useEffect(() => {
+    if (fitted.current || !dir || dir === 'loading') return;
+    fitted.current = true;
+    const r = mapRef.current?.getBoundingClientRect();
+    const facs = dir.facilities;
+    setView(fitView(facs.find((f) => f.id === own) ?? null, facs, r && r.width > 0 ? r.width : BASE.w, r && r.height > 0 ? r.height : BASE.h));
+  }, [dir, own]);
 
   const all: Facility[] = dir && dir !== 'loading' ? dir.facilities : [];
   const home = all.find((f) => f.id === own) ?? null;
@@ -74,7 +140,7 @@ export function MapScreen({ deps, dock }: { deps: MapDeps; dock?: React.ReactNod
   // Glide to a new view (spatial consistency): 240 ms strong ease-out; reduced motion jumps.
   function glide(to: View) {
     cancelAnimationFrame(raf.current);
-    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return setView(to);
+    if (typeof matchMedia !== 'function' || matchMedia('(prefers-reduced-motion: reduce)').matches) return setView(to);
     const from = viewRef.current, start = performance.now();
     const step = (tm: number) => {
       const k = Math.min(1, (tm - start) / 240), e = 1 - Math.pow(1 - k, 5);
@@ -85,20 +151,36 @@ export function MapScreen({ deps, dock }: { deps: MapDeps; dock?: React.ReactNod
   }
   function pick(f: Facility) {
     setSel(f.id);
-    if (view.zoom > 1.01) { const p = P(f.lat, f.lng); glide({ zoom: view.zoom, cx: p.x, cy: p.y }); }
+    setShowSel(true);
+    const r = mapRef.current?.getBoundingClientRect();
+    const cw0 = r && r.width > 0 ? r.width : BASE.w, ch0 = r && r.height > 0 ? r.height : BASE.h;
+    if (home && f.id !== home.id) glide(fitPoints([P(home.lat, home.lng), P(f.lat, f.lng)], cw0, ch0)); // frame the trip
+    else if (view.zoom > 1.01) { const p = P(f.lat, f.lng); glide({ zoom: view.zoom, cx: p.x, cy: p.y }); }
   }
 
-  const W = BASE.w / view.zoom, H = BASE.h / view.zoom, vx = view.cx - W / 2, vy = view.cy - H / 2;
-  const k = 1 / Math.sqrt(view.zoom);
+  // The drive from your clinic to the chosen facility, with arrival time. Never blocks anything.
+  const rid = chosen && home && chosen.id !== home.id ? chosen.id : null;
+  useEffect(() => {
+    if (!rid || !home || !chosen) { setRoute(null); return; }
+    let live = true;
+    setRoute(null);
+    const at = new Date();
+    void (deps.route ?? loadRoute)(home, chosen, at).then((info) => {
+      if (!live) return;
+      setRoute({ id: rid, info, at });
+      const r = mapRef.current?.getBoundingClientRect();
+      glide(fitPoints((info.path ?? [home, chosen]).map((q) => P(q.lat, q.lng)), r && r.width > 0 ? r.width : BASE.w, r && r.height > 0 ? r.height : BASE.h));
+    });
+    return () => { live = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rid, home?.id, deps]);
+
+  const { cw, ch } = size;
+  const s1 = Math.max(BASE.w / cw, BASE.h / ch);
+  const W = (cw * s1) / view.zoom, H = (ch * s1) / view.zoom, vx = view.cx - W / 2, vy = view.cy - H / 2;
+  const u = W / cw; // map units per screen pixel: pins and lines keep one size on screen at every zoom
   const pos = (x: number, y: number) => ({ left: `${((x - vx) / W) * 100}%`, top: `${((y - vy) / H) * 100}%`, inView: x > vx && x < vx + W && y > vy && y < vy + H });
   const sp = chosen ? P(chosen.lat, chosen.lng) : null;
-  const near = chosen ? shown.filter((f) => f.id !== chosen.id).sort((a, b) => distanceKm(chosen, a) - distanceKm(chosen, b)).slice(0, NEAR) : [];
-  const nearIds = new Set([...near.map((f) => f.id), ...(chosen ? [chosen.id] : []), ...(home ? [home.id] : [])]);
-  const lines = chosen && sp ? near.map((f) => {
-    const p = P(f.lat, f.lng);
-    return { id: f.id, x1: sp.x, y1: sp.y, x2: p.x, y2: p.y, km: Math.max(1, Math.round(distanceKm(chosen, f))), ...pos((sp.x + p.x) / 2, (sp.y + p.y) / 2) };
-  }) : [];
-
   const zoomTo = (z: number) => { const c = sp ?? { x: view.cx, y: view.cy }; glide({ zoom: z, cx: z <= 1 ? BASE.cx : c.x, cy: z <= 1 ? BASE.cy : c.y }); };
   const onDown = (e: React.PointerEvent<SVGSVGElement>) => {
     if (drag.current) return; // one finger only
@@ -114,6 +196,9 @@ export function MapScreen({ deps, dock }: { deps: MapDeps; dock?: React.ReactNod
   const onUp = (e: React.PointerEvent<SVGSVGElement>) => { if (drag.current?.id === e.pointerId) drag.current = null; };
   const onWheel = (e: React.WheelEvent) => { cancelAnimationFrame(raf.current); setView((v) => ({ ...v, zoom: e.deltaY < 0 ? Math.min(MAX_ZOOM, v.zoom * 1.2) : Math.max(1, v.zoom / 1.2) })); };
 
+  // Names: only the chosen facility and your clinic. Every other pin is a tap away.
+  const labels = [chosen, home].filter((f, i, xs): f is Facility => Boolean(f) && xs.indexOf(f) === i).map((f) => ({ f, ...pos(P(f.lat, f.lng).x, P(f.lat, f.lng).y) })).filter((l) => l.inView);
+
   const beds = chosen ? bedState(chosen.beds, now) : 'none';
   const open = chosen ? isOpenAt(chosen.openingHours, now) : null;
   const h = chosen?.beds ? hoursSince(chosen.beds.updatedAt, now) : null;
@@ -126,7 +211,7 @@ export function MapScreen({ deps, dock }: { deps: MapDeps; dock?: React.ReactNod
         {dir === null && <Empty tone="problem" role="alert" icon={<WifiOff size={26} />} title={t('directory_missing_title')} body={t('refer_no_directory')} />}
         {dir && dir !== 'loading' && dir.facilities.length === 0 && <Empty icon={<MapIcon size={26} />} title={t('directory_empty_title')} body={t('directory_empty')} />}
         {dir && dir !== 'loading' && (
-          <div className="wide-3 mapgrid">
+          <div className={`wide-3 mapgrid${showFind ? '' : ' no-find'}${showSel ? '' : ' no-sel'}`}>
             <aside className="stack map-find" aria-label={t('map_find')}>
               <label className="search">
                 <span className="sr">{t('map_search')}</span>
@@ -144,43 +229,67 @@ export function MapScreen({ deps, dock }: { deps: MapDeps; dock?: React.ReactNod
               </details>
             </aside>
 
-            <div className="mapwrap" aria-label={t('map_label')}>
+            <div className="mapwrap" aria-label={t('map_label')} ref={mapRef}>
               <div className="mapbox">
-                <svg className="map" viewBox={`${vx} ${vy} ${W} ${H}`} preserveAspectRatio="xMidYMid meet" role="img" aria-label={t('map_svg_label')}
+                <Tiles cw={cw} vx={vx} vy={vy} W={W} H={H} onLoad={() => setTilesOk(true)} />
+                <svg className={`map${tilesOk ? ' tiled' : ''}`} viewBox={`${vx} ${vy} ${W} ${H}`} preserveAspectRatio="none" role="img" aria-label={t('map_svg_label')}
                   onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp} onPointerCancel={onUp} onWheel={onWheel}>
                   <defs><pattern id="grid" width="50" height="50" patternUnits="userSpaceOnUse"><path d="M50 0H0V50" fill="none" stroke="#dfe7f0" strokeWidth="1" /></pattern></defs>
-                  <rect x="-400" y="-400" width="1300" height="1500" fill="url(#grid)" />
-                  <path d={OUTLINE} fill="#fff" stroke="#bebecc" strokeWidth={2 * k} strokeLinejoin="round" />
-                  {lines.map((l) => <line key={l.id} x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2} stroke="#2597d0" strokeWidth={1.8 * k} strokeDasharray={`${6 * k} ${5 * k}`} strokeLinecap="round" opacity=".85" />)}
+                  <rect className="grid-bg" x="-400" y="-400" width="1300" height="1500" fill="url(#grid)" />
+                  <path className="outline" d={OUTLINE} fill="#fff" stroke="#bebecc" strokeWidth={2 * u} strokeLinejoin="round" />
+                  {route && home && chosen && route.id === chosen.id && (() => {
+                    const pts = (route.info.path ?? [home, chosen]).map((q) => { const p = P(q.lat, q.lng); return `${p.x.toFixed(2)},${p.y.toFixed(2)}`; }).join(' ');
+                    return (
+                      <>
+                        <polyline points={pts} fill="none" stroke="#fff" strokeWidth={9 * u} strokeLinecap="round" strokeLinejoin="round" />
+                        <polyline points={pts} fill="none" stroke="#2597d0" strokeWidth={5 * u} strokeLinecap="round" strokeLinejoin="round" strokeDasharray={route.info.path ? undefined : `${9 * u} ${8 * u}`} />
+                      </>
+                    );
+                  })()}
                   {all.map((f) => {
                     const p = P(f.lat, f.lng), on = f.id === chosen?.id, low = bedState(f.beds, now) === 'low', mine = f.id === own;
                     return (
-                      <circle key={f.id} cx={p.x} cy={p.y} r={(on ? 11 : 7) * k} opacity={matches(f) || mine ? 1 : 0.25}
-                        fill={mine ? '#2597d0' : low ? '#fff' : '#070709'} stroke={low ? '#d83a1f' : '#fff'} strokeWidth={(low ? 3 : 2.5) * k}
-                        className="mk" onClick={() => pick(f)} />
+                      <g key={f.id} className="mk" onClick={() => pick(f)} opacity={matches(f) || mine ? 1 : 0.25}>
+                        <circle cx={p.x} cy={p.y} r={22 * u} fill="transparent" />
+                        <circle cx={p.x} cy={p.y} r={(on ? 12 : 8.5) * u} fill={mine ? '#2597d0' : low ? '#fff' : '#070709'} stroke={low ? '#d83a1f' : '#fff'} strokeWidth={(low ? 3 : 2.5) * u} />
+                      </g>
                     );
                   })}
                 </svg>
-                {lines.filter((l) => l.inView).map((l) => <span key={l.id} className="lbl num" style={{ left: l.left, top: l.top }}>{l.km} km</span>)}
-                {all.map((f) => {
-                  const p = P(f.lat, f.lng), ps = pos(p.x, p.y);
-                  return ps.inView && ((nearIds.has(f.id) && view.zoom > 1.6) || view.zoom > 10) ? <span key={f.id} className="nm2" style={{ left: ps.left, top: ps.top }}>{f.name}</span> : null;
-                })}
+                {labels.map((l) => <span key={l.f.id} className="nm2" style={{ left: l.left, top: l.top }}>{l.f.name}</span>)}
+                {chosen && home && chosen.id !== home.id && (
+                  <p className="route-chip" role="status">
+                    {route && route.id === chosen.id
+                      ? <><b className="num">{t('map_route_value', { km: route.info.km < 10 ? route.info.km.toFixed(1) : Math.round(route.info.km), time: span(route.info.minutes) })}</b><span>{t('map_arrive', { time: clock.format(new Date(route.at.getTime() + route.info.minutes * 60000)) })}</span></>
+                      : <span>{t('map_route_loading')}</span>}
+                  </p>
+                )}
               </div>
               <div className="tools" role="group" aria-label={t('map_zoom')}>
                 <button type="button" aria-label={t('map_zoom_in')} onClick={() => zoomTo(Math.min(MAX_ZOOM, view.zoom * 1.5))}><Plus size={18} /></button>
                 <button type="button" aria-label={t('map_zoom_out')} onClick={() => zoomTo(Math.max(1, view.zoom / 1.5))}><Minus size={18} /></button>
                 <button type="button" aria-label={t('map_zoom_all')} onClick={() => zoomTo(1)}><Scan size={18} /></button>
               </div>
+              <button className="pbtn pbtn-l" type="button" aria-expanded={showFind} onClick={() => setShowFind((v) => !v)}><List size={18} />{showFind ? t('map_hide_list') : t('map_show_list')}</button>
+              <button className="pbtn pbtn-r" type="button" aria-expanded={showSel} onClick={() => setShowSel((v) => !v)}><Info size={18} />{showSel ? t('map_hide_details') : t('map_show_details')}</button>
+              {tilesOk && <a className="osm" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer"><span>© OpenStreetMap contributors</span></a>}
               <p className="map-key"><span><i style={{ background: '#2597d0' }} />{t('map_key_you')}</span><span><i style={{ background: '#070709' }} />{t('map_key_fac')}</span><span><i style={{ background: '#fff', boxShadow: 'inset 0 0 0 2px #d83a1f' }} />{t('map_key_low')}</span></p>
             </div>
 
-            {chosen && (
+            {chosen && showSel && (
               <aside className="stack map-sel" aria-label={t('map_selected')} aria-live="polite">
                 <div className="stack-tight">
                   <h2 className="t-title" style={{ fontSize: 24 }}>{chosen.name}</h2>
                   <p className="t-small">{[chosen.district, chosen.region].filter(Boolean).join(', ')}{home && chosen.id !== own ? `, ${t('map_km_from_you', { km: Math.max(1, Math.round(distanceKm(home, chosen))) })}` : ''}</p>
                 </div>
+                {route && home && chosen.id !== home.id && route.id === chosen.id && (
+                  <div className="cloud" style={{ gap: 6, padding: 16 }}>
+                    <span className="t-sub">{t('map_route_from', { name: home.name })}</span>
+                    <span className="num" style={{ fontSize: 24, fontWeight: 600, letterSpacing: '-.03em' }}>{t('map_route_value', { km: route.info.km < 10 ? route.info.km.toFixed(1) : Math.round(route.info.km), time: span(route.info.minutes) })}</span>
+                    <span className="t-small">{t('map_arrive', { time: clock.format(new Date(route.at.getTime() + route.info.minutes * 60000)) })}, {t(`map_traffic_${route.info.traffic}` as StringKey)}</span>
+                    <span className="t-cap">{route.info.source === 'road' ? t('map_route_note') : t('map_route_estimate')}</span>
+                  </div>
+                )}
                 {chosen.beds && chosen.beds.total > 0 && (
                   <div className="cloud" style={{ gap: 8, padding: 16 }}>
                     <span className="row"><span className="t-sub">{t('map_beds_free')}</span><span className="num" style={{ fontSize: 22, fontWeight: 600 }}>{chosen.beds.free} / {chosen.beds.total}</span></span>
@@ -204,7 +313,7 @@ export function MapScreen({ deps, dock }: { deps: MapDeps; dock?: React.ReactNod
                   ...(chosen.phone ? [[t('map_phone'), <span key="p" className="num">{chosen.phone}</span>] as [string, React.ReactNode]] : []),
                 ]} />
                 {chosen.phone && <a className="btn btn-ghost btn-full" href={`tel:${chosen.phone}`}><Phone />{t('map_call')}</a>}
-                <p className="t-cap"><AlertCircle size={13} /> {t('map_straight_line')}</p>
+                {!(route && route.id === chosen.id) && <p className="t-cap"><AlertCircle size={13} /> {t('map_straight_line')}</p>}
               </aside>
             )}
             <section className="stack map-list" aria-label={t('map_results')}>

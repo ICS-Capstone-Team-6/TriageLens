@@ -12,19 +12,24 @@
 --    "Auto Confirm User", choose your own passwords), using the emails below, then run this file.
 --  * No patient data.
 --
+--  * Opening hours and phone numbers are made up too (fictional +233 30 555 01xx numbers). Brekusu Clinic is
+--    open Mon-Fri 08:00-17:00 and Sat 08:00-13:00; Valley View is open 24 hours.
+--  * Brekusu Clinic's services and beds are made-up test values too (rapid TB test, chest X-ray, oxygen,
+--    ambulance; 12 beds, 5 free). Re-running this file updates them in place.
+--
 -- Needs migrations up to 20261126120000_e10_10_facility_beds.sql applied first.
 do $$
 declare
   brekusu uuid; danfa uuid; valley uuid;
   missing text;
 begin
-  insert into public.facilities(name, district, region, lat, lng, phone, services, beds_total, beds_free, beds_updated_at, services_confirmed_at)
+  insert into public.facilities(name, district, region, lat, lng, phone, opening_hours, services, beds_total, beds_free, beds_updated_at, services_confirmed_at)
   values
-    ('Brekusu Clinic',                          'Akuapem South', 'Eastern',  5.7834, -0.2089, '', '{}',                                                                  0,  0, null,  null),
-    ('TEST Danfa Clinic',                       'Ga East',       'Greater Accra / Eastern border', 5.78945, -0.15954, '', '{tb_rapid_test,chest_xray}',                   0,  0, null,  null),
-    ('TEST Valley View University Hospital',    'Akuapem South', 'Eastern',  5.79806, -0.12592, '', '{tb_rapid_test,tb_treatment,chest_xray,oxygen,inpatient,ambulance}', 40, 12, now(), null)
+    ('Brekusu Clinic',                          'Akuapem South', 'Eastern',  5.7834, -0.2089, '+233 30 555 0101', '{"mon":[["08:00","17:00"]],"tue":[["08:00","17:00"]],"wed":[["08:00","17:00"]],"thu":[["08:00","17:00"]],"fri":[["08:00","17:00"]],"sat":[["08:00","13:00"]]}'::jsonb, '{tb_rapid_test,chest_xray,oxygen,ambulance}',                          12, 5, now(), null),
+    ('TEST Danfa Clinic',                       'Ga East',       'Greater Accra / Eastern border', 5.78945, -0.15954, '+233 30 555 0102', '{"mon":[["07:30","17:00"]],"tue":[["07:30","17:00"]],"wed":[["07:30","17:00"]],"thu":[["07:30","17:00"]],"fri":[["07:30","17:00"]],"sat":[["07:30","17:00"]]}'::jsonb, '{tb_rapid_test,chest_xray}',                   0,  0, null,  null),
+    ('TEST Valley View University Hospital',    'Akuapem South', 'Eastern',  5.79806, -0.12592, '+233 30 555 0103', '{"always":true}'::jsonb, '{tb_rapid_test,tb_treatment,chest_xray,oxygen,inpatient,ambulance}', 40, 12, now(), null)
   on conflict (name) do update set
-    lat = excluded.lat, lng = excluded.lng, services = excluded.services,
+    lat = excluded.lat, lng = excluded.lng, phone = excluded.phone, opening_hours = excluded.opening_hours, services = excluded.services,
     beds_total = excluded.beds_total, beds_free = excluded.beds_free, beds_updated_at = excluded.beds_updated_at;
 
   select id into brekusu from public.facilities where name = 'Brekusu Clinic';

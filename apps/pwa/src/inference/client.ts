@@ -2,7 +2,7 @@
 import type { ErrorCode, Screened, WorkerRequest, WorkerResponse } from './messages';
 
 export class ModelError extends Error {
-  constructor(public code: ErrorCode) {
+  constructor(public code: ErrorCode, public detail?: string) {
     super(code);
   }
 }
@@ -25,11 +25,11 @@ export class InferenceClient {
       this.pending = null;
       done?.(e.data);
     };
-    this.worker.onerror = () => this.fail();
-    this.worker.onmessageerror = () => this.fail();
+    this.worker.onerror = (e) => this.fail(e?.message || 'worker_error');
+    this.worker.onmessageerror = () => this.fail('worker_message_error');
   }
 
-  private fail() {
+  private fail(detail = 'timeout') {
     this.failed = true;
     if (this.timeout !== null) clearTimeout(this.timeout);
     this.timeout = null;
@@ -37,22 +37,28 @@ export class InferenceClient {
     this.pending = null;
     this.onProgress = null;
     this.worker.terminate();
-    done?.({ type: 'error', code: 'model_load' });
+    done?.({ type: 'error', code: 'model_load', detail });
   }
 
   private ask(msg: WorkerRequest): Promise<WorkerResponse> {
     if (this.failed) return Promise.resolve({ type: 'error', code: 'model_load' });
     return new Promise((resolve) => {
       this.pending = resolve;
-      this.timeout = setTimeout(() => this.fail(), msg.type === 'init' ? 180_000 : 60_000);
+      this.timeout = setTimeout(() => this.fail('timeout'), msg.type === 'init' ? 180_000 : 60_000);
       this.worker.postMessage(msg);
     });
+  }
+
+  /** Stops the worker, so a retry does not leave an old one running next to the new one. */
+  dispose() {
+    if (this.timeout !== null) clearTimeout(this.timeout);
+    this.worker.terminate();
   }
 
   async init(modelUrl: string, modelSha256: string): Promise<Ready> {
     const r = await this.ask({ type: 'init', modelUrl, modelSha256 });
     if (r.type === 'ready') return r;
-    throw new ModelError(r.type === 'error' ? r.code : 'model_load');
+    throw r.type === 'error' ? new ModelError(r.code, r.detail) : new ModelError('model_load');
   }
 
   async screen(file: Blob, onProgress: (step: 1 | 2) => void): Promise<Screened> {

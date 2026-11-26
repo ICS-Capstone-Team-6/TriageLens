@@ -6,7 +6,7 @@ import { useState } from 'react';
 import type { RetakeReason } from '../lib/quality';
 import { t, type StringKey } from '../strings';
 import { ArrowUpRight, Film, Mark, Retake as RetakeIcon, ZoneIcon } from '../ui/icons';
-import { Facts, Foot, Notice, TopBar } from '../ui/kit';
+import { Facts, Foot, Notice, TopBar, useSwipeDown } from '../ui/kit';
 
 export function Checking({ step }: { step: 0 | 1 | 2 }) {
   const keys: StringKey[] = ['step_quality', 'step_prepare', 'step_model'];
@@ -86,12 +86,17 @@ export function Result({ zone, ageBand, caseCode, versions, saved, onDone, onRet
   const [referred, setReferred] = useState(false);
   const refer = () => (onRefer ? onRefer() : setReferred(true));
   const word = t(`zone_${zone}` as StringKey);
+  // The panel looks like a sheet, so it slides down like one, but only for Low risk (it is the
+  // same as "Next person"). Refer now and Not sure never slide away by accident: the worker must
+  // choose Refer, Retake or Next person (uncertainty moves toward refer, never away from it).
+  const dismissible = zone === 'low_risk';
+  const { panel, grip } = useSwipeDown<HTMLElement>(onDone, dismissible);
   return (
     <main className="screen" style={{ background: 'var(--obsidian)' }}>
       <div style={{ height: 'max(48px, env(safe-area-inset-top))' }} />
-      <section className="pane" style={{ flex: 1, background: '#fff', borderRadius: '32px 32px 0 0', display: 'flex', flexDirection: 'column' }} aria-labelledby="zone-name">
-        <div className={`zone-band zone-${zone}`}>
-          <span className="grab" aria-hidden="true" />
+      <section ref={panel} className="pane swipe" style={{ flex: 1, background: '#fff', borderRadius: '32px 32px 0 0', display: 'flex', flexDirection: 'column' }} aria-labelledby="zone-name">
+        <div className={`zone-band zone-${zone}`} {...grip} style={dismissible ? { touchAction: 'none' } : undefined}>
+          <span className="grab" aria-hidden="true" style={dismissible ? undefined : { visibility: 'hidden' }} />
           <h1 className="zone-name" id="zone-name"><ZoneIcon zone={zone} size={34} />{word}</h1>
           <p className="zone-msg">{t(`message_${zone}` as StringKey)}</p>
           {zone === 'low_risk' && <p style={{ fontSize: 16, fontWeight: 500 }}>{t('action_low_risk')}</p>}
@@ -131,7 +136,7 @@ export function Result({ zone, ageBand, caseCode, versions, saved, onDone, onRet
   );
 }
 
-export function Blocked({ title, body, action, onAction }: { title: string; body: string; action?: string; onAction?: () => void }) {
+export function Blocked({ title, body, detail, action, onAction }: { title: string; body: string; detail?: string; action?: string; onAction?: () => void }) {
   return (
     <main className="screen">
       <header className="bar"><Mark /><span className="bar-title">{t('app_name')}</span></header>
@@ -139,6 +144,7 @@ export function Blocked({ title, body, action, onAction }: { title: string; body
         <div className="cloud" role="alert" style={{ padding: 28 }}>
           <h1 className="t-display">{title}</h1>
           <p className="t-lead">{body}</p>
+          {detail && <p className="t-cap" style={{ marginTop: 12, overflowWrap: 'anywhere' }}>{detail}</p>}
         </div>
         <p className="t-small">{t('prototype_note')}</p>
       </div>

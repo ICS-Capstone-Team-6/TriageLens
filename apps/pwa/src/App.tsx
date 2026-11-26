@@ -1,7 +1,7 @@
 // The one path of the M2 slice (ADR-19): sign in, choose age band, photograph or upload
 // a chest X-ray, quality check, cxr-pre-2, TB model on the phone, zone, save the record.
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { InferenceClient, type Ready } from './inference/client';
+import { InferenceClient, ModelError, type Ready } from './inference/client';
 import type { Screened } from './inference/messages';
 import { createCase, finishCase, openCaseDb, type CaseResult, type LocalCase } from './lib/caseStore';
 import { loadThresholds, type ThresholdsState } from './lib/config';
@@ -78,6 +78,24 @@ export function App({ demo }: { demo?: DemoHooks }) {
   const [signInError, setSignInError] = useState<string | null>(null);
   const [thresholds, setThresholds] = useState<ThresholdsState | null>(null);
   const [model, setModel] = useState<Ready | 'loading' | 'failed'>('loading');
+  const [modelError, setModelError] = useState<{ code: ModelError['code'] | 'model_url_missing'; detail?: string } | null>(null);
+  const realClient = useRef<InferenceClient | null>(null);
+  // Starts (or restarts) the model on the phone. A failed start used to stay failed until the app
+  // was closed; now the worker can try again, by button or when the connection returns.
+  const startModel = useCallback(() => {
+    realClient.current?.dispose();
+    realClient.current = null;
+    if (!MODEL_URL) { setModelError({ code: 'model_url_missing' }); setModel('failed'); return; }
+    const real = new InferenceClient();
+    realClient.current = real;
+    client.current = real;
+    setModel('loading');
+    setModelError(null);
+    real.init(MODEL_URL, MODEL_SHA256).then(setModel, (e: unknown) => {
+      setModelError({ code: e instanceof ModelError ? e.code : 'model_load', detail: e instanceof ModelError ? e.detail : undefined });
+      setModel('failed');
+    });
+  }, []);
   const [age, setAge] = useState<AgeBand | 'under15' | null>(null);
   const [view, setView] = useState<View>({ name: 'home' });
   // Local case log (E8-06). Demo cases go to their own database, never mixed with real ones.
@@ -113,16 +131,20 @@ export function App({ demo }: { demo?: DemoHooks }) {
       return;
     }
     void loadThresholds(MODEL_RUN).then(setThresholds);
-    const real = new InferenceClient();
-    client.current = real;
-    if (!MODEL_URL) setModel('failed');
-    else real.init(MODEL_URL, MODEL_SHA256).then(setModel, () => setModel('failed'));
+    startModel();
     if (supabase) {
       void supabase.auth.getSession().then(({ data }) => setSignedIn(Boolean(data.session)));
       const { data } = supabase.auth.onAuthStateChange((_e, session) => setSignedIn(Boolean(session)));
       return () => data.subscription.unsubscribe();
     }
   }, []);
+
+  // A download that failed for lack of network tries again as soon as the phone is back online.
+  useEffect(() => {
+    if (demo || model !== 'failed' || modelError?.code !== 'model_unreachable') return;
+    addEventListener('online', startModel);
+    return () => removeEventListener('online', startModel);
+  }, [demo, model, modelError, startModel]);
 
   const signIn = useCallback(async (email: string, password: string) => {
     if (!supabase) return;
@@ -208,7 +230,12 @@ export function App({ demo }: { demo?: DemoHooks }) {
     const body = thresholds.reason === 'pending' ? t('not_ready_pending') : t('not_ready_invalid');
     return <Blocked title={t('not_ready_title')} body={body} />;
   }
-  if (model === 'failed') return <Blocked title={t('not_ready_title')} body={t('not_ready_model')} />;
+  if (model === 'failed') {
+    const code = modelError?.code;
+    const body = t(code === 'model_unreachable' ? 'model_err_unreachable' : code === 'model_checksum' ? 'model_err_checksum' : code === 'model_url_missing' ? 'model_err_missing' : 'model_err_load');
+    return <Blocked title={t('not_ready_title')} body={body} detail={modelError?.detail ? t('model_detail', { d: modelError.detail }) : undefined}
+      action={code === 'model_url_missing' || code === 'model_checksum' ? undefined : t('try_again')} onAction={startModel} />;
+  }
   if (thresholds?.ok && typeof model === 'object' && !modelMatches(model.modelSha256, thresholds.modelSha256)) {
     return <Blocked title={t('not_ready_title')} body={t('not_ready_invalid')} />;
   }

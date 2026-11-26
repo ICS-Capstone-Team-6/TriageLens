@@ -40,8 +40,8 @@ async function init(modelUrl: string, modelSha256: string) {
     if (!m.ok) return post({ type: 'error', code: m.code });
     session = await ort.InferenceSession.create(new Uint8Array(m.bytes), { executionProviders: ['wasm'] });
     post({ type: 'ready', threads, modelSha256: m.hash, crossOriginIsolated: self.crossOriginIsolated });
-  } catch {
-    post({ type: 'error', code: 'model_load' });
+  } catch (e) {
+    post({ type: 'error', code: 'model_load', detail: String((e as { message?: string })?.message ?? e).slice(0, 140) });
   }
 }
 

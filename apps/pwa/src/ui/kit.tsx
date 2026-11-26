@@ -1,6 +1,6 @@
 // Small shared components for the "clinic under open sky" design (ui/sky.css).
 // Plain React with no UI library, so the app shell stays small on low-end phones.
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type PointerEvent as RPointerEvent, type ReactNode, type RefObject } from 'react';
 import { t } from '../strings';
 import { AlertCircle, Back, Close, Info, Minus, Plus, ZoneIcon, List, ArrowUpRight, Scan, Building, MapIcon } from './icons';
 
@@ -78,13 +78,78 @@ export function Facts({ rows }: { rows: [ReactNode, ReactNode][] }) {
   );
 }
 
+const SWIPE_FAR = 96; // px dragged down that always dismisses
+const SWIPE_FAST = 0.5; // px per ms: a quick flick dismisses from a shorter drag
+const SWIPE_MS = 220;
+
 /**
- * Bottom sheet with a scrim. Escape and the scrim close it; focus moves into it on open and
- * back to the opener on close. Not used where an inline control would do (impeccable: no
- * modal as a first thought).
+ * Drag-down to dismiss for a panel that looks like a sheet. Put `grip` on the handle area (a
+ * tall target with touch-action: none) and `panel` on the sliding element. The panel follows
+ * the finger, a flick or a long drag slides it out and calls onDismiss, a short drag springs
+ * back. Upward drag has friction. Pointer events, so touch, pen and mouse all work, and the
+ * motion is a plain transform (cheap on low-end phones). Not the only way out: every sheet
+ * also has a button or Escape.
+ */
+export function useSwipeDown<T extends HTMLElement>(onDismiss: () => void, enabled = true, fade?: RefObject<HTMLElement | null>) {
+  const panel = useRef<T>(null);
+  const drag = useRef<{ id: number; y0: number; t0: number; dy: number } | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+
+  const move = (dy: number, ms: number) => {
+    const el = panel.current;
+    if (!el) return;
+    el.style.transition = ms ? `transform ${ms}ms cubic-bezier(.32,.72,0,1)` : 'none';
+    el.style.transform = dy ? `translateY(${dy}px)` : '';
+    if (fade?.current) {
+      fade.current.style.transition = ms ? `opacity ${ms}ms ease` : 'none';
+      fade.current.style.opacity = dy > 0 ? String(Math.max(0, 1 - dy / Math.max(1, el.offsetHeight))) : '';
+    }
+  };
+
+  const grip = enabled ? {
+    onPointerDown: (e: RPointerEvent<HTMLElement>) => {
+      if (drag.current || (e.pointerType === 'mouse' && e.button !== 0)) return;
+      drag.current = { id: e.pointerId, y0: e.clientY, t0: performance.now(), dy: 0 };
+      e.currentTarget.setPointerCapture?.(e.pointerId);
+    },
+    onPointerMove: (e: RPointerEvent<HTMLElement>) => {
+      const d = drag.current;
+      if (!d || d.id !== e.pointerId) return;
+      const raw = e.clientY - d.y0;
+      d.dy = raw < 0 ? raw * 0.15 : raw;
+      move(d.dy, 0);
+    },
+    onPointerUp: (e: RPointerEvent<HTMLElement>) => {
+      const d = drag.current;
+      if (!d || d.id !== e.pointerId) return;
+      drag.current = null;
+      const speed = d.dy / Math.max(1, performance.now() - d.t0);
+      if (d.dy >= SWIPE_FAR || (d.dy > 24 && speed > SWIPE_FAST)) {
+        move(panel.current?.offsetHeight ?? 600, SWIPE_MS);
+        timer.current = setTimeout(onDismiss, SWIPE_MS + 20);
+      } else {
+        move(0, 260);
+      }
+    },
+    onPointerCancel: (e: RPointerEvent<HTMLElement>) => {
+      if (drag.current?.id !== e.pointerId) return;
+      drag.current = null;
+      move(0, 260);
+    },
+  } : {};
+  return { panel, grip };
+}
+
+/**
+ * Bottom sheet with a scrim. Drag the handle down, press Escape or tap the scrim to close; focus
+ * moves into it on open and back to the opener on close. Not used where an inline control would
+ * do (impeccable: no modal as a first thought).
  */
 export function Sheet({ label, onClose, children }: { label: string; onClose: () => void; children: ReactNode }) {
   const ref = useRef<HTMLElement>(null);
+  const scrim = useRef<HTMLDivElement>(null);
+  const { panel, grip } = useSwipeDown<HTMLElement>(onClose, true, scrim);
   useEffect(() => {
     const opener = document.activeElement as HTMLElement | null;
     ref.current?.focus();
@@ -94,9 +159,10 @@ export function Sheet({ label, onClose, children }: { label: string; onClose: ()
   }, [onClose]);
   return (
     <>
-      <div className="scrim" onClick={onClose} aria-hidden="true" />
-      <section className="sheet" role="dialog" aria-modal="true" aria-label={label} tabIndex={-1} ref={ref}>
-        <span className="grab" aria-hidden="true" />
+      <div className="scrim" ref={scrim} onClick={onClose} aria-hidden="true" />
+      <section className="sheet" role="dialog" aria-modal="true" aria-label={label} tabIndex={-1}
+        ref={(el) => { ref.current = el; (panel as { current: HTMLElement | null }).current = el; }}>
+        <div className="grip" {...grip}><span className="grab" aria-hidden="true" /></div>
         {children}
       </section>
     </>

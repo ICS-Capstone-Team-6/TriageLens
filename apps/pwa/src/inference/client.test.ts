@@ -23,6 +23,23 @@ describe('InferenceClient worker failures', () => {
     expect(FakeWorker.last.terminate).toHaveBeenCalledOnce();
   });
 
+  it('keeps the reason a load failed, so a phone failure can be traced', async () => {
+    const client = new InferenceClient();
+    const result = expect(client.init('/model.onnx', 'sha')).rejects.toMatchObject({ code: 'model_load', detail: 'no available backend found' });
+    FakeWorker.last.onmessage!({ data: { type: 'error', code: 'model_load', detail: 'no available backend found' } } as MessageEvent);
+    await result;
+    const crash = new InferenceClient();
+    const second = expect(crash.init('/model.onnx', 'sha')).rejects.toMatchObject({ code: 'model_load', detail: 'Failed to load module script' });
+    (FakeWorker.last.onerror as unknown as (e: { message: string }) => void)({ message: 'Failed to load module script' });
+    await second;
+  });
+
+  it('dispose stops the worker so a retry does not leave two running', () => {
+    const client = new InferenceClient();
+    client.dispose();
+    expect(FakeWorker.last.terminate).toHaveBeenCalledOnce();
+  });
+
   it('rejects unreadable worker messages', async () => {
     const client = new InferenceClient();
     const result = expect(client.init('/model.onnx', 'sha')).rejects.toMatchObject({ code: 'model_load' });

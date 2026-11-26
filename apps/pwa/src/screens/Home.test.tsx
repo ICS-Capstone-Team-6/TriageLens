@@ -60,3 +60,74 @@ describe('Home: under-15 gate (H5)', () => {
     expect(onAge).toHaveBeenCalledWith('under15');
   });
 });
+
+// The Screen tab is the camera (like the phone's camera app), not a button that opens it.
+describe('Home: live camera', () => {
+  const track = { stop: vi.fn() };
+  const stream = { getTracks: () => [track] } as unknown as MediaStream;
+  const withCamera = (gum: () => Promise<MediaStream>) =>
+    Object.defineProperty(navigator, 'mediaDevices', { value: { getUserMedia: vi.fn(gum) }, configurable: true });
+  afterEach(() => { vi.restoreAllMocks(); track.stop.mockClear(); Object.defineProperty(navigator, 'mediaDevices', { value: undefined, configurable: true }); });
+
+  it('shows the live camera at once, with no drawn film, and stops it when the screen closes', async () => {
+    withCamera(() => Promise.resolve(stream));
+    r = await render(home('25-34', true));
+    await r.flush();
+    expect(r.el.querySelector('video.cam-video.on')).not.toBeNull();
+    expect(r.el.querySelector('.cam-film'), 'the drawn film is only the fallback').toBeNull();
+    expect(r.text()).not.toContain(t('cam_denied'));
+    r.unmount(); r = undefined;
+    expect(track.stop).toHaveBeenCalled();
+  });
+
+  it('the shutter takes a frame from the live camera and hands it on', async () => {
+    withCamera(() => Promise.resolve(stream));
+    const onFile = vi.fn();
+    r = await render(<Home age="25-34" onAge={() => {}} onFile={onFile} ready modelReady onMonitor={() => {}} onSignOut={null} backendNote={false} tabs={[]} />);
+    await r.flush();
+    const video = r.el.querySelector('video') as HTMLVideoElement;
+    Object.defineProperty(video, 'videoWidth', { value: 1080 });
+    Object.defineProperty(video, 'videoHeight', { value: 1920 });
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue({ drawImage: vi.fn() } as unknown as CanvasRenderingContext2D);
+    vi.spyOn(HTMLCanvasElement.prototype, 'toBlob').mockImplementation((cb) => cb(new Blob(['x'], { type: 'image/jpeg' })));
+    await r.click(shutter(r.el));
+    expect(onFile).toHaveBeenCalledOnce();
+    expect((onFile.mock.calls[0][0] as File).type).toBe('image/jpeg');
+  });
+
+  it('under 15 stays blocked even with the camera live (H5)', async () => {
+    withCamera(() => Promise.resolve(stream));
+    const onFile = vi.fn();
+    r = await render(<Home age="under15" onAge={() => {}} onFile={onFile} ready modelReady onMonitor={() => {}} onSignOut={null} backendNote={false} tabs={[]} />);
+    await r.flush();
+    expect(shutter(r.el).disabled).toBe(true);
+    await r.click(shutter(r.el));
+    expect(onFile).not.toHaveBeenCalled();
+  });
+
+  it('no age band stays blocked even with the camera live (H5)', async () => {
+    withCamera(() => Promise.resolve(stream));
+    const onFile = vi.fn();
+    r = await render(<Home age={null} onAge={() => {}} onFile={onFile} ready modelReady onMonitor={() => {}} onSignOut={null} backendNote={false} tabs={[]} />);
+    await r.flush();
+    await r.click(shutter(r.el));
+    expect(onFile).not.toHaveBeenCalled();
+  });
+
+  it('says so when the camera is off for the app, and the shutter falls back to the phone camera picker', async () => {
+    withCamera(() => Promise.reject(Object.assign(new Error('no'), { name: 'NotAllowedError' })));
+    r = await render(home('25-34', true));
+    await r.flush();
+    expect(r.text()).toContain(t('cam_denied'));
+    expect(r.el.querySelector('video.on')).toBeNull();
+    const pick = vi.spyOn(HTMLInputElement.prototype, 'click').mockImplementation(() => {});
+    await r.click(shutter(r.el));
+    expect(pick).toHaveBeenCalled();
+  });
+
+  it('says so when there is no live camera support at all', async () => {
+    r = await render(home('25-34', true));
+    await r.flush();
+    expect(r.text()).toContain(t('cam_unavailable'));
+  });
+});

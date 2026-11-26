@@ -2,15 +2,16 @@
 // Result screen per zone (E8-05, TRD 7.2-7.3, hazards H1, H2, H8): exact wording, colour plus
 // icon plus words, the reminder and versions on every result, the right next actions, and no
 // raw score or forbidden word on a real screen.
+import { act } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { t, type StringKey } from '../strings';
 import { FORBIDDEN, render, type Rendered } from '../test/render';
-import { Result, Retake } from './Flow';
+import { Blocked, Result, Retake } from './Flow';
 
 const versions = { model: 'cxr-tb-test', thresholds: 'thr-test', preprocess: 'cxr-pre-2' };
 const ZONES = ['refer_now', 'unsure', 'low_risk'] as const;
 let r: Rendered | undefined;
-afterEach(() => { r?.unmount(); r = undefined; });
+afterEach(() => { r?.unmount(); r = undefined; vi.useRealTimers(); });
 
 const buttons = (el: HTMLElement) => [...el.querySelectorAll('button')].map((b) => b.textContent?.trim());
 
@@ -82,5 +83,57 @@ describe('Retake', () => {
     expect(r.text()).toContain(t('retake_no_result'));
     expect(r.el.querySelector('[class*="zone-"]')).toBeNull();
     for (const z of ZONES) expect(r.text()).not.toContain(t(`zone_${z}` as StringKey));
+  });
+});
+
+// Swipe down (the panel looks like a sheet). Only Low risk slides away; Refer now and Not sure
+// never leave by accident (uncertainty moves toward refer, hazard H1).
+function swipe(grip: Element, dy: number) {
+  const ev = (type: string, y: number) => grip.dispatchEvent(Object.assign(new Event(type, { bubbles: true }), { pointerId: 1, pointerType: 'touch', clientY: y, button: 0 }));
+  act(() => { ev('pointerdown', 100); ev('pointermove', 100 + dy); ev('pointerup', 100 + dy); });
+}
+
+describe('Result: swipe down', () => {
+  it('slides a Low risk result away like Next person', async () => {
+    vi.useFakeTimers();
+    const done = vi.fn();
+    r = await render(<Result zone="low_risk" versions={versions} saved={null} onDone={done} onRetake={() => {}} />);
+    swipe(r.el.querySelector('.zone-band')!, 160);
+    expect(done).not.toHaveBeenCalled(); // it animates out first
+    await act(async () => { await vi.advanceTimersByTimeAsync(300); });
+    expect(done).toHaveBeenCalledOnce();
+    vi.useRealTimers();
+  });
+
+  it('springs back from a short drag', async () => {
+    vi.useFakeTimers();
+    const done = vi.fn();
+    r = await render(<Result zone="low_risk" versions={versions} saved={null} onDone={done} onRetake={() => {}} />);
+    swipe(r.el.querySelector('.zone-band')!, 20);
+    await act(async () => { await vi.advanceTimersByTimeAsync(400); });
+    expect(done).not.toHaveBeenCalled();
+    expect((r.el.querySelector('section.swipe') as HTMLElement).style.transform).toBe('');
+    vi.useRealTimers();
+  });
+
+  it.each(['refer_now', 'unsure'] as const)('never slides a %s result away', async (zone) => {
+    vi.useFakeTimers();
+    const done = vi.fn();
+    r = await render(<Result zone={zone} versions={versions} saved={null} onDone={done} onRetake={() => {}} />);
+    swipe(r.el.querySelector('.zone-band')!, 400);
+    await act(async () => { await vi.advanceTimersByTimeAsync(400); });
+    expect(done).not.toHaveBeenCalled();
+    expect((r.el.querySelector('.grab') as HTMLElement).style.visibility, 'no handle where nothing slides').toBe('hidden');
+    vi.useRealTimers();
+  });
+});
+
+describe('Blocked', () => {
+  it('shows the technical detail and a Try again button', async () => {
+    const again = vi.fn();
+    r = await render(<Blocked title="T" body="B" detail="Technical detail: no backend" action="Try again" onAction={again} />);
+    expect(r.text()).toContain('Technical detail: no backend');
+    await r.click([...r.el.querySelectorAll('button')].find((b) => b.textContent === 'Try again') ?? null);
+    expect(again).toHaveBeenCalledOnce();
   });
 });

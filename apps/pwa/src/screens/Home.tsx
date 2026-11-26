@@ -1,10 +1,12 @@
-// Camera-first home (canvas "1 Ready: camera first"). The phone's own camera opens from the
-// shutter; there is no live preview in this version (E8-07 is a Should), so the stage shows a
-// drawn film. Age band first (Hick: one row of choices); Under 15 turns the shutter off with a
-// note (H5). The shutter is the one large target (Fitts).
+// Camera-first home: the screen IS the camera, like the phone's camera app. The back camera
+// fills the screen at once; the shutter takes a frame from it. If the camera cannot open
+// (permission off, no camera) the shutter falls back to the phone's camera picker. Age band
+// first (Hick: one row of choices); Under 15 turns the shutter off with a note (H5). The
+// shutter is the one large target (Fitts).
 import { useEffect, useRef, useState } from 'react';
 import type { AgeBand } from '../lib/records';
 import { t } from '../strings';
+import { useCamera } from '../lib/camera';
 import { Film, ImageIcon, Info, Wifi, WifiOff } from '../ui/icons';
 import { Dock, type Tab } from '../ui/kit';
 
@@ -45,18 +47,32 @@ export function Home({ age, onAge, onFile, ready, modelReady, onMonitor, onSignO
     e.target.value = '';
     if (f) onFile(f);
   };
+  const cam = useCamera(true);
+  const live = cam.state === 'live';
+  const busy = useRef(false);
+  const shoot = async () => {
+    if (!canShoot || busy.current) return; // H5 again here, and one frame per tap
+    if (!live) return camera.current?.click();
+    busy.current = true;
+    try {
+      const f = await cam.capture();
+      if (f) onFile(f); // no picker fallback after an await: Android drops that tap
+    } finally { busy.current = false; }
+  };
   const hint = !modelReady ? t('hint_loading') : under ? t('hint_under15') : age === null ? t('hint_age') : t('hint_ready');
 
   return (
     <main className="cam">
-      <div className="cam-glow" aria-hidden="true" />
+      <video ref={cam.video} className={`cam-video${live ? ' on' : ''}`} autoPlay playsInline muted aria-hidden="true" />
+      {!live && <div className="cam-glow" aria-hidden="true" />}
 
       <header className="cam-top">
         <h1 className="who">{t('app_name')}</h1>
         <span className="net" role="status">{online ? <Wifi size={16} /> : <WifiOff size={16} />}{online ? t('online') : t('offline')}</span>
       </header>
       <p className="cam-hint" role="status" aria-live="polite"><Info size={16} color="#2597d0" />{hint}</p>
-      <div className="cam-film" aria-hidden="true"><Film width={150} /></div>
+      {!live && <div className="cam-film" aria-hidden="true"><Film width={150} /></div>}
+      {!live && cam.state !== 'starting' && <p className="cam-note cam-warn" role="status">{t(cam.state === 'denied' ? 'cam_denied' : 'cam_unavailable')}</p>}
 
       <div className="cam-lower">
         {under && <p className="cam-note" role="alert"><b>{t('under15_title')}.</b> {t('under15_body')}</p>}
@@ -73,7 +89,7 @@ export function Home({ age, onAge, onFile, ready, modelReady, onMonitor, onSignO
             <button className="link" type="button" onClick={onMonitor} style={{ color: '#fff', fontSize: 13, minHeight: 48 }}>{t('monitor_link')}</button>
             {onSignOut && <button className="link" type="button" onClick={onSignOut} style={{ color: '#fff', fontSize: 13, minHeight: 48 }}>{t('sign_out')}</button>}
           </span>
-          <button className="shutter" type="button" aria-label={t('take_photo')} disabled={!canShoot} onClick={() => camera.current?.click()} />
+          <button className="shutter" type="button" aria-label={t('take_photo')} disabled={!canShoot} onClick={() => void shoot()} />
           <button className="upload" type="button" aria-label={t('upload')} disabled={!canShoot} onClick={() => upload.current?.click()}>
             <ImageIcon size={22} color="#ffffff" />
           </button>

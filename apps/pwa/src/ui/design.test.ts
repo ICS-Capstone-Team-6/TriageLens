@@ -169,3 +169,24 @@ describe(`touch targets are at least ${MIN_TARGET}px (NFR-USAB-02)`, () => {
     expect(lost).toEqual([]);
   });
 });
+
+// Motion that must keep working on a phone (Android's "Remove animations" and battery saver switch
+// prefers-reduced-motion on, and sheets used to just appear; a finished animation with fill-mode
+// "both" also overrides the inline transform that the drag uses).
+describe('sheet motion', () => {
+  const rules = css.match(/[^{}]+\{[^{}]*\}/g) ?? [];
+  const rule = (sel: RegExp) => rules.filter((x) => sel.test(x.split('{')[0].trim()));
+
+  it('animations on dragged panels do not keep a final transform that beats the drag', () => {
+    for (const sel of [/^\.sheet$/, /^\.pane$/]) {
+      const body = rule(sel)[0].split('{')[1]; // the base rule, not the opacity-only reduced-motion one
+      expect(body, String(sel)).toMatch(/animation:[^;]*\bbackwards\b/);
+      expect(body, String(sel)).not.toMatch(/animation:[^;]*\b(both|forwards)\b/);
+    }
+  });
+
+  it('keeps a short slide for sheets under reduced motion instead of removing it', () => {
+    const reduced = css.slice(css.indexOf('@media (prefers-reduced-motion: reduce)'));
+    expect(reduced).toMatch(/\.sheet\s*\{[^}]*animation:\s*rise\s+(1\d\d|2\d\d)ms/);
+  });
+});

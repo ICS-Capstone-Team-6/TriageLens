@@ -105,6 +105,15 @@ describe('Home: live camera', () => {
     expect(onFile).not.toHaveBeenCalled();
   });
 
+  it('no age band stays blocked even with the camera live (H5)', async () => {
+    withCamera(() => Promise.resolve(stream));
+    const onFile = vi.fn();
+    r = await render(<Home age={null} onAge={() => {}} onFile={onFile} ready modelReady onMonitor={() => {}} onSignOut={null} backendNote={false} tabs={[]} />);
+    await r.flush();
+    await r.click(shutter(r.el));
+    expect(onFile).not.toHaveBeenCalled();
+  });
+
   it('says so when the camera is off for the app, and the shutter falls back to the phone camera picker', async () => {
     withCamera(() => Promise.reject(Object.assign(new Error('no'), { name: 'NotAllowedError' })));
     r = await render(home('25-34', true));

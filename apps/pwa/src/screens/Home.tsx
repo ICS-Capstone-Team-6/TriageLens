@@ -49,11 +49,15 @@ export function Home({ age, onAge, onFile, ready, modelReady, onMonitor, onSignO
   };
   const cam = useCamera(true);
   const live = cam.state === 'live';
+  const busy = useRef(false);
   const shoot = async () => {
+    if (!canShoot || busy.current) return; // H5 again here, and one frame per tap
     if (!live) return camera.current?.click();
-    const f = await cam.capture();
-    if (f) onFile(f);
-    else camera.current?.click();
+    busy.current = true;
+    try {
+      const f = await cam.capture();
+      if (f) onFile(f); // no picker fallback after an await: Android drops that tap
+    } finally { busy.current = false; }
   };
   const hint = !modelReady ? t('hint_loading') : under ? t('hint_under15') : age === null ? t('hint_age') : t('hint_ready');
 

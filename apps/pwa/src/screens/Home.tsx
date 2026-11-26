@@ -38,6 +38,8 @@ export function Home({ age, onAge, onFile, ready, modelReady, onMonitor, onSignO
   const upload = useRef<HTMLInputElement>(null);
   const online = useOnline();
   const under = age === 'under15';
+  // H5: the shutter and upload stay off for under 15 even if a caller passes ready=true.
+  const canShoot = ready && !under;
   const pick = (e: React.ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0];
     e.target.value = '';
@@ -71,8 +73,8 @@ export function Home({ age, onAge, onFile, ready, modelReady, onMonitor, onSignO
             <button className="link" type="button" onClick={onMonitor} style={{ color: '#fff', fontSize: 13, minHeight: 48 }}>{t('monitor_link')}</button>
             {onSignOut && <button className="link" type="button" onClick={onSignOut} style={{ color: '#fff', fontSize: 13, minHeight: 48 }}>{t('sign_out')}</button>}
           </span>
-          <button className="shutter" type="button" aria-label={t('take_photo')} disabled={!ready} onClick={() => camera.current?.click()} />
-          <button className="upload" type="button" aria-label={t('upload')} disabled={!ready} onClick={() => upload.current?.click()}>
+          <button className="shutter" type="button" aria-label={t('take_photo')} disabled={!canShoot} onClick={() => camera.current?.click()} />
+          <button className="upload" type="button" aria-label={t('upload')} disabled={!canShoot} onClick={() => upload.current?.click()}>
             <ImageIcon size={22} color="#ffffff" />
           </button>
         </div>

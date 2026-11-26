@@ -66,5 +66,5 @@ export default defineConfig({
   preview: { headers: isolation },
   worker: { format: 'es' },
   optimizeDeps: { exclude: ['onnxruntime-web'] },
-  test: { environment: 'node', include: ['src/**/*.test.ts'] },
+  test: { environment: 'node', include: ['src/**/*.test.{ts,tsx}'] },
 });

@@ -24,6 +24,8 @@ function daysAgo(iso: string | null): number | null {
 }
 
 const c = (n: Count) => (n === null ? t('stats_fewer_than_5') : String(n));
+/** Table cells: "<5" fits a phone-width column; screen readers still hear "fewer than 5". */
+const cell = (n: Count) => (n === null ? <><span aria-hidden="true">&lt;5</span><span className="sr">{t('stats_fewer_than_5')}</span></> : String(n));
 
 function Numbers({ f }: { f: FacilityStats }) {
   const sum = f.totals;
@@ -47,7 +49,7 @@ function Numbers({ f }: { f: FacilityStats }) {
           <thead><tr><th scope="col">{t('stats_week')}</th><th scope="col">{t('stats_col_sent')}</th><th scope="col">{t('stats_col_arrived')}</th><th scope="col">{t('stats_col_received')}</th><th scope="col">{t('stats_col_amb')}</th></tr></thead>
           <tbody>
             {f.weeks.map((r) => (
-              <tr key={r.week}><td>{weekLabel(r.week)}</td><td>{c(r.sent)}</td><td>{c(r.arrived)}</td><td>{c(r.received)}</td><td>{c(r.ambRequests)}</td></tr>
+              <tr key={r.week}><td>{weekLabel(r.week)}</td><td>{cell(r.sent)}</td><td>{cell(r.arrived)}</td><td>{cell(r.received)}</td><td>{cell(r.ambRequests)}</td></tr>
             ))}
           </tbody>
         </table>

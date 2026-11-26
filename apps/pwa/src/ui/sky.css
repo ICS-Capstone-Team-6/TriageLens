@@ -16,7 +16,8 @@
   --cloud: #f5f5f5;
   --cloud-2: #ececf0;
   --sky-tint: #d7e6f5;
-  --hair: #bebecc;
+  --hair: #bebecc; /* dividers and decoration only */
+  --edge: #868692; /* outlines that mark a control (inputs, toggles): 3.6:1 on white, WCAG 1.4.11 */
   --accent: #2597d0;
   --zone-refer: #fde3dd; --zone-refer-ink: #5c1406; --zone-refer-icon: #b42f18;
   --zone-unsure: #fdefc8; --zone-unsure-ink: #4d3500; --zone-unsure-icon: #a87400;
@@ -122,8 +123,8 @@ a { color: var(--obsidian); text-underline-offset: 4px; text-decoration-color: v
 .facts { display: flex; flex-direction: column; }
 .facts > div { display: flex; justify-content: space-between; align-items: baseline; gap: 14px; min-height: 52px; padding: 14px 0; font-size: 16px; }
 .facts > div + div { box-shadow: 0 -1px 0 var(--cloud-2); }
-.facts dt { color: var(--charcoal); flex: none; }
-.facts dd { text-align: right; font-weight: 500; }
+.facts dt { color: var(--charcoal); flex: 0 1 auto; min-width: 0; }
+.facts dd { flex: 0 0 auto; max-width: 60%; min-width: 0; text-align: right; font-weight: 500; overflow-wrap: anywhere; }
 .tl { display: flex; flex-direction: column; padding-left: 4px; }
 .tl li { position: relative; padding: 0 0 18px 26px; font-size: 15px; font-weight: 500; }
 .tl li::before { content: ""; position: absolute; left: 5px; top: 6px; width: 10px; height: 10px; border-radius: 10px; background: var(--obsidian); }
@@ -135,7 +136,7 @@ a { color: var(--obsidian); text-underline-offset: 4px; text-decoration-color: v
 /* ---------- forms ---------- */
 .field { display: flex; flex-direction: column; gap: 8px; font-size: 15px; font-weight: 500; }
 .field-row { display: flex; justify-content: space-between; align-items: center; }
-.input { width: 100%; min-height: 52px; border-radius: var(--r-input); border: 0; box-shadow: inset 0 0 0 1px var(--hair); background: #fff; padding: 0 14px; font-size: 17px; font-weight: 400; transition: box-shadow 160ms ease; }
+.input { width: 100%; min-height: 52px; border-radius: var(--r-input); border: 0; box-shadow: inset 0 0 0 1px var(--edge); background: #fff; padding: 0 14px; font-size: 17px; font-weight: 400; transition: box-shadow 160ms ease; }
 .input:focus { outline: none; box-shadow: inset 0 0 0 2px var(--obsidian); }
 .input[aria-invalid="true"] { box-shadow: inset 0 0 0 2px var(--zone-refer-icon); }
 .hint { font-size: 14px; line-height: 1.4; color: var(--charcoal); font-weight: 400; }
@@ -146,7 +147,7 @@ a { color: var(--obsidian); text-underline-offset: 4px; text-decoration-color: v
 .check-label { font-size: 16px; font-weight: 600; line-height: 1.35; }
 .toggle { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 56px; font-size: 16px; cursor: pointer; }
 .toggle + .toggle { box-shadow: 0 -1px 0 var(--cloud-2); }
-.toggle input { appearance: none; width: 46px; height: 28px; border-radius: var(--r-pill); background: var(--hair); position: relative; cursor: pointer; flex: none; margin: 0; transition: background-color 180ms ease; }
+.toggle input { appearance: none; width: 46px; height: 28px; border-radius: var(--r-pill); background: var(--edge); position: relative; cursor: pointer; flex: none; margin: 0; transition: background-color 180ms ease; }
 .toggle input::after { content: ""; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 22px; background: #fff; box-shadow: rgba(7,7,9,.2) 0 1px 3px; transition: transform 220ms var(--ease-out); }
 .toggle input:checked { background: var(--obsidian); }
 .toggle input:checked::after { transform: translateX(18px); }
@@ -174,7 +175,7 @@ a { color: var(--obsidian); text-underline-offset: 4px; text-decoration-color: v
 
 /* ---------- lists ---------- */
 .list { display: flex; flex-direction: column; }
-.item { display: flex; flex-direction: column; gap: 4px; padding: 14px 4px; border: 0; background: transparent; text-align: left; width: 100%; border-radius: 14px; cursor: pointer; transition: background-color 160ms ease, transform 160ms var(--ease-out); }
+.item { display: flex; flex-direction: column; gap: 4px; min-height: 56px; padding: 14px 4px; border: 0; background: transparent; text-align: left; width: 100%; border-radius: 14px; cursor: pointer; transition: background-color 160ms ease, transform 160ms var(--ease-out); }
 .item:active { background: var(--cloud); transform: scale(.99); }
 .list > li + li .item, .list > .item + .item { box-shadow: 0 -1px 0 var(--cloud-2); }
 .item .code { font-size: 18px; }
@@ -297,7 +298,7 @@ input.file { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-ev
 .mix { display: flex; height: 24px; border-radius: var(--r-pill); overflow: hidden; background: var(--cloud-2); }
 .mix-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; }
 .mix-grid dd { font-size: 24px; font-weight: 600; text-align: left; }
-.table-box { overflow-x: auto; }
+.table-box { overflow-x: auto; max-width: 100%; min-width: 0; }
 .page table { width: 100%; min-width: 820px; border-collapse: collapse; font-size: 15px; }
 .page thead tr { text-align: left; color: var(--charcoal); background: var(--cloud); }
 .page th { padding: 10px 8px; font-weight: 500; }
@@ -316,7 +317,7 @@ input.file { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-ev
 .amb-card { display: flex; flex-direction: column; gap: 10px; padding: 16px; border-radius: var(--r-card); background: var(--zone-refer); color: var(--zone-refer-ink); }
 .amb-alert { position: sticky; top: 0; z-index: 25; background: var(--zone-refer); color: var(--zone-refer-ink); border-bottom: 1px solid #f6c4b8; padding: 12px 16px; font-size: 15px; line-height: 1.4; }
 .amb-alert p + p { margin-top: 6px; }
-.amb-alert-call { color: var(--ink); font-weight: 600; }
+.amb-alert-call { display: inline-flex; align-items: center; min-height: 48px; color: var(--ink); font-weight: 600; }
 
 /* ---------- development-only demo bar (src/demo) ---------- */
 .demo-bar { background: var(--obsidian); color: #fff; padding: 10px 16px 12px; display: flex; flex-direction: column; gap: 8px; position: relative; z-index: 40; }

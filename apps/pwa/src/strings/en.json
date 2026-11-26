@@ -309,7 +309,7 @@
   "facility_saved": "Saved. Checked today.",
   "facility_save_failed": "Not saved. Check the signal and try again.",
   "stats_title": "Referral numbers, last {weeks} weeks",
-  "stats_note": "Counts only, no names or codes. Counts from 1 to 4 show as “fewer than 5” so no one person can be picked out.",
+  "stats_note": "Counts only, no names or codes. Counts from 1 to 4 show as “fewer than 5” (“<5” in the table) so no one person can be picked out.",
   "stats_sent": "Referrals sent",
   "stats_arrived": "Arrived",
   "stats_confirmed": "Confirmed by test, of those tested",

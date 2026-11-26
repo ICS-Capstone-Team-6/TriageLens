@@ -123,8 +123,8 @@ a { color: var(--obsidian); text-underline-offset: 4px; text-decoration-color: v
 .facts { display: flex; flex-direction: column; }
 .facts > div { display: flex; justify-content: space-between; align-items: baseline; gap: 14px; min-height: 52px; padding: 14px 0; font-size: 16px; }
 .facts > div + div { box-shadow: 0 -1px 0 var(--cloud-2); }
-.facts dt { color: var(--charcoal); flex: none; }
-.facts dd { text-align: right; font-weight: 500; }
+.facts dt { color: var(--charcoal); flex: 0 1 auto; min-width: 0; }
+.facts dd { flex: 0 0 auto; max-width: 60%; min-width: 0; text-align: right; font-weight: 500; overflow-wrap: anywhere; }
 .tl { display: flex; flex-direction: column; padding-left: 4px; }
 .tl li { position: relative; padding: 0 0 18px 26px; font-size: 15px; font-weight: 500; }
 .tl li::before { content: ""; position: absolute; left: 5px; top: 6px; width: 10px; height: 10px; border-radius: 10px; background: var(--obsidian); }
@@ -298,7 +298,7 @@ input.file { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-ev
 .mix { display: flex; height: 24px; border-radius: var(--r-pill); overflow: hidden; background: var(--cloud-2); }
 .mix-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; }
 .mix-grid dd { font-size: 24px; font-weight: 600; text-align: left; }
-.table-box { overflow-x: auto; }
+.table-box { overflow-x: auto; max-width: 100%; min-width: 0; }
 .page table { width: 100%; min-width: 820px; border-collapse: collapse; font-size: 15px; }
 .page thead tr { text-align: left; color: var(--charcoal); background: var(--cloud); }
 .page th { padding: 10px 8px; font-weight: 500; }

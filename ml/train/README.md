@@ -151,10 +151,34 @@ for s in da db; do
     --manifest ml/manifests/india_tb_v1/$s/manifest.csv --out ml/data/processed/india_${s}_v1_cxr-pre-2 --splits external
 done
 python3 ml/train/evaluate_external.py --check-only   # touches no locked data
-python3 ml/train/evaluate_external.py                # ONE time, after E6-01 is merged
+python3 ml/train/evaluate_external.py                # ONE time per frozen run (done 25 Nov 2026)
 ```
 
 For each set, it reports AUROC with its 95% CI and the three zones: TB films in low risk, sensitivity of "not low risk", specificity of "not refer", and the share of Unsure. Results go to `ml/runs/eval/<run>_india/`. The zone code is in `zones.py`, which has no torch dependency, so CI tests it.
+
+**Result (25 Nov 2026), scored once.** Frozen run `efficientnet_lite0_seed1_20261021T114608Z`, fp32, thresholds `v1-calibrated` (screen-out 0.088844, refer 0.901772, raw scale), code at `717ef6f`. DA and DB are now locked for this run. One seed only. Per-film scores stay on the team's machine (ADR-24).
+
+| Item | India DA (156 films, 78 TB) | India DB (114 films, 45 TB) |
+| --- | --- | --- |
+| AUROC (95% CI) | 0.846 (0.780 to 0.906) | 0.908 (0.851 to 0.957) |
+| AUROC with film borders masked | 0.866 | 0.898 |
+| TB films in Low risk | 0 | 0 |
+| Sensitivity of "not low risk" | 78/78 = 1.000 (95% CI 0.953 to 1.000) | 45/45 = 1.000 (95% CI 0.921 to 1.000) |
+| Specificity below refer | 69/78 = 0.885 (95% CI 0.795 to 0.938) | 60/69 = 0.870 (95% CI 0.770 to 0.930) |
+| Normal films in Low risk | 3/78 = 0.038 (95% CI 0.013 to 0.107) | 7/69 = 0.101 (95% CI 0.050 to 0.195) |
+| Unsure share | 89/156 = 57.1% | 63/114 = 55.3% |
+| Zones, TB films (Low, Unsure, Refer) | 0, 23, 55 | 0, 10, 35 |
+| Zones, normal films (Low, Unsure, Refer) | 3, 66, 9 | 7, 53, 9 |
+| int8 AUROC (drop from fp32) | 0.805 (0.040) | 0.856 (0.052) |
+
+What it shows:
+
+- **No TB film reached Low risk** on either set. The fail-safe goal of `E6-01` held on new data.
+- **Ranking:** DB meets the 0.85 TB target (TRD 3.4). DA is above the 0.80 floor but below the 0.90 target. Masking the borders barely moves AUROC, so the borders are not driving the score.
+- **Low risk is almost never given.** Only 4% (DA) and 10% (DB) of normal films reach Low risk, and more than half of all films are Unsure, against 43% on Shenzhen validation. Normal films score higher here than on Shenzhen, so specificity below refer also falls, from 0.956 to about 0.87. The result is safe but saves little work. Per-site calibration (H4) is the open fix.
+- **Shape:** film shape alone gives AUROC 0.51 (DA) and 0.50 (DB), so there is no shape shortcut (ADR-16). On DA, the 46 non-square films scored AUROC 0.945 and the 110 square films 0.806 (cause not tested).
+- **int8:** the drop is 0.040 (DA) and 0.052 (DB). Both are above the 0.03 floor (TRD 3.4), which supports shipping fp32 for now (ADR-18).
+- **Limits:** one seed, small sets, wide CIs. DA and DB have no age data, so the age 15 and over rule cannot be checked (ADR-24).
 
 ## Calibration and three-zone thresholds (E6-01)
 

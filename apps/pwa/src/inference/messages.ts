@@ -24,5 +24,6 @@ export interface Screened {
 export type WorkerResponse =
   | { type: 'progress'; step: 1 | 2 }
   | { type: 'ready'; threads: number; modelSha256: string; crossOriginIsolated: boolean }
-  | { type: 'error'; code: ErrorCode }
+  /** `detail` is a short technical reason (no patient data) so a failure on a phone can be traced. */
+  | { type: 'error'; code: ErrorCode; detail?: string }
   | Screened;

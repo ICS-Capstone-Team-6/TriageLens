@@ -23,7 +23,18 @@ const OUTLINE = [[-3.1, 5.1], [-2.95, 6.0], [-3.0, 7.0], [-2.6, 8.2], [-2.8, 9.4
   .map(([lng, lat], i) => { const p = P(lat, lng); return `${i ? 'L' : 'M'}${p.x.toFixed(1)} ${p.y.toFixed(1)}`; }).join(' ') + 'Z';
 
 const svc = (s: string) => t(`service_${s}` as StringKey).replace(/^./, (m) => m.toUpperCase());
-const MAX_ZOOM = 5;
+const MAX_ZOOM = 24; // far enough in to pull apart a city's worth of facilities (about 20 km across)
+const NEAR = 6; // distance lines and names are drawn for this many nearest facilities, not all
+
+/** Opening view: the clinic (or the list's centre) with its nearest facilities in frame. */
+function fitView(from: Facility | null, facs: Facility[]): View {
+  const pts = (from ? [from, ...facs.filter((f) => f.id !== from.id).sort((a, b) => distanceKm(from, a) - distanceKm(from, b)).slice(0, NEAR + 2)] : facs).map((f) => P(f.lat, f.lng));
+  if (!pts.length) return { zoom: 1, cx: BASE.cx, cy: BASE.cy };
+  const xs = pts.map((q) => q.x), ys = pts.map((q) => q.y);
+  const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+  const w = Math.max(maxX - minX, 12) * 1.5, h = Math.max(maxY - minY, 12) * 1.5; // 12 units is about 13 km
+  return { zoom: Math.max(1, Math.min(MAX_ZOOM, BASE.w / w, BASE.h / h)), cx: (minX + maxX) / 2, cy: (minY + maxY) / 2 };
+}
 
 type View = { zoom: number; cx: number; cy: number };
 
@@ -42,7 +53,12 @@ export function MapScreen({ deps, dock }: { deps: MapDeps; dock?: React.ReactNod
 
   useEffect(() => {
     let live = true;
-    void Promise.all([deps.loadDirectory(), deps.ownFacilityId()]).then(([d, o]) => { if (live) { setDir(d); setOwn(o); } });
+    void Promise.all([deps.loadDirectory(), deps.ownFacilityId()]).then(([d, o]) => {
+      if (!live) return;
+      setDir(d); setOwn(o);
+      const facs = d?.facilities ?? [];
+      setView(fitView(facs.find((f) => f.id === o) ?? null, facs));
+    });
     return () => { live = false; cancelAnimationFrame(raf.current); };
   }, [deps]);
 
@@ -76,7 +92,9 @@ export function MapScreen({ deps, dock }: { deps: MapDeps; dock?: React.ReactNod
   const k = 1 / Math.sqrt(view.zoom);
   const pos = (x: number, y: number) => ({ left: `${((x - vx) / W) * 100}%`, top: `${((y - vy) / H) * 100}%`, inView: x > vx && x < vx + W && y > vy && y < vy + H });
   const sp = chosen ? P(chosen.lat, chosen.lng) : null;
-  const lines = chosen && sp ? shown.filter((f) => f.id !== chosen.id).map((f) => {
+  const near = chosen ? shown.filter((f) => f.id !== chosen.id).sort((a, b) => distanceKm(chosen, a) - distanceKm(chosen, b)).slice(0, NEAR) : [];
+  const nearIds = new Set([...near.map((f) => f.id), ...(chosen ? [chosen.id] : []), ...(home ? [home.id] : [])]);
+  const lines = chosen && sp ? near.map((f) => {
     const p = P(f.lat, f.lng);
     return { id: f.id, x1: sp.x, y1: sp.y, x2: p.x, y2: p.y, km: Math.max(1, Math.round(distanceKm(chosen, f))), ...pos((sp.x + p.x) / 2, (sp.y + p.y) / 2) };
   }) : [];
@@ -146,7 +164,7 @@ export function MapScreen({ deps, dock }: { deps: MapDeps; dock?: React.ReactNod
                 {lines.filter((l) => l.inView).map((l) => <span key={l.id} className="lbl num" style={{ left: l.left, top: l.top }}>{l.km} km</span>)}
                 {all.map((f) => {
                   const p = P(f.lat, f.lng), ps = pos(p.x, p.y);
-                  return ps.inView && (f.id === chosen?.id || view.zoom > 1.6) ? <span key={f.id} className="nm2" style={{ left: ps.left, top: ps.top }}>{f.name}</span> : null;
+                  return ps.inView && ((nearIds.has(f.id) && view.zoom > 1.6) || view.zoom > 10) ? <span key={f.id} className="nm2" style={{ left: ps.left, top: ps.top }}>{f.name}</span> : null;
                 })}
               </div>
               <div className="tools" role="group" aria-label={t('map_zoom')}>

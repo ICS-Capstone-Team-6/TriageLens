@@ -79,6 +79,7 @@ Every document in `docs/`, who owns it and how it changes.
 | Document | Description | Owner | Update rule |
 |----------|-------------|-------|-------------|
 | [model-cards/TEMPLATE.md](model-cards/TEMPLATE.md) | Model card template (TRD 9.10) | Chelsea | Template |
+| [model-cards/cxr-tb-m2-slice.md](model-cards/cxr-tb-m2-slice.md) | E11-03 model card for the M2 slice TB model (run `efficientnet_lite0_seed1_20261021T114608Z`, fp32, thresholds `v1-calibrated`) | Chelsea | Living until E2-05 freezes a release model |
 | [benchmarks/README.md](benchmarks/README.md) | Where device benchmark reports go | Nana Yaw | Living |
 | [usability/ux-plan/README.md](usability/ux-plan/README.md) | E8-01 UX plan: interview guide, notes and synthesis templates, user journeys, low-fi flows | Kweku | Living |
 | [usability/test-plan.md](usability/test-plan.md) | Usability test plan (TRD 13.4) | Kweku | Living |

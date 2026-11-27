@@ -8,6 +8,7 @@ Images that the planning documents and other docs link to.
 
 - `architecture.png` (TRD 10.1), `roadmap.png` (TRD 5.2, Sprint Plan 1)
 - `architecture-boundary.png` (Prosit 1 Section C1): the same architecture with the learned-component boundary drawn and the monitoring hook points [1] to [9]. Source: `architecture-boundary.dot`; render with `dot -Tpng -Gdpi=150 architecture-boundary.dot -o architecture-boundary.png`. `architecture.png` is part of the frozen baseline (TRD 10.1) and stays unchanged.
+- `photo-sim-samples.png` (`E7-01`): phone-photo simulation sample sheet on a synthetic phantom, not a medical image. Source: `ml/train/photo_sim.py --sheet`.
 - New diagrams in PNG or SVG, with a source file next to them if one exists
 
 ## What must not go here

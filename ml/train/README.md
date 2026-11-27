@@ -18,6 +18,26 @@ Trains the chest X-ray TB model for the M2 slice (story `E2-01`). One TB output 
 | `train.py` | One run: head warm-up, full fine-tune, early stopping, shortcut check, run log | Yes |
 | `baselines.py` | Baseline ladder: image size only, 64 px pixels, frozen backbone | Yes |
 | `plot_curves.py` | Learning curves per run (`curves.png`) and the bake-off comparison | matplotlib |
+| `photo_sim.py` | Phone-photo simulation (`E7-01`, ML-ROBUST-01): uneven light, glare, moire, tilt, crop, blur, JPEG, and a random mix for training | No |
+
+## Phone-photo simulation (E7-01)
+
+`photo_sim.py` makes a clean X-ray look like a phone photo of a film on a light box or screen (TRD 9.7, ML-ROBUST-01). It is for E7-02: training on clean plus simulated images, and building the simulated test set for the ablation (ML-ROBUST-03).
+
+- Seven effects, each `effect(img, rng, strength)`: `uneven_light`, `glare`, `moire`, `tilt`, `crop`, `blur`, `jpeg`. The input is an 8-bit grayscale array. Strength 0 returns the input; 1 is the strongest. The output keeps the shape and dtype, and the same seed gives the same result.
+- `PhotoSim(p=..., max_strength=..., seed=...)` applies each effect with probability `p` (default 0.5) at a random strength. Use it for training. For a test set, call single effects at fixed strengths so results can be reported per effect.
+- No horizontal flip (TRD 9.4). The tilt surround is dark or bright at random, and crops cut each side independently, so neither can track the label (ADR-16).
+- **The strength ranges are first guesses.** Check them against the real photo set (`E1-05`) before E7-02, and record any change here.
+- Not wired into `data.py` yet. E7-02 adds it next to `Augment`, seeding its numpy generator from the run seed.
+
+Sample sheet for team review, one row per effect at strengths 0.33, 0.66 and 1.0, plus four random mixes:
+
+```sh
+python3 ml/train/photo_sim.py --sheet docs/figures/photo-sim-samples.png        # synthetic phantom
+python3 ml/train/photo_sim.py --sheet /tmp/sheet.png --image <local Shenzhen PNG>  # real film: keep it local
+```
+
+The committed sheet ([photo-sim-samples.png](../../docs/figures/photo-sim-samples.png)) uses a synthetic phantom only. Never commit a sheet made from a dataset image (ML-DATA-07, Team Rules 8).
 
 ## Run on Modal
 

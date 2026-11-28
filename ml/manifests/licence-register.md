@@ -2,7 +2,7 @@
 
 Story `E1-01`. Owner: Micheal. Support: Chelsea (data facts), Kweku (ethics and agreements). Requirement: ML-DATA-01, NFR-PRIV. Sources: TRD Appendix A, TRD 9.2.
 
-**Status: skeleton.** One row (Shenzhen) has been checked against a source. Every "To verify" cell is a gap, not a claim. Do not use this register to justify using a dataset until its row is filled in.
+**Status: skeleton.** Two rows (Shenzhen and RSNA Pneumonia Detection) have been checked against a source. Every "To verify" cell is a gap, not a claim. Do not use this register to justify using a dataset until its row is filled in.
 
 ## What this register is for
 
@@ -35,7 +35,7 @@ TRD Appendix A points at this file: "Check each dataset's current licence and ac
 | Shenzhen Hospital CXR Set | Chest X-ray | Do not share outside the research group. Report errors to NLM. Cite Jaeger et al. 2014 and Candemir et al. 2014. De-identified by the provider; NIH IRB exemption No. 5357. | Public. Downloaded 17 Oct 2026. | Train, validate (TB) | The text reading gives sex and age per image. Keep the images in git-ignored `ml/data/`. Data card v1 also assigns an internal test split; TRD Appendix A does not. Confirm which is right. | Chelsea, 17 Oct 2026 (data card v1) | [NLM file index](https://data.lhncbc.nlm.nih.gov/public/Tuberculosis-Chest-X-ray-Datasets/Shenzhen-Hospital-CXR-Set/index.html) |
 | Montgomery County set | Chest X-ray | To verify | Unknown | Locked external test (TB) | US source. Lung masks available. | Not checked | To add |
 | India TB sets (DA, DB) | Chest X-ray | To verify | Unknown | Locked external test (TB) | India source. Small. | Not checked | To add |
-| RSNA Pneumonia Detection | Chest X-ray | To verify | Unknown | Train, validate, internal test (pneumonia) | Derived from NIH data. Adults. | Not checked | To add |
+| RSNA Pneumonia Detection | Chest X-ray | RSNA Terms of Use and Attribution: academic research and education, and other commercial or non-commercial use, if the user does not try to identify or contact subjects and meets the attribution requirements when sharing or redistributing. The project will not redistribute the data (ML-DATA-07). | Public download from RSNA S3. No registration. Not yet downloaded. | Train, validate, internal test (pneumonia) | Derived from the NIH Chest X-ray dataset. Cite Wang et al., CVPR 2017, and acknowledge the NIH Clinical Center. Cite Shih et al., Radiology: AI 2019, https://doi.org/10.1148/ryai.2019180041. Image-level pneumonia labels come from expert bounding-box annotations. Adults. Keep in git-ignored `ml/data/`. Check overlap with TB sets by hash and metadata. | Micheal, 28 Nov 2026 | [RSNA challenge page](https://www.rsna.org/artificial-intelligence/ai-image-challenge/rsna-pneumonia-detection-challenge-2018) |
 | VinDr-CXR | Chest X-ray | To verify | Unknown | Locked external test (pneumonia) | Vietnam source. About 18,000 images. | Not checked | To add |
 | CheXphoto | Phone photos of chest X-rays | To verify. TRD Appendix A notes research terms apply. | Unknown | Robustness test | Stanford. Photos and transformations of CheXpert images. | Not checked | To add |
 | CheXpert | Chest X-ray | To verify | Registration required (TRD Appendix A). Not requested. | Optional teacher pretraining | Optional. Not on the critical path. | Not checked | To add |
@@ -67,9 +67,11 @@ TRD Appendix A already says which datasets are not a plain download. Start with 
 
 1. **Shenzhen internal test.** TRD Appendix A gives Shenzhen a train and validation role. Data card v1 (PR #78) also builds an internal test split of 96 images. The team needs to confirm whether Shenzhen may serve as an internal test set, or whether internal test images come from TBX11K only. Record the answer here once decided.
 2. **Where this file lives.** `ml/manifests/README.md` lists licence register entries in this folder and names Chelsea as its owner. Agree the path and the owner of edits with her before this merges.
+3. **RSNA data card and splits.** E1-03 is closed, but `ml/manifests/` has no RSNA data card or patient-level split manifest. Confirm where they are or create them before any pneumonia training run.
 
 ## 4. Revision history
 
 | Date | By | Change |
 |------------|--------------------|--------|
 | 21 Oct 2026 | Michael Sylvester | Skeleton. All 18 datasets from TRD Appendix A listed. Shenzhen row filled from data card v1. Everything else marked "To verify". |
+| 28 Nov 2026 | Michael Sylvester | Filled the RSNA Pneumonia Detection row from the RSNA Terms of Use and Attribution and Acknowledgements PDFs. |
